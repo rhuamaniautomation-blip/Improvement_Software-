@@ -862,7 +862,7 @@ class Utils:
         # Espacios dobles
         result = re.sub(r'  +', ' ', result)
         # Espacio antes de punto/coma (corrección inversa)
-        result = re.sub(r' \([.,;:!?])', r'', result)
+        result = re.sub(r' ([.,;:!?])', r'\1', result)
 
         return result
 
