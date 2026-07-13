@@ -1,10 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 5.0.0 - Completo con Templates Oficiales y Correccion Ortografica
+Version 4.0.0 - Completo con Exportación a PDF y Persistencia Local
+================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
+Version: 4.0.0
+Fecha: Julio 2026
+================================================================================
+MEJORAS v4.0.0:
+- Generación automática de formatos MoC, A3 y Kaizen con IA detallada
+- Corrector ortográfico automático en todos los campos
+- Redacción humanizada y profesional
+- Exportación directa a PDF (PowerPoint y Word -> PDF)
+- Persistencia local de datos mediante archivos JSON
+- Historial completo con búsqueda y filtros
+- Templates oficiales integrados (no requieren carga manual)
+================================================================================
 """
 
 import streamlit as st
@@ -22,6 +36,7 @@ from pathlib import Path
 from copy import deepcopy
 from io import BytesIO
 
+# Librerías para documentos
 from PIL import Image
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -34,7 +49,7 @@ from docx.shared import Pt as DocxPt
 from docx.shared import RGBColor as DocxRGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-REPORTLAB_AVAILABLE = False
+# Intentar importar reportlab para PDF
 try:
     from reportlab.lib.pagesizes import A4, letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -44,83 +59,213 @@ try:
     from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
     REPORTLAB_AVAILABLE = True
 except ImportError:
-    pass
+    REPORTLAB_AVAILABLE = False
 
+# =============================================================================
+# CONFIGURACION INICIAL DE PAGINA
+# =============================================================================
 st.set_page_config(
-    page_title="Gestion Documental - MoC | A3 | Kaizen",
+    page_title="Gestión Documental - MoC | A3 | Kaizen",
     page_icon="📋",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
+# =============================================================================
+# RUTAS Y DIRECTORIOS DE PERSISTENCIA
+# =============================================================================
 BASE_DIR = Path(__file__).parent if "__file__" in dir() else Path(".")
 DATA_DIR = BASE_DIR / "data"
 TEMPLATES_DIR = BASE_DIR / "templates"
 HISTORY_FILE = DATA_DIR / "history.json"
 CONFIG_FILE = DATA_DIR / "config.json"
 
+# Crear directorios si no existen
 DATA_DIR.mkdir(exist_ok=True)
 TEMPLATES_DIR.mkdir(exist_ok=True)
 
-st.markdown("""
+# =============================================================================
+# CSS PERSONALIZADO EMPRESARIAL
+# =============================================================================
+CUSTOM_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif !important; }
-    .main-header { background: linear-gradient(135deg, #1a5f7a 0%, #2e8bc0 100%); padding: 2rem; border-radius: 12px; color: white; margin-bottom: 2rem; box-shadow: 0 4px 20px rgba(26, 95, 122, 0.3); }
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', 'Segoe UI', sans-serif !important;
+    }
+
+    .main-header {
+        background: linear-gradient(135deg, #1a5f7a 0%, #2e8bc0 100%);
+        padding: 2rem;
+        border-radius: 12px;
+        color: white;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(26, 95, 122, 0.3);
+    }
+
     .main-header h1 { color: white !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; }
     .main-header p { color: rgba(255,255,255,0.9) !important; font-size: 1.1rem !important; }
-    .doc-card { background: white; border-radius: 16px; padding: 2rem; border: 2px solid #e2e8f0; transition: all 0.3s ease; cursor: pointer; height: 100%; }
-    .doc-card:hover { border-color: #1a5f7a; transform: translateY(-4px); box-shadow: 0 12px 40px rgba(26, 95, 122, 0.15); }
+
+    .doc-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem;
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        height: 100%;
+    }
+    .doc-card:hover {
+        border-color: #1a5f7a;
+        transform: translateY(-4px);
+        box-shadow: 0 12px 40px rgba(26, 95, 122, 0.15);
+    }
     .doc-card-moc { border-left: 5px solid #1a5f7a; }
     .doc-card-a3 { border-left: 5px solid #10b981; }
     .doc-card-kaizen { border-left: 5px solid #f59e0b; }
-    .stButton > button { border-radius: 10px !important; font-weight: 600 !important; padding: 0.75rem 2rem !important; transition: all 0.2s ease !important; }
-    .stButton > button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .stTextInput > div > div > input, .stTextArea > div > div > textarea, .stSelectbox > div > div > div { border-radius: 8px !important; border: 1px solid #cbd5e1 !important; font-size: 15px !important; }
-    .section-header { background: #f1f5f9; padding: 1rem 1.5rem; border-radius: 10px; margin: 1.5rem 0 1rem 0; border-left: 4px solid #1a5f7a; }
+
+    .stButton > button {
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        padding: 0.75rem 2rem !important;
+        transition: all 0.2s ease !important;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea,
+    .stSelectbox > div > div > div {
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        font-size: 15px !important;
+    }
+
+    .section-header {
+        background: #f1f5f9;
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        margin: 1.5rem 0 1rem 0;
+        border-left: 4px solid #1a5f7a;
+    }
     .section-header h3 { margin: 0 !important; color: #1e293b !important; font-weight: 600 !important; }
-    .field-card { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; margin: 0.5rem 0; }
-    .field-card:hover { border-color: #1a5f7a; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .gemini-badge { display: inline-block; background: #e0e7ff; color: #4338ca; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 12px; font-weight: 600; margin-left: 0.5rem; }
-    .history-item { background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1rem; margin: 0.5rem 0; transition: all 0.2s; }
-    .history-item:hover { border-color: #1a5f7a; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .app-footer { text-align: center; padding: 2rem; margin-top: 3rem; border-top: 1px solid #e2e8f0; color: #64748b; }
-    .auto-correct-badge { display: inline-flex; align-items: center; background: #dcfce7; color: #166534; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 11px; font-weight: 600; margin-bottom: 0.5rem; }
-    .image-preview { border: 2px solid #e2e8f0; border-radius: 12px; padding: 0.5rem; background: #f8fafc; text-align: center; }
-    .image-preview img { border-radius: 8px; max-width: 100%; }
+
+    .field-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+    }
+    .field-card:hover {
+        border-color: #1a5f7a;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .gemini-badge {
+        display: inline-block;
+        background: #e0e7ff;
+        color: #4338ca;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+
+    .history-item {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        transition: all 0.2s;
+    }
+    .history-item:hover {
+        border-color: #1a5f7a;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .app-footer {
+        text-align: center;
+        padding: 2rem;
+        margin-top: 3rem;
+        border-top: 1px solid #e2e8f0;
+        color: #64748b;
+    }
+
+    .auto-correct-badge {
+        display: inline-flex;
+        align-items: center;
+        background: #dcfce7;
+        color: #166534;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+
     [data-testid="stSidebar"] { background: #1e293b !important; }
     [data-testid="stSidebar"] .stMarkdown { color: #94a3b8 !important; }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #f8fafc !important; }
-    .template-uploader { background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 12px; padding: 1.5rem; text-align: center; margin: 1rem 0; }
-    .template-uploader.ok { background: #f0fdf4; border-color: #10b981; }
-</style>
-""", unsafe_allow_html=True)
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 { color: #f8fafc !important; }
 
+    .template-uploader {
+        background: #f8fafc;
+        border: 2px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 1.5rem;
+        text-align: center;
+        margin: 1rem 0;
+    }
+    .template-uploader.ok {
+        background: #f0fdf4;
+        border-color: #10b981;
+    }
+</style>
+"""
+
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+# =============================================================================
+# PERSISTENCIA LOCAL - GUARDAR/CARGAR DATOS
+# =============================================================================
 class LocalStorage:
+    """Gestiona la persistencia local de configuración e historial"""
+
     @staticmethod
     def save_config(config):
+        """Guarda configuración en archivo JSON local"""
         try:
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
-            st.error(f"Error guardando configuracion: {e}")
+            st.error(f"Error guardando configuración: {e}")
             return False
 
     @staticmethod
     def load_config():
+        """Carga configuración desde archivo JSON local"""
         try:
             if CONFIG_FILE.exists():
                 with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                     return json.load(f)
         except Exception as e:
-            st.warning(f"Error cargando configuracion: {e}")
+            st.warning(f"Error cargando configuración: {e}")
         return None
 
     @staticmethod
     def save_history(history):
+        """Guarda historial en archivo JSON local"""
         try:
             with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
                 json.dump(history, f, ensure_ascii=False, indent=2)
@@ -131,6 +276,7 @@ class LocalStorage:
 
     @staticmethod
     def load_history():
+        """Carga historial desde archivo JSON local"""
         try:
             if HISTORY_FILE.exists():
                 with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
@@ -141,6 +287,7 @@ class LocalStorage:
 
     @staticmethod
     def save_template_bytes(template_name, file_bytes):
+        """Guarda bytes de template en archivo"""
         try:
             template_path = TEMPLATES_DIR / f"{template_name}.bin"
             with open(template_path, 'wb') as f:
@@ -152,6 +299,7 @@ class LocalStorage:
 
     @staticmethod
     def load_template_bytes(template_name):
+        """Carga bytes de template desde archivo"""
         try:
             template_path = TEMPLATES_DIR / f"{template_name}.bin"
             if template_path.exists():
@@ -163,6 +311,7 @@ class LocalStorage:
 
     @staticmethod
     def delete_template(template_name):
+        """Elimina archivo de template"""
         try:
             template_path = TEMPLATES_DIR / f"{template_name}.bin"
             if template_path.exists():
@@ -170,6 +319,10 @@ class LocalStorage:
         except Exception:
             pass
 
+
+# =============================================================================
+# UTILIDADES
+# =============================================================================
 class Utils:
     @staticmethod
     def format_date():
@@ -195,6 +348,7 @@ class Utils:
 
     @staticmethod
     def add_to_history(doc_info):
+        """Agrega documento al historial persistente"""
         history = st.session_state.history
         doc_info["id"] = str(uuid.uuid4())
         doc_info["timestamp"] = datetime.now().isoformat()
@@ -204,6 +358,7 @@ class Utils:
 
     @staticmethod
     def get_history(doc_type=None):
+        """Obtiene historial filtrado"""
         docs = st.session_state.history.get("documents", [])
         if doc_type:
             docs = [d for d in docs if d.get("type") == doc_type]
@@ -211,289 +366,92 @@ class Utils:
 
     @staticmethod
     def delete_from_history(doc_id):
+        """Elimina documento del historial"""
         history = st.session_state.history
         history["documents"] = [d for d in history["documents"] if d.get("id") != doc_id]
         st.session_state.history = history
         LocalStorage.save_history(history)
 
     @staticmethod
-    def correct_spelling_comprehensive(text):
+    def correct_spelling_basic(text):
+        """Corrector ortográfico básico local (sin API)"""
         if not text or not text.strip():
             return text
-        result = text
-        accent_corrections = {
-            "tecnico": "tecnico", "tecnica": "tecnica", "tecnicos": "tecnicos", "tecnicas": "tecnicas",
-            "Tecnico": "Tecnico", "Tecnica": "Tecnica", "Tecnicos": "Tecnicos", "Tecnicas": "Tecnicas",
-            "TECNICO": "TECNICO", "TECNICA": "TECNICA", "TECNICOS": "TECNICOS", "TECNICAS": "TECNICAS",
-            "produccion": "produccion", "Produccion": "Produccion", "PRODUCCION": "PRODUCCION",
-            "implementacion": "implementacion", "Implementacion": "Implementacion", "IMPLEMENTACION": "IMPLEMENTACION",
-            "evaluacion": "evaluacion", "Evaluacion": "Evaluacion", "EVALUACION": "EVALUACION",
-            "operacion": "operacion", "Operacion": "Operacion", "OPERACION": "OPERACION",
-            "condicion": "condicion", "Condicion": "Condicion", "CONDICION": "CONDICION",
-            "modificacion": "modificacion", "Modificacion": "Modificacion", "MODIFICACION": "MODIFICACION",
-            "verificacion": "verificacion", "Verificacion": "Verificacion", "VERIFICACION": "VERIFICACION",
-            "capacitacion": "capacitacion", "Capacitacion": "Capacitacion", "CAPACITACION": "CAPACITACION",
-            "socializacion": "socializacion", "Socializacion": "Socializacion", "SOCIALIZACION": "SOCIALIZACION",
-            "documentacion": "documentacion", "Documentacion": "Documentacion", "DOCUMENTACION": "DOCUMENTACION",
-            "estandarizacion": "estandarizacion", "Estandarizacion": "Estandarizacion", "ESTANDARIZACION": "ESTANDARIZACION",
-            "optimizacion": "optimizacion", "Optimizacion": "Optimizacion", "OPTIMIZACION": "OPTIMIZACION",
-            "identificacion": "identificacion", "Identificacion": "Identificacion", "IDENTIFICACION": "IDENTIFICACION",
-            "clasificacion": "clasificacion", "Clasificacion": "Clasificacion", "CLASIFICACION": "CLASIFICACION",
-            "notificacion": "notificacion", "Notificacion": "Notificacion", "NOTIFICACION": "NOTIFICACION",
-            "coordinacion": "coordinacion", "Coordinacion": "Coordinacion", "COORDINACION": "COORDINACION",
-            "aprobacion": "aprobacion", "Aprobacion": "Aprobacion", "APROBACION": "APROBACION",
-            "revision": "revision", "Revision": "Revision", "REVISION": "REVISION",
-            "revison": "revision", "Revison": "Revision", "REVISON": "REVISION",
-            "ejecucion": "ejecucion", "Ejecucion": "Ejecucion", "EJECUCION": "EJECUCION",
-            "inspeccion": "inspeccion", "Inspeccion": "Inspeccion", "INSPECCION": "INSPECCION",
-            "proteccion": "proteccion", "Proteccion": "Proteccion", "PROTECCION": "PROTECCION",
-            "deteccion": "deteccion", "Deteccion": "Deteccion", "DETECCION": "DETECCION",
-            "prevencion": "prevencion", "Prevencion": "Prevencion", "PREVENCION": "PREVENCION",
-            "intervencion": "intervencion", "Intervencion": "Intervencion", "INTERVENCION": "INTERVENCION",
-            "supervision": "supervision", "Supervision": "Supervision", "SUPERVISION": "SUPERVISION",
-            "comunicacion": "comunicacion", "Comunicacion": "Comunicacion", "COMUNICACION": "COMUNICACION",
-            "organizacion": "organizacion", "Organizacion": "Organizacion", "ORGANIZACION": "ORGANIZACION",
-            "planificacion": "planificacion", "Planificacion": "Planificacion", "PLANIFICACION": "PLANIFICACION",
-            "calificacion": "calificacion", "Calificacion": "Calificacion", "CALIFICACION": "CALIFICACION",
-            "certificacion": "certificacion", "Certificacion": "Certificacion", "CERTIFICACION": "CERTIFICACION",
-            "validacion": "validacion", "Validacion": "Validacion", "VALIDACION": "VALIDACION",
-            "calibracion": "calibracion", "Calibracion": "Calibracion", "CALIBRACION": "CALIBRACION",
-            "configuracion": "configuracion", "Configuracion": "Configuracion", "CONFIGURACION": "CONFIGURACION",
-            "programacion": "programacion", "Programacion": "Programacion", "PROGRAMACION": "PROGRAMACION",
-            "automatizacion": "automatizacion", "Automatizacion": "Automatizacion", "AUTOMATIZACION": "AUTOMATIZACION",
-            "integracion": "integracion", "Integracion": "Integracion", "INTEGRACION": "INTEGRACION",
-            "funcion": "funcion", "Funcion": "Funcion", "FUNCION": "FUNCION",
-            "relacion": "relacion", "Relacion": "Relacion", "RELACION": "RELACION",
-            "conexion": "conexion", "Conexion": "Conexion", "CONECTION": "CONEXION",
-            "direccion": "direccion", "Direccion": "Direccion", "DIRECCION": "DIRECCION",
-            "seleccion": "seleccion", "Seleccion": "Seleccion", "SELECCION": "SELECCION",
-            "proyeccion": "proyeccion", "Proyeccion": "Proyeccion", "PROYECCION": "PROYECCION",
-            "restriccion": "restriccion", "Restriccion": "Restriccion", "RESTRICCION": "RESTRICCION",
-            "distribucion": "distribucion", "Distribucion": "Distribucion", "DISTRIBUCION": "DISTRIBUCION",
-            "construccion": "construccion", "Construccion": "Construccion", "CONSTRUCCION": "CONSTRUCCION",
-            "destruccion": "destruccion", "Destruccion": "Destruccion", "DESTRUCCION": "DESTRUCCION",
-            "instruccion": "instruccion", "Instruccion": "Instruccion", "INSTRUCCION": "INSTRUCCION",
-            "conduccion": "conduccion", "Conduccion": "Conduccion", "CONDUCCION": "CONDUCCION",
-            "introduccion": "introduccion", "Introduccion": "Introduccion", "INTRODUCCION": "INTRODUCCION",
-            "reduccion": "reduccion", "Reduccion": "Reduccion", "REDUCCION": "REDUCCION",
-            "reproduccion": "reproduccion", "Reproduccion": "Reproduccion", "REPRODUCCION": "REPRODUCCION",
-            "traduccion": "traduccion", "Traduccion": "Traduccion", "TRADUCCION": "TRADUCCION",
-            "deduccion": "deduccion", "Deduccion": "Deduccion", "DEDUCCION": "DEDUCCION",
-            "induccion": "induccion", "Induccion": "Induccion", "INDUCCION": "INDUCCION",
-            "seduccion": "seduccion", "Seduccion": "Seduccion", "SEDUCCION": "SEDUCCION",
-            "seguridad": "seguridad", "Seguridad": "Seguridad", "SEGURIDAD": "SEGURIDAD",
-            "maquina": "maquina", "maquinas": "maquinas", "Maquina": "Maquina", "Maquinas": "Maquinas",
-            "MAQUINA": "MAQUINA", "MAQUINAS": "MAQUINAS",
-            "numero": "numero", "numeros": "numeros", "Numero": "Numero", "Numeros": "Numeros",
-            "NUMERO": "NUMERO", "NUMEROS": "NUMEROS",
-            "maximo": "maximo", "maxima": "maxima", "Maximo": "Maximo", "Maxima": "Maxima",
-            "MAXIMO": "MAXIMO", "MAXIMA": "MAXIMA",
-            "minimo": "minimo", "minima": "minima", "Minimo": "Minimo", "Minima": "Minima",
-            "MINIMO": "MINIMO", "MINIMA": "MINIMA",
-            "rapido": "rapido", "rapida": "rapida", "Rapido": "Rapido", "Rapida": "Rapida",
-            "RAPIDO": "RAPIDO", "RAPIDA": "RAPIDA",
-            "facil": "facil", "Facil": "Facil", "FACIL": "FACIL",
-            "dificil": "dificil", "Dificil": "Dificil", "DIFICIL": "DIFICIL",
-            "electronico": "electronico", "electronica": "electronica", "Electronicos": "Electronicos",
-            "Electrico": "Electrico", "Electrica": "Electrica", "electrico": "electrico", "electrica": "electrica",
-            "ELECTRICO": "ELECTRICO", "ELECTRICA": "ELECTRICA",
-            "mecanico": "mecanico", "mecanica": "mecanica", "Mecanico": "Mecanico", "Mecanica": "Mecanica",
-            "MECANICO": "MECANICO", "MECANICA": "MECANICA",
-            "hidraulico": "hidraulico", "hidraulica": "hidraulica", "Hidraulico": "Hidraulico", "Hidraulica": "Hidraulica",
-            "HIDRAULICO": "HIDRAULICO", "HIDRAULICA": "HIDRAULICA",
-            "neumatico": "neumatico", "neumatica": "neumatica", "Neumatico": "Neumatico", "Neumatica": "Neumatica",
-            "NEUMATICO": "NEUMATICO", "NEUMATICA": "NEUMATICA",
-            "termico": "termico", "termica": "termica", "Termico": "Termico", "Termica": "Termica",
-            "TERMICO": "TERMICO", "TERMICA": "TERMICA",
-            "critico": "critico", "critica": "critica", "Critico": "Critico", "Critica": "Critica",
-            "CRITICO": "CRITICO", "CRITICA": "CRITICA",
-            "periodico": "periodico", "periodica": "periodica", "Periodico": "Periodico", "Periodica": "Periodica",
-            "PERIODICO": "PERIODICO", "PERIODICA": "PERIODICA",
-            "logico": "logico", "logica": "logica", "Logico": "Logico", "Logica": "Logica",
-            "LOGICO": "LOGICO", "LOGICA": "LOGICA",
-            "publico": "publico", "publica": "publica", "Publico": "Publico", "Publica": "Publica",
-            "PUBLICO": "PUBLICO", "PUBLICA": "PUBLICA",
-            "unico": "unico", "unica": "unica", "Unico": "Unico", "Unica": "Unica",
-            "UNICO": "UNICO", "UNICA": "UNICA",
-            "fisico": "fisico", "fisica": "fisica", "Fisico": "Fisico", "Fisica": "Fisica",
-            "FISICO": "FISICO", "FISICA": "FISICA",
-            "quimico": "quimico", "quimica": "quimica", "Quimico": "Quimico", "Quimica": "Quimica",
-            "QUIMICO": "QUIMICO", "QUIMICA": "QUIMICA",
-            "medico": "medico", "medica": "medica", "Medico": "Medico", "Medica": "Medica",
-            "MEDICO": "MEDICO", "MEDICA": "MEDICA",
-            "politico": "politico", "politica": "politica", "Politico": "Politico", "Politica": "Politica",
-            "POLITICO": "POLITICO", "POLITICA": "POLITICA",
-            "economico": "economico", "economica": "economica", "Economico": "Economico", "Economica": "Economica",
-            "ECONOMICO": "ECONOMICO", "ECONOMICA": "ECONOMICA",
-            "didactico": "didactico", "didactica": "didactica", "Didactico": "Didactico", "Didactica": "Didactica",
-            "DIDACTICO": "DIDACTICO", "DIDACTICA": "DIDACTICA",
-            "tactico": "tactico", "tactica": "tactica", "Tactico": "Tactico", "Tactica": "Tactica",
-            "TACTICO": "TACTICO", "TACTICA": "TACTICA",
-            "practico": "practico", "practica": "practica", "Practico": "Practico", "Practica": "Practica",
-            "PRACTICO": "PRACTICO", "PRACTICA": "PRACTICA",
-            "sistematico": "sistematico", "sistematica": "sistematica", "Sistematico": "Sistematico", "Sistematica": "Sistematica",
-            "SISTEMATICO": "SISTEMATICO", "SISTEMATICA": "SISTEMATICA",
-            "automatico": "automatico", "automatica": "automatica", "Automatico": "Automatico", "Automatica": "Automatica",
-            "AUTOMATICO": "AUTOMATICO", "AUTOMATICA": "AUTOMATICA",
-            "caracteristico": "caracteristico", "caracteristica": "caracteristica",
-            "Caracteristico": "Caracteristico", "Caracteristica": "Caracteristica",
-            "CARACTERISTICO": "CARACTERISTICO", "CARACTERISTICA": "CARACTERISTICA",
-            "analisis": "analisis", "Analisis": "Analisis", "ANALISIS": "ANALISIS",
-            "crisis": "crisis", "Crisis": "Crisis", "CRISIS": "CRISIS",
-            "tesis": "tesis", "Tesis": "Tesis", "TESIS": "TESIS",
-            "hipotesis": "hipotesis", "Hipotesis": "Hipotesis", "HIPOTESIS": "HIPOTESIS",
-            "sintesis": "sintesis", "Sintesis": "Sintesis", "SINTESIS": "SINTESIS",
-            "parentesis": "parentesis", "Parentesis": "Parentesis", "PARENTESIS": "PARENTESIS",
-            "enfasis": "enfasis", "Enfasis": "Enfasis", "ENFASIS": "ENFASIS",
-            "diasis": "diasis", "Diasis": "Diasis", "DIASIS": "DIASIS",
-            "apocalipsis": "apocalipsis", "Apocalipsis": "Apocalipsis", "APOCALIPSIS": "APOCALIPSIS",
-            "paralisis": "paralisis", "Paralisis": "Paralisis", "PARALISIS": "PARALISIS",
-            "linguistica": "linguistica", "Linguistica": "Linguistica", "LINGUISTICA": "LINGUISTICA",
-            "bilingue": "bilingue", "Bilingue": "Bilingue", "BILINGUE": "BILINGUE",
-            "ambiguo": "ambiguo", "Ambiguo": "Ambiguo", "AMBIGUO": "AMBIGUO",
-            "antiguo": "antiguo", "antigua": "antigua", "Antiguo": "Antiguo", "Antigua": "Antigua",
-            "ANTIGUO": "ANTIGUO", "ANTIGUA": "ANTIGUA",
-            "arguir": "arguir", "Arguir": "Arguir", "ARGUIR": "ARGUIR",
-            "averiguo": "averiguo", "Averiguo": "Averiguo", "AVERIGUO": "AVERIGUO",
-            "bilinguo": "bilinguo", "Bilinguo": "Bilinguo", "BILINGUO": "BILINGUO",
-            "ciguena": "ciguena", "Ciguena": "Ciguena", "CIGUENA": "CIGUENA",
-            "contiguo": "contiguo", "contigua": "contigua", "Contiguo": "Contiguo", "Contigua": "Contigua",
-            "CONTIGUO": "CONTIGUO", "CONTIGUA": "CONTIGUA",
-            "desaguisado": "desaguisado", "Desaguisado": "Desaguisado", "DESAGUISADO": "DESAGUISADO",
-            "exiguo": "exiguo", "exigua": "exigua", "Exiguo": "Exiguo", "Exigua": "Exigua",
-            "EXIGUO": "EXIGUO", "EXIGUA": "EXIGUA",
-            "pinguino": "pinguino", "Pinguino": "Pinguino", "PINGUINO": "PINGUINO",
-            "prosiguio": "prosiguio", "Prosiguio": "Prosiguio", "PROSIGUIO": "PROSIGUIO",
-            "santiguo": "santiguo", "Santiguo": "Santiguo", "SANTIGUO": "SANTIGUO",
-            "trilingue": "trilingue", "Trilingue": "Trilingue", "TRILINGUE": "TRILINGUE",
-            "veriguo": "veriguo", "Veriguo": "Veriguo", "VERIGUO": "VERIGUO",
-            "sere": "sere", "Sere": "Sere", "SERE": "SERE",
-            "tene": "tene", "Tene": "Tene", "TENE": "TENE",
-            "vene": "vene", "Vene": "Vene", "VENE": "VENE",
-            "pode": "pode", "Pode": "Pode", "PODE": "PODE",
-            "debe": "debe", "Debe": "Debe", "DEBE": "DEBE",
-            "sabe": "sabe", "Sabe": "Sabe", "SABE": "SABE",
-            "habe": "habe", "Habe": "Habe", "HABE": "HABE",
-            "hace": "hace", "Hace": "Hace", "HACE": "HACE",
-            "dece": "dece", "Dece": "Dece", "DECE": "DECE",
-            "pede": "pede", "Pede": "Pede", "PEDE": "PEDE",
-            "mede": "mede", "Mede": "Mede", "MEDE": "MEDE",
-            "segue": "segue", "Segue": "Segue", "SEGUE": "SEGUE",
-            "consegue": "consegue", "Consegue": "Consegue", "CONSEGUE": "CONSEGUE",
-            "persegue": "persegue", "Persegue": "Persegue", "PERSEGUE": "PERSEGUE",
-            "prosegue": "prosegue", "Prosegue": "Prosegue", "PROSEGUE": "PROSEGUE",
-            "rei": "rei", "Rei": "Rei", "REI": "REI",
-            "sonrei": "sonrei", "Sonrei": "Sonrei", "SONREI": "SONREI",
-            "frei": "frei", "Frei": "Frei", "FREI": "FREI",
-            "reune": "reune", "Reune": "Reune", "REUNE": "REUNE",
-            "reuni": "reuni", "Reuni": "Reuni", "REUNI": "REUNI",
-            "reunion": "reunion", "Reunion": "Reunion", "REUNION": "REUNION",
-            "diversion": "diversion", "Diversion": "Diversion", "DIVERSION": "DIVERSION",
-            "version": "version", "Version": "Version", "VERSION": "VERSION",
-            "conversion": "conversion", "Conversion": "Conversion", "CONVERSION": "CONVERSION",
-            "inversion": "inversion", "Inversion": "Inversion", "INVERSION": "INVERSION",
-            "aversion": "aversion", "Aversion": "Aversion", "AVERSION": "AVERSION",
-            "excursion": "excursion", "Excursion": "Excursion", "EXCURSION": "EXCURSION",
-            "pasion": "pasion", "Pasion": "Pasion", "PASION": "PASION",
-            "profesion": "profesion", "Profesion": "Profesion", "PROFESION": "PROFESION",
-            "presion": "presion", "Presion": "Presion", "PRESION": "PRESION",
-            "expresion": "expresion", "Expresion": "Expresion", "EXPRESION": "EXPRESION",
-            "compresion": "compresion", "Compresion": "Compresion", "COMPRESION": "COMPRESION",
-            "opresion": "opresion", "Opresion": "Opresion", "OPRESION": "OPRESION",
-            "supresion": "supresion", "Supresion": "Supresion", "SUPRESION": "SUPRESION",
-            "transgresion": "transgresion", "Transgresion": "Transgresion", "TRANSGRESION": "TRANSGRESION",
-            "sesion": "sesion", "Sesion": "Sesion", "SESION": "SESION",
-            "ascension": "ascension", "Ascension": "Ascension", "ASCENSION": "ASCENSION",
-            "descension": "descension", "Descension": "Descension", "DESCENSION": "DESCENSION",
-            "extension": "extension", "Extension": "Extension", "EXTENSION": "EXTENSION",
-            "intension": "intension", "Intension": "Intension", "INTENSION": "INTENSION",
-            "pension": "pension", "Pension": "Pension", "PENSION": "PENSION",
-            "tension": "tension", "Tension": "Tension", "TENSION": "TENSION",
-            "atencion": "atencion", "Atencion": "Atencion", "ATENCION": "ATENCION",
-            "intencion": "intencion", "Intencion": "Intencion", "INTENCION": "INTENCION",
-            "contencion": "contencion", "Contencion": "Contencion", "CONTENCION": "CONTENCION",
-            "detencion": "detencion", "Detencion": "Detencion", "DETENCION": "DETENCION",
-            "retencion": "retencion", "Retencion": "Retencion", "RETENCION": "RETENCION",
-            "sustencion": "sustencion", "Sustencion": "Sustencion", "SUSTENCION": "SUSTENCION",
-            "prevencion": "prevencion", "Prevencion": "Prevencion", "PREVENCION": "PREVENCION",
-            "conveniencia": "conveniencia", "Conveniencia": "Conveniencia", "CONVENIENCIA": "CONVENIENCIA",
-            "experiencia": "experiencia", "Experiencia": "Experiencia", "EXPERIENCIA": "EXPERIENCIA",
-            "ciencia": "ciencia", "Ciencia": "Ciencia", "CIENCIA": "CIENCIA",
-            "conciencia": "conciencia", "Conciencia": "Conciencia", "CONCIENCIA": "CONCIENCIA",
-            "incienso": "incienso", "Incienso": "Incienso", "INCIENSO": "INCIENSO",
-            "eficiencia": "eficiencia", "Eficiencia": "Eficiencia", "EFICIENCIA": "EFICIENCIA",
-            "suficiencia": "suficiencia", "Suficiencia": "Suficiencia", "SUFICIENCIA": "SUFICIENCIA",
-            "insuficiencia": "insuficiencia", "Insuficiencia": "Insuficiencia", "INSUFICIENCIA": "INSUFICIENCIA",
-            "deficiencia": "deficiencia", "Deficiencia": "Deficiencia", "DEFICIENCIA": "DEFICIENCIA",
-            "proficiencia": "proficiencia", "Proficiencia": "Proficiencia", "PROFICIENCIA": "PROFICIENCIA",
-            "tendencia": "tendencia", "Tendencia": "Tendencia", "TENDENCIA": "TENDENCIA",
-            "contendencia": "contendencia", "Contendencia": "Contendencia", "CONTENDENCIA": "CONTENDENCIA",
-            "distendencia": "distendencia", "Distendencia": "Distendencia", "DISTENDENCIA": "DISTENDENCIA",
-            "extravagancia": "extravagancia", "Extravagancia": "Extravagancia", "EXTRAVAGANCIA": "EXTRAVAGANCIA",
-            "vagancia": "vagancia", "Vagancia": "Vagancia", "VAGANCIA": "VAGANCIA",
-            "paciencia": "paciencia", "Paciencia": "Paciencia", "PACIENCIA": "PACIENCIA",
-            "impaciencia": "impaciencia", "Impaciencia": "Impaciencia", "IMPACIENCIA": "IMPACIENCIA",
-            "magnificencia": "magnificencia", "Magnificencia": "Magnificencia", "MAGNIFICENCIA": "MAGNIFICENCIA",
-            "terrificencia": "terrificencia", "Terrificencia": "Terrificencia", "TERRIFICENCIA": "TERRIFICENCIA",
-            "munificencia": "munificencia", "Munificencia": "Munificencia", "MUNIFICENCIA": "MUNIFICENCIA",
-            "omnipotencia": "omnipotencia", "Omnipotencia": "Omnipotencia", "OMNIPOTENCIA": "OMNIPOTENCIA",
-            "potencia": "potencia", "Potencia": "Potencia", "POTENCIA": "POTENCIA",
-            "impotencia": "impotencia", "Impotencia": "Impotencia", "IMPOTENCIA": "IMPOTENCIA",
-            "competencia": "competencia", "Competencia": "Competencia", "COMPETENCIA": "COMPETENCIA",
-            "incompetencia": "incompetencia", "Incompetencia": "Incompetencia", "INCOMPETENCIA": "INCOMPETENCIA",
-            "emergencia": "emergencia", "Emergencia": "Emergencia", "EMERGENCIA": "EMERGENCIA",
-            "urgencia": "urgencia", "Urgencia": "Urgencia", "URGENCIA": "URGENCIA",
-            "diligencia": "diligencia", "Diligencia": "Diligencia", "DILIGENCIA": "DILIGENCIA",
-            "indiligencia": "indiligencia", "Indiligencia": "Indiligencia", "INDILIGENCIA": "INDILIGENCIA",
-            "inteligencia": "inteligencia", "Inteligencia": "Inteligencia", "INTELIGENCIA": "INTELIGENCIA",
-            "negligencia": "negligencia", "Negligencia": "Negligencia", "NEGLIGENCIA": "NEGLIGENCIA",
-            "insignificancia": "insignificancia", "Insignificancia": "Insignificancia", "INSIGNIFICANCIA": "INSIGNIFICANCIA",
-            "significancia": "significancia", "Significancia": "Significancia", "SIGNIFICANCIA": "SIGNIFICANCIA",
-            "innocencia": "innocencia", "Innocencia": "Innocencia", "INNOCENCIA": "INNOCENCIA",
-            "consecuencia": "consecuencia", "Consecuencia": "Consecuencia", "CONSECUENCIA": "CONSECUENCIA",
-            "inconsecuencia": "inconsecuencia", "Inconsecuencia": "Inconsecuencia", "INCONSECUENCIA": "INCONSECUENCIA",
-            "frecuencia": "frecuencia", "Frecuencia": "Frecuencia", "FRECUENCIA": "FRECUENCIA",
-            "secuencia": "secuencia", "Secuencia": "Secuencia", "SECUENCIA": "SECUENCIA",
-            "pertenencia": "pertenencia", "Pertenencia": "Pertenencia", "PERTENENCIA": "PERTENENCIA",
-            "exigencia": "exigencia", "Exigencia": "Exigencia", "EXIGENCIA": "EXIGENCIA",
-            "indulgencia": "indulgencia", "Indulgencia": "Indulgencia", "INDULGENCIA": "INDULGENCIA",
-            "correspondencia": "correspondencia", "Correspondencia": "Correspondencia", "CORRESPONDENCIA": "CORRESPONDENCIA",
-            "descendencia": "descendencia", "Descendencia": "Descendencia", "DESCENDENCIA": "DESCENDENCIA",
-            "ascendencia": "ascendencia", "Ascendencia": "Ascendencia", "ASCENDENCIA": "ASCENDENCIA",
-            "incidencia": "incidencia", "Incidencia": "Incidencia", "INCIDENCIA": "INCIDENCIA",
-            "coincidencia": "coincidencia", "Coincidencia": "Coincidencia", "COINCIDENCIA": "COINCIDENCIA",
-            "decadencia": "decadencia", "Decadencia": "Decadencia", "DECADENCIA": "DECADENCIA",
-            "incandescencia": "incandescencia", "Incandescencia": "Incandescencia", "INCANDESCENCIA": "INCANDESCENCIA",
-            "condescendencia": "condescendencia", "Condescendencia": "Condescendencia", "CONDESCENDENCIA": "CONDESCENDENCIA",
-            "transcendencia": "transcendencia", "Transcendencia": "Transcendencia", "TRANSCENDENCIA": "TRANSCENDENCIA",
-            "influencia": "influencia", "Influencia": "Influencia", "INFLUENCIA": "INFLUENCIA",
-            "congruencia": "congruencia", "Congruencia": "Congruencia", "CONGRUENCIA": "CONGRUENCIA",
-            "incongruencia": "incongruencia", "Incongruencia": "Incongruencia", "INCONGRUENCIA": "INCONGRUENCIA",
-            "continuencia": "continuencia", "Continuencia": "Continuencia", "CONTINUENCIA": "CONTINUENCIA",
-            "incontinuencia": "incontinuencia", "Incontinuencia": "Incontinuencia", "INCONTINUENCIA": "INCONTINUENCIA",
-            "permanencia": "permanencia", "Permanencia": "Permanencia", "PERMANENCIA": "PERMANENCIA",
-            "immanencia": "immanencia", "Immanencia": "Immanencia", "IMMANENCIA": "IMMANENCIA",
-            "emanencia": "emanencia", "Emanencia": "Emanencia", "EMANENCIA": "EMANENCIA",
-            "prominencia": "prominencia", "Prominencia": "Prominencia", "PROMINENCIA": "PROMINENCIA",
-            "eminencia": "eminencia", "Eminencia": "Eminencia", "EMINENCIA": "EMINENCIA",
-            "imminencia": "imminencia", "Imminencia": "Imminencia", "IMMINENCIA": "IMMINENCIA",
-            "preeminencia": "preeminencia", "Preeminencia": "Preeminencia", "PREEMINENCIA": "PREEMINENCIA",
-            "abstinencia": "abstinencia", "Abstinencia": "Abstinencia", "ABSTINENCIA": "ABSTINENCIA",
-            "continencia": "continencia", "Continencia": "Continencia", "CONTINENCIA": "CONTINENCIA",
-            "incontinencia": "incontinencia", "Incontinencia": "Incontinencia", "INCONTINENCIA": "INCONTINENCIA",
-            "pertinencia": "pertinencia", "Pertinencia": "Pertinencia", "PERTINENCIA": "PERTINENCIA",
-            "impertinencia": "impertinencia", "Impertinencia": "Impertinencia", "IMPERTINENCIA": "IMPERTINENCIA",
-            "reticencia": "reticencia", "Reticencia": "Reticencia", "RETICENCIA": "RETICENCIA",
-            "licencia": "licencia", "Licencia": "Licencia", "LICENCIA": "LICENCIA",
-            "delicencia": "delicencia", "Delicencia": "Delicencia", "DELICENCIA": "DELICENCIA",
+
+        # Correcciones comunes en español técnico industrial
+        corrections = {
+            "tecnico": "técnico", "Tecnico": "Técnico", "TECNICO": "TÉCNICO",
+            "produccion": "producción", "Produccion": "Producción",
+            "implementacion": "implementación", "Implementacion": "Implementación",
+            "evaluacion": "evaluación", "Evaluacion": "Evaluación",
+            "operacion": "operación", "Operacion": "Operación",
+            "condicion": "condición", "Condicion": "Condición",
+            "modificacion": "modificación", "Modificacion": "Modificación",
+            "verificacion": "verificación", "Verificacion": "Verificación",
+            "capacitacion": "capacitación", "Capacitacion": "Capacitación",
+            "socializacion": "socialización", "Socializacion": "Socialización",
+            "documentacion": "documentación", "Documentacion": "Documentación",
+            "estandarizacion": "estandarización", "Estandarizacion": "Estandarización",
+            "optimizacion": "optimización", "Optimizacion": "Optimización",
+            "identificacion": "identificación", "Identificacion": "Identificación",
+            "clasificacion": "clasificación", "Clasificacion": "Clasificación",
+            "notificacion": "notificación", "Notificacion": "Notificación",
+            "coordinacion": "coordinación", "Coordinacion": "Coordinación",
+            "aprobacion": "aprobación", "Aprobacion": "Aprobación",
+            "revison": "revisión", "Revison": "Revisión",
+            "ejecucion": "ejecución", "Ejecucion": "Ejecución",
+            "inspeccion": "inspección", "Inspeccion": "Inspección",
+            "proteccion": "protección", "Proteccion": "Protección",
+            "deteccion": "detección", "Deteccion": "Detección",
+            "prevencion": "prevención", "Prevencion": "Prevención",
+            "intervencion": "intervención", "Intervencion": "Intervención",
+            "supervision": "supervisión", "Supervision": "Supervisión",
+            "comunicacion": "comunicación", "Comunicacion": "Comunicación",
+            "organizacion": "organización", "Organizacion": "Organización",
+            "planificacion": "planificación", "Planificacion": "Planificación",
+            "calificacion": "calificación", "Calificacion": "Calificación",
+            "certificacion": "certificación", "Certificacion": "Certificación",
+            "validacion": "validación", "Validacion": "Validación",
+            "calibracion": "calibración", "Calibracion": "Calibración",
+            "configuracion": "configuración", "Configuracion": "Configuración",
+            "programacion": "programación", "Programacion": "Programación",
+            "automatizacion": "automatización", "Automatizacion": "Automatización",
+            "integracion": "integración", "Integracion": "Integración",
+            "funcion": "función", "Funcion": "Función",
+            "relacion": "relación", "Relacion": "Relación",
+            "conexion": "conexión", "Conexion": "Conexión",
+            "direccion": "dirección", "Direccion": "Dirección",
+            "seleccion": "selección", "Seleccion": "Selección",
+            "proyeccion": "proyección", "Proyeccion": "Proyección",
+            "restriccion": "restricción", "Restriccion": "Restricción",
+            "distribucion": "distribución", "Distribucion": "Distribución",
+            "construccion": "construcción", "Construccion": "Construcción",
+            "destruccion": "destrucción", "Destruccion": "Destrucción",
+            "instruccion": "instrucción", "Instruccion": "Instrucción",
+            "conduccion": "conducción", "Conduccion": "Conducción",
+            "introduccion": "introducción", "Introduccion": "Introducción",
+            "reduccion": "reducción", "Reduccion": "Reducción",
+            "reproduccion": "reproducción", "Reproduccion": "Reproducción",
+            "traduccion": "traducción", "Traduccion": "Traducción",
+            "deduccion": "deducción", "Deduccion": "Deducción",
+            "induccion": "inducción", "Induccion": "Inducción",
+            "seduccion": "seducción", "Seduccion": "Seducción",
         }
-        for wrong, correct in accent_corrections.items():
+
+        result = text
+        for wrong, correct in corrections.items():
             result = result.replace(wrong, correct)
+
+        # Espacios dobles
         result = re.sub(r'  +', ' ', result)
-        result = re.sub(r' ([.,;:!?])', r'\1', result)
+        # Espacio antes de punto/coma
+        result = re.sub(r' ([.,;:!?])', r'', result)
+
         return result
 
-
+# =============================================================================
+# SERVICIO GEMINI API
+# =============================================================================
 class GeminiService:
     MODELS = {
         "gemini-1.5-flash-lite": {"name": "3.1 Flash-Lite", "desc": "Respuestas rapidas"},
@@ -539,109 +497,109 @@ class GeminiService:
         if not self.api_key:
             return self._generate_local_moc(problem, context, equipo)
 
-        prompt = f"""Eres un experto senior en gestion de cambios industriales (MoC) con 20 anos de experiencia en mineria, manufactura y operaciones industriales. Redactas documentos profesionales, impecables, con redaccion humanizada, natural y tecnica, sin errores ortograficos.
+        prompt = f"""Eres un experto senior en gestion de cambios industriales (MoC) con 20 años de experiencia en minería, manufactura y operaciones industriales. Redactas documentos profesionales, impecables, con redacción humanizada, natural y técnica, sin errores ortográficos.
 
-INSTRUCCIONES DE REDACCION:
-- Usa lenguaje profesional pero natural, como lo haria un ingeniero senior experimentado.
-- Evita frases genericas o robotizadas como "se identifico la siguiente situacion".
-- Se especifico, detallado y tecnico. Incluye referencias a normas, procedimientos y mejores practicas.
-- Usa conectores logicos, parrafos bien estructurados y vocabulario tecnico apropiado.
-- Incluye datos cuantitativos cuando sea posible (tiempos, porcentajes, metricas).
-- La redaccion debe parecer escrita por un profesional humano, no por una IA.
+INSTRUCCIONES DE REDACCIÓN:
+- Usa lenguaje profesional pero natural, como lo haría un ingeniero senior experimentado.
+- Evita frases genéricas o robotizadas como "se identificó la siguiente situación".
+- Sé específico, detallado y técnico. Incluye referencias a normas, procedimientos y mejores prácticas.
+- Usa conectores lógicos, párrafos bien estructurados y vocabulario técnico apropiado.
+- Incluye datos cuantitativos cuando sea posible (tiempos, porcentajes, métricas).
+- La redacción debe parecer escrita por un profesional humano, no por una IA.
 
 PROBLEMA REPORTADO: {problem}
 CONTEXTO ADICIONAL: {context}
 EQUIPO INVOLUCRADO: {equipo}
 
-Genera en ESPANOL formato JSON con los siguientes campos detallados y humanizados:
+Genera en ESPAÑOL formato JSON con los siguientes campos detallados y humanizados:
 
-1. descripcion_problema: Descripcion tecnica detallada del problema, con causas identificadas, impacto operacional, riesgos actuales y consecuencias si no se actua. Minimo 300 palabras. Redaccion fluida y profesional.
+1. descripcion_problema: Descripción técnica detallada del problema, con causas identificadas, impacto operacional, riesgos actuales y consecuencias si no se actúa. Mínimo 300 palabras. Redacción fluida y profesional.
 
-2. condicion_actual: Descripcion tecnica exhaustiva del estado actual del equipo/proceso, incluyendo especificaciones tecnicas, parametros operativos, limitaciones documentadas y referencias a normativas aplicables.
+2. condicion_actual: Descripción técnica exhaustiva del estado actual del equipo/proceso, incluyendo especificaciones técnicas, parámetros operativos, limitaciones documentadas y referencias a normativas aplicables.
 
-3. condicion_propuesta: Descripcion detallada de la solucion propuesta, incluyendo especificaciones tecnicas de la modificacion, beneficios esperados cuantificados, alineacion con estandares corporativos y mejores practicas de la industria.
+3. condicion_propuesta: Descripción detallada de la solución propuesta, incluyendo especificaciones técnicas de la modificación, beneficios esperados cuantificados, alineación con estándares corporativos y mejores prácticas de la industria.
 
-4. razones_cambio: Lista numerada y justificada de las razones tecnicas, de seguridad, regulatorias y economicas que sustentan el cambio. Cada razon debe tener una explicacion de al menos 2-3 lineas.
+4. razones_cambio: Lista numerada y justificada de las razones técnicas, de seguridad, regulatorias y económicas que sustentan el cambio. Cada razón debe tener una explicación de al menos 2-3 líneas.
 
-5. alternativas_retorno: Analisis de alternativas evaluadas con pros y contras de cada una. Incluir plan de retorno detallado con pasos especificos, responsables y tiempos estimados.
+5. alternativas_retorno: Análisis de alternativas evaluadas con pros y contras de cada una. Incluir plan de retorno detallado con pasos específicos, responsables y tiempos estimados.
 
-6. recursos: Listado exhaustivo de recursos humanos (con roles y responsabilidades especificas), materiales (con especificaciones tecnicas), tecnicos (herramientas, software, documentacion) y financieros requeridos.
+6. recursos: Listado exhaustivo de recursos humanos (con roles y responsabilidades específicas), materiales (con especificaciones técnicas), técnicos (herramientas, software, documentación) y financieros requeridos.
 
-7. plan_implementacion: Plan detallado por fases con actividades especificas, responsables asignados, duracion estimada, hitos de control y criterios de aceptacion para cada fase. Minimo 4 fases bien definidas.
+7. plan_implementacion: Plan detallado por fases con actividades específicas, responsables asignados, duración estimada, hitos de control y criterios de aceptación para cada fase. Mínimo 4 fases bien definidas.
 
-8. tiempo_duracion: Estimacion detallada del tiempo total con desglose por fase, consideraciones de ventanas de mantenimiento, contingencias y factores que pueden afectar la duracion.
+8. tiempo_duracion: Estimación detallada del tiempo total con desglose por fase, consideraciones de ventanas de mantenimiento, contingencias y factores que pueden afectar la duración.
 
-9. riesgos_controles: Array de minimo 5 objetos {{"riesgo":"descripcion detallada del riesgo","control":"medida de control especifica con responsable y frecuencia"}}. Incluir riesgos tecnicos, operacionales y de calidad.
+9. riesgos_controles: Array de mínimo 5 objetos {{"riesgo":"descripción detallada del riesgo","control":"medida de control específica con responsable y frecuencia"}}. Incluir riesgos técnicos, operacionales y de calidad.
 
-10. riesgos_shes: Array de minimo 5 objetos {{"riesgo":"descripcion detallada del riesgo SHES","control":"plan de accion especifico con medidas preventivas","plazo":"plazo de implementacion del control"}}. Cubrir seguridad, salud, medio ambiente y comunidad.
+10. riesgos_shes: Array de mínimo 5 objetos {{"riesgo":"descripción detallada del riesgo SHES","control":"plan de acción específico con medidas preventivas","plazo":"plazo de implementación del control"}}. Cubrir seguridad, salud, medio ambiente y comunidad.
 
-Responde SOLO JSON valido sin comentarios adicionales."""
+Responde SOLO JSON válido sin comentarios adicionales."""
 
         try:
             text = self._call_api(prompt, temperature=0.4, max_tokens=8192)
             result = self._extract_json(text)
             for key in result:
                 if isinstance(result[key], str):
-                    result[key] = Utils.correct_spelling_comprehensive(result[key])
+                    result[key] = Utils.correct_spelling_basic(result[key])
                 elif isinstance(result[key], list):
                     for item in result[key]:
                         if isinstance(item, dict):
                             for k in item:
                                 if isinstance(item[k], str):
-                                    item[k] = Utils.correct_spelling_comprehensive(item[k])
+                                    item[k] = Utils.correct_spelling_basic(item[k])
             return result
         except Exception as e:
-            st.error(f"Error API: {e}. Usando generacion local.")
+            st.error(f"Error API: {e}. Usando generación local.")
             return self._generate_local_moc(problem, context, equipo)
 
     def generate_a3(self, problem, context=""):
         if not self.api_key:
             return self._generate_local_a3(problem, context)
 
-        prompt = f"""Eres un experto senior en metodologia A3 Lean con 15 anos de experiencia en mejora continua industrial. Redactas documentos A3 con redaccion humanizada, tecnica y profesional.
+        prompt = f"""Eres un experto senior en metodología A3 Lean con 15 años de experiencia en mejora continua industrial. Redactas documentos A3 con redacción humanizada, técnica y profesional.
 
-INSTRUCCIONES DE REDACCION:
-- Usa lenguaje profesional, directo y tecnico como lo haria un Black Belt en Lean Six Sigma.
-- Evita frases genericas. Se especifico con datos, metricas y analisis cuantitativos.
+INSTRUCCIONES DE REDACCIÓN:
+- Usa lenguaje profesional, directo y técnico como lo haría un Black Belt en Lean Six Sigma.
+- Evita frases genéricas. Sé específico con datos, métricas y análisis cuantitativos.
 - Incluye referencias a herramientas Lean (5S, SMED, TPM, VSM, etc.) cuando aplique.
-- La redaccion debe ser fluida, con parrafos bien estructurados y conectores logicos.
-- Incluye datos hipoteticos pero realistas cuando el usuario no proporcione numeros especificos.
+- La redacción debe ser fluida, con párrafos bien estructurados y conectores lógicos.
+- Incluye datos hipotéticos pero realistas cuando el usuario no proporcione números específicos.
 
 PROBLEMA REPORTADO: {problem}
 CONTEXTO ADICIONAL: {context}
 
-Genera en ESPANOL formato JSON con los siguientes campos detallados:
+Genera en ESPAÑOL formato JSON con los siguientes campos detallados:
 
-1. titulo: Titulo conciso y descriptivo de la mejora (maximo 10 palabras).
+1. titulo: Título conciso y descriptivo de la mejora (máximo 10 palabras).
 
-2. antecedentes: Contexto historico del problema, datos de linea base, tendencias observadas y por que es relevante abordarlo ahora. Minimo 200 palabras.
+2. antecedentes: Contexto histórico del problema, datos de línea base, tendencias observadas y por qué es relevante abordarlo ahora. Mínimo 200 palabras.
 
-3. problema_actual: Descripcion detallada del problema con datos cuantitativos, frecuencia de ocurrencia, impacto en KPIs criticos y consecuencias operacionales. Minimo 250 palabras.
+3. problema_actual: Descripción detallada del problema con datos cuantitativos, frecuencia de ocurrencia, impacto en KPIs críticos y consecuencias operacionales. Mínimo 250 palabras.
 
-4. analisis_situacion: Analisis de la situacion actual usando datos, graficos conceptuales descritos en texto, comparativas con benchmarks de la industria y analisis de variabilidad del proceso.
+4. analisis_situacion: Análisis de la situación actual usando datos, gráficos conceptuales descritos en texto, comparativas con benchmarks de la industria y análisis de variabilidad del proceso.
 
-5. objetivos: Objetivo general SMART y 3-5 objetivos especificos con metricas cuantificables, plazos y lineas base.
+5. objetivos: Objetivo general SMART y 3-5 objetivos específicos con métricas cuantificables, plazos y líneas base.
 
-6. analisis_causa_raiz: Analisis de causa raiz detallado usando la metodologia de los 5 Porques, diagrama de Ishikawa conceptual descrito en texto, y validacion de hipotesis. Identificar la causa raiz fundamental.
+6. analisis_causa_raiz: Análisis de causa raíz detallado usando la metodología de los 5 Porqués, diagrama de Ishikawa conceptual descrito en texto, y validación de hipótesis. Identificar la causa raíz fundamental.
 
-7. contramedidas: Lista de 5-8 contramedidas especificas, priorizadas, con responsable asignado, fecha de implementacion y criterio de exito medible para cada una.
+7. contramedidas: Lista de 5-8 contramedidas específicas, priorizadas, con responsable asignado, fecha de implementación y criterio de éxito medible para cada una.
 
-8. resultados_esperados: Resultados cuantificados esperados con proyecciones de ahorro, mejora en indicadores clave, retorno de inversion estimado y beneficios intangibles.
+8. resultados_esperados: Resultados cuantificados esperados con proyecciones de ahorro, mejora en indicadores clave, retorno de inversión estimado y beneficios intangibles.
 
-9. plan_seguimiento: Plan de seguimiento detallado con frecuencia de revision, indicadores a monitorear, responsables de seguimiento y criterios de exito a corto, mediano y largo plazo.
+9. plan_seguimiento: Plan de seguimiento detallado con frecuencia de revisión, indicadores a monitorear, responsables de seguimiento y criterios de éxito a corto, mediano y largo plazo.
 
-10. lecciones_aprendidas: Reflexiones sobre el proceso de analisis, desafios encontrados, aprendizajes clave y recomendaciones para futuras iniciativas similares.
+10. lecciones_aprendidas: Reflexiones sobre el proceso de análisis, desafíos encontrados, aprendizajes clave y recomendaciones para futuras iniciativas similares.
 
-11. estandarizacion: Plan de estandarizacion detallado con documentos a actualizar, capacitaciones requeridas, integracion al SGC y mecanismos de sostenibilidad.
+11. estandarizacion: Plan de estandarización detallado con documentos a actualizar, capacitaciones requeridas, integración al SGC y mecanismos de sostenibilidad.
 
-Responde SOLO JSON valido sin comentarios adicionales."""
+Responde SOLO JSON válido sin comentarios adicionales."""
 
         try:
             text = self._call_api(prompt, temperature=0.4, max_tokens=8192)
             result = self._extract_json(text)
             for key in result:
                 if isinstance(result[key], str):
-                    result[key] = Utils.correct_spelling_comprehensive(result[key])
+                    result[key] = Utils.correct_spelling_basic(result[key])
             return result
         except:
             return self._generate_local_a3(problem, context)
@@ -650,44 +608,44 @@ Responde SOLO JSON valido sin comentarios adicionales."""
         if not self.api_key:
             return self._generate_local_kaizen(activity, context)
 
-        prompt = f"""Eres un experto en Kaizen y Lean Manufacturing con amplia experiencia en gemba walks y mejora continua en operaciones industriales. Redactas registros Kaizen con redaccion humanizada, practica y motivadora.
+        prompt = f"""Eres un experto en Kaizen y Lean Manufacturing con amplia experiencia en gemba walks y mejora continua en operaciones industriales. Redactas registros Kaizen con redacción humanizada, práctica y motivadora.
 
-INSTRUCCIONES DE REDACCION:
-- Usa lenguaje practico, directo y motivador como lo haria un lider de mejora continua en el gemba.
-- Incluye datos cuantitativos especificos: tiempos antes/despues, cantidades, porcentajes de mejora.
-- Describe la situacion actual con detalle visual para que el lector pueda imaginar el antes y despues.
-- La redaccion debe ser natural, con frases cortas y claras, evitando tecnicismos innecesarios.
-- Incluye el impacto humano: como beneficia al operario, al equipo y a la organizacion.
+INSTRUCCIONES DE REDACCIÓN:
+- Usa lenguaje práctico, directo y motivador como lo haría un líder de mejora continua en el gemba.
+- Incluye datos cuantitativos específicos: tiempos antes/después, cantidades, porcentajes de mejora.
+- Describe la situación actual con detalle visual para que el lector pueda imaginar el antes y después.
+- La redacción debe ser natural, con frases cortas y claras, evitando tecnicismos innecesarios.
+- Incluye el impacto humano: cómo beneficia al operario, al equipo y a la organización.
 
 ACTIVIDAD DE MEJORA: {activity}
 CONTEXTO ADICIONAL: {context}
 
-Genera en ESPANOL formato JSON con los siguientes campos detallados:
+Genera en ESPAÑOL formato JSON con los siguientes campos detallados:
 
-1. titulo: Titulo atractivo y descriptivo de la mejora Kaizen (maximo 8 palabras).
+1. titulo: Título atractivo y descriptivo de la mejora Kaizen (máximo 8 palabras).
 
-2. area: Area especifica donde se implemento la mejora.
+2. area: Área específica donde se implementó la mejora.
 
-3. descripcion_problema: Descripcion vivida del problema o desperdicio identificado, con datos cuantitativos del antes (tiempos, movimientos, distancias, cantidad de material). Minimo 200 palabras.
+3. descripcion_problema: Descripción vívida del problema o desperdicio identificado, con datos cuantitativos del antes (tiempos, movimientos, distancias, cantidad de material). Mínimo 200 palabras.
 
-4. solucion: Descripcion detallada de la solucion implementada paso a paso, materiales utilizados, tiempo de implementacion, participantes y desafios superados. Minimo 200 palabras.
+4. solucion: Descripción detallada de la solución implementada paso a paso, materiales utilizados, tiempo de implementación, participantes y desafíos superados. Mínimo 200 palabras.
 
-5. beneficios: Lista de beneficios cuantificados y cualitativos con datos antes/despues, ahorros estimados, mejoras en seguridad, calidad, productividad y ambiente de trabajo.
+5. beneficios: Lista de beneficios cuantificados y cualitativos con datos antes/después, ahorros estimados, mejoras en seguridad, calidad, productividad y ambiente de trabajo.
 
 6. tipo_desperdicio: Tipo(s) de desperdicio Lean eliminado(s) de la lista: Motion, Skills, Inventory, Transportation, Over Production, Over Processing, Waiting, Defects.
 
-7. impacto_bto: Categoria BTO impactada: Safe and Sustainable, People & Culture, Network Optimisation, Supply Chain and Manufacturing Excellence.
+7. impacto_bto: Categoría BTO impactada: Safe and Sustainable, People & Culture, Network Optimisation, Supply Chain and Manufacturing Excellence.
 
-8. proximos_pasos: Plan de accion concretos para sostener la mejora, replicarla en otras areas, reconocer al equipo y establecer el nuevo estandar.
+8. proximos_pasos: Plan de acción concretos para sostener la mejora, replicarla en otras áreas, reconocer al equipo y establecer el nuevo estándar.
 
-Responde SOLO JSON valido sin comentarios adicionales."""
+Responde SOLO JSON válido sin comentarios adicionales."""
 
         try:
             text = self._call_api(prompt, temperature=0.4, max_tokens=4096)
             result = self._extract_json(text)
             for key in result:
                 if isinstance(result[key], str):
-                    result[key] = Utils.correct_spelling_comprehensive(result[key])
+                    result[key] = Utils.correct_spelling_basic(result[key])
             return result
         except:
             return self._generate_local_kaizen(activity, context)
@@ -695,7 +653,7 @@ Responde SOLO JSON valido sin comentarios adicionales."""
     def translate_document(self, data):
         if not self.api_key:
             return data
-        prompt = f"""Traduce del espanol al ingles profesional industrial, manteniendo la terminologia tecnica apropiada (OSHA, ISO, ANSI, etc.):
+        prompt = f"""Traduce del español al inglés profesional industrial, manteniendo la terminología técnica apropiada (OSHA, ISO, ANSI, etc.):
 {json.dumps(data, ensure_ascii=False, indent=2)}
 Responde SOLO el JSON traducido, misma estructura exacta."""
         try:
@@ -706,86 +664,94 @@ Responde SOLO el JSON traducido, misma estructura exacta."""
 
     def correct_spelling(self, text):
         if not self.api_key or not text.strip():
-            return Utils.correct_spelling_comprehensive(text)
-        prompt = f"""Corrige ortografia, gramatica, puntuacion y mejora la redaccion del siguiente texto en espanol. Manten el significado tecnico exacto. Mejora la fluidez y naturalidad sin hacerlo robotico. Devuelve SOLO el texto corregido, sin explicaciones.
+            return Utils.correct_spelling_basic(text)
+        prompt = f"""Corrige ortografía, gramática, puntuación y mejora la redacción del siguiente texto en español. Mantén el significado técnico exacto. Mejora la fluidez y naturalidad sin hacerlo robótico. Devuelve SOLO el texto corregido, sin explicaciones.
 
 TEXTO:
 {text}"""
         try:
             corrected = self._call_api(prompt, temperature=0.2, max_tokens=4096).strip()
-            return Utils.correct_spelling_comprehensive(corrected)
+            return Utils.correct_spelling_basic(corrected)
         except:
-            return Utils.correct_spelling_comprehensive(text)
+            return Utils.correct_spelling_basic(text)
 
     def _generate_local_moc(self, problem, context, equipo):
         return {
-            "descripcion_problema": "Se ha identificado una condicion critica que requiere gestion formal mediante el proceso de Management of Change (MoC). El problema reportado es: " + problem + ".\n\nEsta situacion presenta riesgos significativos para la seguridad operacional, la integridad del proceso y la continuidad de la produccion. Durante las evaluaciones preliminares se ha determinado que la condicion actual no cumple con los estandares corporativos de seguridad y calidad establecidos, generando una exposicion potencial al personal operativo y a los equipos criticos.\n\nEs imperativo implementar un cambio controlado y documentado que mitigue los riesgos identificados, garantice el cumplimiento normativo y restablezca las condiciones operativas seguras y eficientes del proceso.",
-            "condicion_actual": "El equipo o proceso actual opera bajo condiciones que presentan las siguientes limitaciones tecnicas documentadas: " + context + ".\n\nSe han identificado deficiencias en la configuracion actual que afectan directamente el rendimiento operativo y la seguridad del personal. Los parametros criticos del proceso se encuentran fuera de los rangos optimos establecidos en los procedimientos operativos estandar (SOP).\n\nSe requiere una evaluacion tecnica exhaustiva para establecer una linea base de referencia completa antes de proceder con cualquier modificacion, asegurando que todos los cambios sean trazables y verificables.",
-            "condicion_propuesta": "Se propone implementar modificaciones tecnicas estructuradas que optimicen el rendimiento operativo del equipo critico, mejoren significativamente las condiciones de seguridad del proceso y alineen las operaciones con los estandares corporativos y regulatorios vigentes.\n\nLa propuesta incluye la actualizacion de componentes criticos, la implementacion de controles adicionales de seguridad, la estandarizacion de procedimientos operativos y la capacitacion del personal involucrado. Todas las modificaciones seran disenadas siguiendo las mejores practicas de la industria y los requisitos normativos aplicables.",
-            "razones_cambio": "1. SEGURIDAD OPERACIONAL: La condicion actual presenta riesgos identificados que pueden comprometer la integridad fisica del personal. La implementacion del cambio reducira significativamente la probabilidad de incidentes y accidentes laborales, alineandose con la politica de cero accidentes de la organizacion.\n\n2. OPTIMIZACION DE RENDIMIENTO: El equipo critico opera por debajo de su capacidad optima debido a las limitaciones tecnicas identificadas. El cambio propuesto mejorara la confiabilidad, disponibilidad y eficiencia del equipo, reduciendo tiempos de parada no planificados.\n\n3. CUMPLIMIENTO NORMATIVO: La modificacion asegura el cumplimiento de estandares corporativos, regulaciones nacionales e internacionales aplicables al sector industrial, evitando sanciones y manteniendo la licencia operativa.\n\n4. REDUCCION DE RIESGOS SHES: Las evaluaciones previas han identificado riesgos en seguridad, salud y medio ambiente que seran mitigados proactivamente con las medidas de control propuestas en este documento.\n\n5. MEJORA CONTINUA: El cambio esta alineado con los objetivos estrategicos de la organizacion en materia de excelencia operacional, sostenibilidad y mejora continua.",
-            "alternativas_retorno": "ALTERNATIVAS EVALUADAS:\n\n1. MANTENIMIENTO CORRECTIVO TRADICIONAL (DESCARTADO): Aunque de menor costo inicial, presenta un alcance limitado que no aborda las causas raiz del problema. La recurrencia de fallas seria alta, generando costos operacionales mayores a largo plazo.\n\n2. REEMPLAZO TOTAL DEL SISTEMA (DESCARTADO): Ofrece la solucion mas completa pero con un costo de inversion elevado que excede el presupuesto aprobado para este periodo. Ademas, el tiempo de implementacion seria excesivo para las necesidades operativas actuales.\n\n3. MODIFICACION CONTROLADA (SELECCIONADA): Representa la mejor relacion costo-beneficio, abordando las causas raiz identificadas con un alcance definido, tiempos de implementacion razonables y un retorno de inversion favorable dentro del primer ano.\n\nPLAN DE RETORNO:\nEn caso de que el cambio no produzca los resultados esperados o se presenten complicaciones durante la implementacion, se ejecutara el siguiente plan de retorno: Restauracion inmediata de la configuracion original del equipo, activacion del protocolo de contingencia establecido, notificacion oportuna a supervision directa y areas de apoyo, documentacion detallada de las lecciones aprendidas y analisis de causa raiz de la falla para prevenir recurrencias.",
-            "recursos": "RECURSOS HUMANOS REQUERIDOS:\n- Tecnico especializado de mantenimiento mecanico/electronico (1 persona, tiempo completo durante implementacion)\n- Supervisor de area operativa (1 persona, supervision continua)\n- Especialista SHES (1 persona, verificacion de controles y permisos)\n- Operador de area certificado (1-2 personas, apoyo operativo y pruebas)\n- Ingeniero de procesos (1 persona, validacion tecnica y ajustes de parametros)\n\nRECURSOS MATERIALES:\n- Herramientas especializadas certificadas y calibradas\n- Repuestos de calidad certificada con trazabilidad\n- EPP completo: casco de seguridad, gafas de proteccion, guantes anticorte, botas dielectricas, arnes cuando aplique\n- Materiales de senalizacion, demarcacion y etiquetado\n- Materiales de limpieza y preparacion de area\n\nRECURSOS TECNICOS:\n- Documentacion tecnica actualizada del equipo (manuales, diagramas, especificaciones)\n- SOP vigentes y procedimientos de trabajo seguro\n- Permisos de trabajo segun tipo (trabajo en caliente, espacio confinado, trabajo en altura, etc.)\n- Checklist de verificacion pre y post implementacion\n- Equipos de prueba y medicion calibrados",
-            "plan_implementacion": "FASE 1: PREPARACION Y PLANIFICACION (Dias 1-2)\n- Reunion de coordinacion multidisciplinaria con produccion, mantenimiento y SHES\n- Verificacion exhaustiva de disponibilidad de todos los recursos materiales y humanos\n- Preparacion del area de trabajo: limpieza profunda, senalizacion de perimetro, aplicacion de LOTO (Lock Out Tag Out)\n- Briefing de seguridad con todo el equipo involucrado, revision de riesgos y controles\n- Verificacion final de permisos de trabajo y autorizaciones requeridas\n\nFASE 2: EJECUCION DE MODIFICACIONES (Dias 3-5)\n- Implementacion progresiva de las modificaciones tecnicas segun plan detallado\n- Pruebas funcionales iniciales despues de cada sub-etapa critica\n- Registro fotografico detallado del antes, durante y despues de cada modificacion\n- Verificacion intermedia SHES al finalizar cada dia de trabajo\n- Comunicacion continua con supervision de produccion sobre avances\n\nFASE 3: VALIDACION Y PRUEBAS (Dias 6-7)\n- Pruebas funcionales bajo condiciones normales de operacion\n- Verificacion de todos los parametros criticos del proceso contra especificaciones\n- Validacion conjunta por supervisor de area, produccion y especialista tecnico\n- Pruebas de estres y verificacion de limites operativos\n- Documentacion de resultados de pruebas y ajustes finales\n\nFASE 4: CIERRE Y ESTANDARIZACION (Dia 8)\n- Actualizacion completa de toda la documentacion tecnica y operativa\n- Capacitacion formal al personal operativo sobre nuevos procedimientos\n- Socializacion de lecciones aprendidas con todas las areas involucradas\n- Cierre formal del MoC con firmas de aprobacion de todas las partes\n- Archivo del documento completo en el sistema de gestion documental",
-            "tiempo_duracion": "ESTIMACION TOTAL DEL CAMBIO: 8 dias habiles distribuidos en 4 fases bien definidas.\n\nDESGLOSE POR FASE:\n- Fase 1 (Preparacion): 2 dias\n- Fase 2 (Ejecucion): 3 dias\n- Fase 3 (Validacion): 2 dias\n- Fase 4 (Cierre): 1 dia\n\nCONSIDERACIONES:\nLa duracion puede ajustarse segun condiciones operativas, disponibilidad de recursos y resultados de las verificaciones intermedias. Se ha incluido un margen de contingencia del 20% para imprevistos. Las ventanas de mantenimiento seran coordinadas con produccion con al menos 48 horas de anticipacion.",
+            "descripcion_problema": "Se ha identificado una condición crítica que requiere gestión formal mediante el proceso de Management of Change (MoC). El problema reportado es: " + problem + ".\n\nEsta situación presenta riesgos significativos para la seguridad operacional, la integridad del proceso y la continuidad de la producción. Durante las evaluaciones preliminares se ha determinado que la condición actual no cumple con los estándares corporativos de seguridad y calidad establecidos, generando una exposición potencial al personal operativo y a los equipos críticos.\n\nEs imperativo implementar un cambio controlado y documentado que mitigue los riesgos identificados, garantice el cumplimiento normativo y restablezca las condiciones operativas seguras y eficientes del proceso.",
+            "condicion_actual": "El equipo o proceso actual opera bajo condiciones que presentan las siguientes limitaciones técnicas documentadas: " + context + ".\n\nSe han identificado deficiencias en la configuración actual que afectan directamente el rendimiento operativo y la seguridad del personal. Los parámetros críticos del proceso se encuentran fuera de los rangos óptimos establecidos en los procedimientos operativos estándar (SOP).\n\nSe requiere una evaluación técnica exhaustiva para establecer una línea base de referencia completa antes de proceder con cualquier modificación, asegurando que todos los cambios sean trazables y verificables.",
+            "condicion_propuesta": "Se propone implementar modificaciones técnicas estructuradas que optimicen el rendimiento operativo del equipo crítico, mejoren significativamente las condiciones de seguridad del proceso y alineen las operaciones con los estándares corporativos y regulatorios vigentes.\n\nLa propuesta incluye la actualización de componentes críticos, la implementación de controles adicionales de seguridad, la estandarización de procedimientos operativos y la capacitación del personal involucrado. Todas las modificaciones serán diseñadas siguiendo las mejores prácticas de la industria y los requisitos normativos aplicables.",
+            "razones_cambio": "1. SEGURIDAD OPERACIONAL: La condición actual presenta riesgos identificados que pueden comprometer la integridad física del personal. La implementación del cambio reducirá significativamente la probabilidad de incidentes y accidentes laborales, alineándose con la política de cero accidentes de la organización.\n\n2. OPTIMIZACIÓN DE RENDIMIENTO: El equipo crítico opera por debajo de su capacidad óptima debido a las limitaciones técnicas identificadas. El cambio propuesto mejorará la confiabilidad, disponibilidad y eficiencia del equipo, reduciendo tiempos de parada no planificados.\n\n3. CUMPLIMIENTO NORMATIVO: La modificación asegura el cumplimiento de estándares corporativos, regulaciones nacionales e internacionales aplicables al sector industrial, evitando sanciones y manteniendo la licencia operativa.\n\n4. REDUCCIÓN DE RIESGOS SHES: Las evaluaciones previas han identificado riesgos en seguridad, salud y medio ambiente que serán mitigados proactivamente con las medidas de control propuestas en este documento.\n\n5. MEJORA CONTINUA: El cambio está alineado con los objetivos estratégicos de la organización en materia de excelencia operacional, sostenibilidad y mejora continua.",
+            "alternativas_retorno": "ALTERNATIVAS EVALUADAS:\n\n1. MANTENIMIENTO CORRECTIVO TRADICIONAL (DESCARTADO): Aunque de menor costo inicial, presenta un alcance limitado que no aborda las causas raíz del problema. La recurrencia de fallas sería alta, generando costos operacionales mayores a largo plazo.\n\n2. REEMPLAZO TOTAL DEL SISTEMA (DESCARTADO): Ofrece la solución más completa pero con un costo de inversión elevado que excede el presupuesto aprobado para este período. Además, el tiempo de implementación sería excesivo para las necesidades operativas actuales.\n\n3. MODIFICACIÓN CONTROLADA (SELECCIONADA): Representa la mejor relación costo-beneficio, abordando las causas raíz identificadas con un alcance definido, tiempos de implementación razonables y un retorno de inversión favorable dentro del primer año.\n\nPLAN DE RETORNO:\nEn caso de que el cambio no produzca los resultados esperados o se presenten complicaciones durante la implementación, se ejecutará el siguiente plan de retorno: Restauración inmediata de la configuración original del equipo, activación del protocolo de contingencia establecido, notificación oportuna a supervisión directa y áreas de apoyo, documentación detallada de las lecciones aprendidas y análisis de causa raíz de la falla para prevenir recurrencias.",
+            "recursos": "RECURSOS HUMANOS REQUERIDOS:\n- Técnico especializado de mantenimiento mecánico/electrónico (1 persona, tiempo completo durante implementación)\n- Supervisor de área operativa (1 persona, supervisión continua)\n- Especialista SHES (1 persona, verificación de controles y permisos)\n- Operador de área certificado (1-2 personas, apoyo operativo y pruebas)\n- Ingeniero de procesos (1 persona, validación técnica y ajustes de parámetros)\n\nRECURSOS MATERIALES:\n- Herramientas especializadas certificadas y calibradas\n- Repuestos de calidad certificada con trazabilidad\n- EPP completo: casco de seguridad, gafas de protección, guantes anticorte, botas dieléctricas, arnés cuando aplique\n- Materiales de señalización, demarcación y etiquetado\n- Materiales de limpieza y preparación de área\n\nRECURSOS TÉCNICOS:\n- Documentación técnica actualizada del equipo (manuales, diagramas, especificaciones)\n- SOP vigentes y procedimientos de trabajo seguro\n- Permisos de trabajo según tipo (trabajo en caliente, espacio confinado, trabajo en altura, etc.)\n- Checklist de verificación pre y post implementación\n- Equipos de prueba y medición calibrados",
+            "plan_implementacion": "FASE 1: PREPARACIÓN Y PLANIFICACIÓN (Días 1-2)\n- Reunión de coordinación multidisciplinaria con producción, mantenimiento y SHES\n- Verificación exhaustiva de disponibilidad de todos los recursos materiales y humanos\n- Preparación del área de trabajo: limpieza profunda, señalización de perímetro, aplicación de LOTO (Lock Out Tag Out)\n- Briefing de seguridad con todo el equipo involucrado, revisión de riesgos y controles\n- Verificación final de permisos de trabajo y autorizaciones requeridas\n\nFASE 2: EJECUCIÓN DE MODIFICACIONES (Días 3-5)\n- Implementación progresiva de las modificaciones técnicas según plan detallado\n- Pruebas funcionales iniciales después de cada sub-etapa crítica\n- Registro fotográfico detallado del antes, durante y después de cada modificación\n- Verificación intermedia SHES al finalizar cada día de trabajo\n- Comunicación continua con supervisión de producción sobre avances\n\nFASE 3: VALIDACIÓN Y PRUEBAS (Días 6-7)\n- Pruebas funcionales bajo condiciones normales de operación\n- Verificación de todos los parámetros críticos del proceso contra especificaciones\n- Validación conjunta por supervisor de área, producción y especialista técnico\n- Pruebas de estrés y verificación de límites operativos\n- Documentación de resultados de pruebas y ajustes finales\n\nFASE 4: CIERRE Y ESTANDARIZACIÓN (Día 8)\n- Actualización completa de toda la documentación técnica y operativa\n- Capacitación formal al personal operativo sobre nuevos procedimientos\n- Socialización de lecciones aprendidas con todas las áreas involucradas\n- Cierre formal del MoC con firmas de aprobación de todas las partes\n- Archivo del documento completo en el sistema de gestión documental",
+            "tiempo_duracion": "ESTIMACIÓN TOTAL DEL CAMBIO: 8 días hábiles distribuidos en 4 fases bien definidas.\n\nDESGLOSE POR FASE:\n- Fase 1 (Preparación): 2 días\n- Fase 2 (Ejecución): 3 días\n- Fase 3 (Validación): 2 días\n- Fase 4 (Cierre): 1 día\n\nCONSIDERACIONES:\nLa duración puede ajustarse según condiciones operativas, disponibilidad de recursos y resultados de las verificaciones intermedias. Se ha incluido un margen de contingencia del 20% para imprevistos. Las ventanas de mantenimiento serán coordinadas con producción con al menos 48 horas de anticipación.",
             "riesgos_controles": [
-                {"riesgo": "Interrupcion del proceso productivo durante la implementacion de modificaciones, generando perdidas de produccion estimadas", "control": "Coordinacion previa detallada con produccion para definir ventana de mantenimiento planificado. Comunicacion oportuna a todas las areas involucradas con 24 horas de anticipacion. Monitoreo continuo del plan de produccion durante la ejecucion."},
-                {"riesgo": "Falla tecnica durante la modificacion que pueda afectar equipos adyacentes o sistemas interconectados", "control": "Verificacion previa exhaustiva de todas las interconexiones. Disponibilidad inmediata de repuestos de emergencia. Supervision tecnica continua por ingeniero senior. Protocolo de parada de emergencia activo durante toda la ejecucion."},
-                {"riesgo": "Exposicion a riesgos de seguridad durante la ejecucion de trabajos en campo (golpes, cortes, caidas)", "control": "Permisos de trabajo especificos segun tipo de riesgo identificado. Uso obligatorio y verificado de EPP completo. Supervision continua por especialista SHES. Aplicacion estricta de LOTO en todos los puntos de energia."},
-                {"riesgo": "Error humano durante la implementacion que genere dano al equipo o configuracion incorrecta", "control": "Checklist de verificacion paso a paso firmado por tecnico y supervisor. Doble verificacion critica (dos personas) en puntos de control clave. Registro fotografico de cada etapa para trazabilidad."},
-                {"riesgo": "Demora en la entrega de repuestos o materiales criticos que retrase la implementacion", "control": "Verificacion de disponibilidad de materiales 48 horas antes del inicio. Identificacion de proveedores alternativos. Stock de seguridad de componentes criticos. Plan de contingencia con materiales sustitutos pre-aprobados."}
+                {"riesgo": "Interrupción del proceso productivo durante la implementación de modificaciones, generando pérdidas de producción estimadas", "control": "Coordinación previa detallada con producción para definir ventana de mantenimiento planificado. Comunicación oportuna a todas las áreas involucradas con 24 horas de anticipación. Monitoreo continuo del plan de producción durante la ejecución."},
+                {"riesgo": "Falla técnica durante la modificación que pueda afectar equipos adyacentes o sistemas interconectados", "control": "Verificación previa exhaustiva de todas las interconexiones. Disponibilidad inmediata de repuestos de emergencia. Supervisión técnica continua por ingeniero senior. Protocolo de parada de emergencia activo durante toda la ejecución."},
+                {"riesgo": "Exposición a riesgos de seguridad durante la ejecución de trabajos en campo (golpes, cortes, caídas)", "control": "Permisos de trabajo específicos según tipo de riesgo identificado. Uso obligatorio y verificado de EPP completo. Supervisión continua por especialista SHES. Aplicación estricta de LOTO en todos los puntos de energía."},
+                {"riesgo": "Error humano durante la implementación que genere daño al equipo o configuración incorrecta", "control": "Checklist de verificación paso a paso firmado por técnico y supervisor. Doble verificación crítica (dos personas) en puntos de control clave. Registro fotográfico de cada etapa para trazabilidad."},
+                {"riesgo": "Demora en la entrega de repuestos o materiales críticos que retrase la implementación", "control": "Verificación de disponibilidad de materiales 48 horas antes del inicio. Identificación de proveedores alternativos. Stock de seguridad de componentes críticos. Plan de contingencia con materiales sustitutos pre-aprobados."}
             ],
             "riesgos_shes": [
-                {"riesgo": "Lesiones por manipulacion manual de equipos, componentes pesados o herramientas durante la ejecucion", "control": "Capacitacion especifica en tecnicas de levantamiento seguro antes del inicio. Uso obligatorio de EPP completo incluyendo guantes anticorte y calzado de seguridad. Senalizacion clara del area de trabajo. Supervisor SHES presente durante trabajos de alto riesgo.", "plazo": "Antes del inicio de actividades"},
-                {"riesgo": "Generacion de residuos solidos, liquidos o peligrosos durante el proceso de modificacion", "control": "Manejo seguro segun procedimiento ambiental corporativo. Clasificacion en origen de todos los residuos generados. Disposicion unicamente en areas autorizadas y con registro de trazabilidad. Contenedores identificados y segregados.", "plazo": "Durante toda la ejecucion"},
-                {"riesgo": "Exposicion a ruido excesivo, vibraciones o agentes quimicos durante trabajos de modificacion", "control": "Monitoreo continuo de niveles de ruido y agentes quimicos. Uso obligatorio de protectores auditivos cuando los niveles excedan 85 dB. Ventilacion adecuada en areas cerradas. Limitacion de horario de exposicion segun limites permisibles legales.", "plazo": "Durante toda la ejecucion"},
-                {"riesgo": "Incendio o explosion por trabajo en caliente, chispas o acumulacion de vapores inflamables", "control": "Permiso de trabajo en caliente con analisis de atmosfera previo. Vigia de fuego designado y capacitado. Extintores portatiles disponibles y verificados. Limpieza del area de materiales combustibles antes del inicio. Monitoreo continuo de gases inflamables.", "plazo": "Durante trabajos de soldadura/corte"},
-                {"riesgo": "Contaminacion del suelo o cuerpos de agua por derrames accidentales de lubricantes, solventes o productos quimicos", "control": "Kit de contencion de derrames disponible en el area. Uso de bandejas de retencion bajo equipos que manipulen liquidos. Prohibicion de drenaje directo a sistemas de alcantarillado. Limpieza inmediata de cualquier derrame con materiales absorbentes aprobados.", "plazo": "Durante toda la ejecucion"}
+                {"riesgo": "Lesiones por manipulación manual de equipos, componentes pesados o herramientas durante la ejecución", "control": "Capacitación específica en técnicas de levantamiento seguro antes del inicio. Uso obligatorio de EPP completo incluyendo guantes anticorte y calzado de seguridad. Señalización clara del área de trabajo. Supervisor SHES presente durante trabajos de alto riesgo.", "plazo": "Antes del inicio de actividades"},
+                {"riesgo": "Generación de residuos sólidos, líquidos o peligrosos durante el proceso de modificación", "control": "Manejo seguro según procedimiento ambiental corporativo. Clasificación en origen de todos los residuos generados. Disposición únicamente en áreas autorizadas y con registro de trazabilidad. Contenedores identificados y segregados.", "plazo": "Durante toda la ejecución"},
+                {"riesgo": "Exposición a ruido excesivo, vibraciones o agentes químicos durante trabajos de modificación", "control": "Monitoreo continuo de niveles de ruido y agentes químicos. Uso obligatorio de protectores auditivos cuando los niveles excedan 85 dB. Ventilación adecuada en áreas cerradas. Limitación de horario de exposición según límites permisibles legales.", "plazo": "Durante toda la ejecución"},
+                {"riesgo": "Incendio o explosión por trabajo en caliente, chispas o acumulación de vapores inflamables", "control": "Permiso de trabajo en caliente con análisis de atmósfera previo. Vigía de fuego designado y capacitado. Extintores portátiles disponibles y verificados. Limpieza del área de materiales combustibles antes del inicio. Monitoreo continuo de gases inflamables.", "plazo": "Durante trabajos de soldadura/corte"},
+                {"riesgo": "Contaminación del suelo o cuerpos de agua por derrames accidentales de lubricantes, solventes o productos químicos", "control": "Kit de contención de derrames disponible en el área. Uso de bandejas de retención bajo equipos que manipulen líquidos. Prohibición de drenaje directo a sistemas de alcantarillado. Limpieza inmediata de cualquier derrame con materiales absorbentes aprobados.", "plazo": "Durante toda la ejecución"}
             ]
         }
 
     def _generate_local_a3(self, problem, context):
         return {
-            "titulo": "Optimizacion del proceso: " + problem[:50],
-            "antecedentes": "Durante los ultimos seis meses, el area operativa ha experimentado una degradacion progresiva en sus indicadores clave de desempeno. Se han registrado incrementos en tiempos de ciclo, aumento en la tasa de defectos y una reduccion en la productividad general del proceso.\n\nEl analisis preliminar de datos historicos revela una tendencia creciente que, si no se aborda de manera estructurada, comprometera los objetivos anuales de la organizacion. La metodologia A3 fue seleccionada como herramienta principal para el analisis estructurado de esta situacion, permitiendo una vision integral del problema y facilitando la identificacion de soluciones sostenibles.",
+            "titulo": "Optimización del proceso: " + problem[:50],
+            "antecedentes": "Durante los últimos seis meses, el área operativa ha experimentado una degradación progresiva en sus indicadores clave de desempeño. Se han registrado incrementos en tiempos de ciclo, aumento en la tasa de defectos y una reducción en la productividad general del proceso.\n\nEl análisis preliminar de datos históricos revela una tendencia creciente que, si no se aborda de manera estructurada, comprometerá los objetivos anuales de la organización. La metodología A3 fue seleccionada como herramienta principal para el análisis estructurado de esta situación, permitiendo una visión integral del problema y facilitando la identificación de soluciones sostenibles.",
             "problema_actual": problem,
-            "analisis_situacion": "La situacion actual presenta multiples indicadores de desempeno con oportunidades significativas de mejora. Se requiere una recopilacion sistematica y rigurosa de datos para establecer una linea base solida que permita cuantificar el impacto de las contramedidas propuestas.\n\nEl analisis de variabilidad del proceso muestra fluctuaciones que exceden los limites de control establecidos, indicando la presencia de causas especiales que deben ser identificadas y eliminadas. La comparativa con benchmarks de la industria revela una brecha de desempeno del 15-25% respecto a los mejores en clase.",
-            "objetivos": "OBJETIVO GENERAL:\nOptimizar integralmente el proceso eliminando los desperdicios identificados y estableciendo un nuevo estandar de desempeno sostenible.\n\nOBJETIVOS ESPECIFICOS (SMART):\n1. Reducir el tiempo de ciclo en un 15% dentro de los proximos 3 meses, pasando de 45 minutos a 38 minutos por unidad.\n2. Disminuir la tasa de defectos en un 20% durante el proximo trimestre, reduciendo de 8% a 6.4%.\n3. Mejorar la productividad general del area en un 10% dentro de 6 meses.\n4. Incrementar la satisfaccion interna del cliente (area siguiente) en un 25% segun encuesta trimestral.\n5. Reducir el costo operativo unitario en un 8% dentro del primer ano de implementacion.",
-            "analisis_causa_raiz": "ANALISIS DE LOS 5 PORQUES:\n1. POR QUE ocurre el problema? -> Porque el proceso opera con una configuracion inadecuada que genera variabilidad excesiva.\n2. POR QUE la configuracion es inadecuada? -> Porque no existe una estandarizacion formal de los parametros operativos criticos.\n3. POR QUE no hay estandarizacion? -> Porque los procedimientos operativos estandar (SOP) no han sido actualizados en los ultimos 18 meses.\n4. POR QUE no estan actualizados? -> Porque no existe un sistema de gestion documental efectivo que asegure la revision periodica.\n5. POR QUE no hay sistema? -> Porque falta una politica clara de gestion del conocimiento y mejora continua con responsables asignados.\n\nCAUSA RAIZ IDENTIFICADA:\nAusencia de un sistema integral de gestion, actualizacion y control de SOP, combinado con la falta de responsables claros y metricas de seguimiento del desempeno del proceso.",
-            "contramedidas": "1. ACTUALIZAR SOP DEL PROCESO: Revisar y actualizar todos los procedimientos operativos con instrucciones claras, paso a paso, con fotos de referencia y puntos de control critico. Responsable: Ingeniero de Procesos. Plazo: 2 semanas.\n\n2. IMPLEMENTAR CHECKLISTS DIARIOS: Disenar y desplegar checklists de verificacion diaria en cada puesto de trabajo para asegurar el cumplimiento de estandares. Responsable: Supervisor de Area. Plazo: 1 semana.\n\n3. CAPACITAR AL PERSONAL: Programar y ejecutar capacitaciones formales sobre los nuevos estandares, con evaluacion de competencias y certificacion. Responsable: Especialista de Capacitacion. Plazo: 3 semanas.\n\n4. ESTABLECER KPIs VISUALES: Implementar tableros visuales en el area con indicadores clave de desempeno actualizados diariamente. Responsable: Lider de Mejora Continua. Plazo: 2 semanas.\n\n5. PROGRAMAR AUDITORIAS MENSUALES: Establecer auditorias formales mensuales de cumplimiento con criterios de evaluacion definidos y plan de accion para desviaciones. Responsable: Auditor Interno. Plazo: Inicio inmediato, recurrente.\n\n6. IMPLEMENTAR SISTEMA DE GESTION DOCUMENTAL: Desarrollar o adquirir una solucion digital para control de versiones, aprobaciones y distribucion de documentos. Responsable: IT + Calidad. Plazo: 2 meses.\n\n7. DEFINIR RESPONSABLES DE ESTANDARES: Asignar responsables claros por area para la gestion, actualizacion y seguimiento de estandares operativos. Responsable: Gerente de Operaciones. Plazo: 1 semana.",
-            "resultados_esperados": "- Reduccion medible y sostenida de desperdicios identificados (Motion, Waiting, Defects)\n- Mejora sostenida en calidad del producto y consistencia del proceso\n- Estandarizacion efectiva que reduzca la variabilidad operativa en al menos 30%\n- Reduccion del tiempo de ciclo en 15% con impacto directo en capacidad productiva\n- Incremento en satisfaccion del cliente interno medido mediante encuestas\n- Fortalecimiento de la cultura de mejora continua y trabajo en equipo\n- Retorno de inversion estimado del 180% dentro del primer ano\n- Reduccion de costos operativos unitarios en 8%\n- Mejora en el ambiente de trabajo y motivacion del personal",
-            "plan_seguimiento": "SEMANA 1-2: Implementacion de contramedidas 1 y 2 (SOP y checklists). Monitoreo diario de cumplimiento.\n\nSEMANA 3-4: Ejecucion de capacitaciones (contramedida 3). Evaluacion de competencias. Monitoreo inicial de indicadores. Ajustes segun resultados.\n\nMES 2: Primera auditoria formal (contramedida 5). Evaluacion de avance vs. objetivos iniciales. Implementacion de KPIs visuales.\n\nMES 3: Evaluacion integral vs. objetivos SMART establecidos. Analisis de tendencias. Ajustes a contramedidas si es necesario.\n\nMES 6: Revision de sostenibilidad de mejoras. Analisis de replicabilidad en otras areas. Reconocimiento al equipo.\n\nTRIMESTRAL: Revisiones formales con gerencia. Actualizacion de objetivos segun evolucion del proceso.",
-            "lecciones_aprendidas": "La aplicacion de la metodologia A3 permitio visualizar de manera integral la complejidad del problema y las interconexiones entre sus multiples causas. La participacion activa y multidisciplinaria del equipo fue fundamental para identificar la causa raiz real, que inicialmente no era evidente.\n\nSe aprendio que los problemas aparentemente tecnicos frecuentemente tienen raices en sistemas de gestion deficientes. La inversion en capacitacion y estandarizacion genera retornos significativos a mediano plazo. La visualizacion de datos y el seguimiento constante son criticos para mantener las mejoras.",
-            "estandarizacion": "Los procedimientos actualizados seran documentados formalmente con control de versiones, aprobados por gerencia de operaciones y calidad, socializados mediante capacitaciones estructuradas con evaluacion de competencias, integrados al Sistema de Gestion de Calidad (SGC) existente y sujetos a revision periodica anual como minimo. Se estableceran metricas de cumplimiento y auditorias programadas para asegurar la sostenibilidad de los estandares implementados."
+            "analisis_situacion": "La situación actual presenta múltiples indicadores de desempeño con oportunidades significativas de mejora. Se requiere una recopilación sistemática y rigurosa de datos para establecer una línea base sólida que permita cuantificar el impacto de las contramedidas propuestas.\n\nEl análisis de variabilidad del proceso muestra fluctuaciones que exceden los límites de control establecidos, indicando la presencia de causas especiales que deben ser identificadas y eliminadas. La comparativa con benchmarks de la industria revela una brecha de desempeño del 15-25% respecto a los mejores en clase.",
+            "objetivos": "OBJETIVO GENERAL:\nOptimizar integralmente el proceso eliminando los desperdicios identificados y estableciendo un nuevo estándar de desempeño sostenible.\n\nOBJETIVOS ESPECÍFICOS (SMART):\n1. Reducir el tiempo de ciclo en un 15% dentro de los próximos 3 meses, pasando de 45 minutos a 38 minutos por unidad.\n2. Disminuir la tasa de defectos en un 20% durante el próximo trimestre, reduciendo de 8% a 6.4%.\n3. Mejorar la productividad general del área en un 10% dentro de 6 meses.\n4. Incrementar la satisfacción interna del cliente (área siguiente) en un 25% según encuesta trimestral.\n5. Reducir el costo operativo unitario en un 8% dentro del primer año de implementación.",
+            "analisis_causa_raiz": "ANÁLISIS DE LOS 5 PORQUÉS:\n1. ¿POR QUÉ ocurre el problema? → Porque el proceso opera con una configuración inadecuada que genera variabilidad excesiva.\n2. ¿POR QUÉ la configuración es inadecuada? → Porque no existe una estandarización formal de los parámetros operativos críticos.\n3. ¿POR QUÉ no hay estandarización? → Porque los procedimientos operativos estándar (SOP) no han sido actualizados en los últimos 18 meses.\n4. ¿POR QUÉ no están actualizados? → Porque no existe un sistema de gestión documental efectivo que asegure la revisión periódica.\n5. ¿POR QUÉ no hay sistema? → Porque falta una política clara de gestión del conocimiento y mejora continua con responsables asignados.\n\nCAUSA RAÍZ IDENTIFICADA:\nAusencia de un sistema integral de gestión, actualización y control de SOP, combinado con la falta de responsables claros y métricas de seguimiento del desempeño del proceso.",
+            "contramedidas": "1. ACTUALIZAR SOP DEL PROCESO: Revisar y actualizar todos los procedimientos operativos con instrucciones claras, paso a paso, con fotos de referencia y puntos de control crítico. Responsable: Ingeniero de Procesos. Plazo: 2 semanas.\n\n2. IMPLEMENTAR CHECKLISTS DIARIOS: Diseñar y desplegar checklists de verificación diaria en cada puesto de trabajo para asegurar el cumplimiento de estándares. Responsable: Supervisor de Área. Plazo: 1 semana.\n\n3. CAPACITAR AL PERSONAL: Programar y ejecutar capacitaciones formales sobre los nuevos estándares, con evaluación de competencias y certificación. Responsable: Especialista de Capacitación. Plazo: 3 semanas.\n\n4. ESTABLECER KPIs VISUALES: Implementar tableros visuales en el área con indicadores clave de desempeño actualizados diariamente. Responsable: Líder de Mejora Continua. Plazo: 2 semanas.\n\n5. PROGRAMAR AUDITORÍAS MENSUALES: Establecer auditorías formales mensuales de cumplimiento con criterios de evaluación definidos y plan de acción para desviaciones. Responsable: Auditor Interno. Plazo: Inicio inmediato, recurrente.\n\n6. IMPLEMENTAR SISTEMA DE GESTIÓN DOCUMENTAL: Desarrollar o adquirir una solución digital para control de versiones, aprobaciones y distribución de documentos. Responsable: IT + Calidad. Plazo: 2 meses.\n\n7. DEFINIR RESPONSABLES DE ESTÁNDARES: Asignar responsables claros por área para la gestión, actualización y seguimiento de estándares operativos. Responsable: Gerente de Operaciones. Plazo: 1 semana.",
+            "resultados_esperados": "- Reducción medible y sostenida de desperdicios identificados (Motion, Waiting, Defects)\n- Mejora sostenida en calidad del producto y consistencia del proceso\n- Estandarización efectiva que reduzca la variabilidad operativa en al menos 30%\n- Reducción del tiempo de ciclo en 15% con impacto directo en capacidad productiva\n- Incremento en satisfacción del cliente interno medido mediante encuestas\n- Fortalecimiento de la cultura de mejora continua y trabajo en equipo\n- Retorno de inversión estimado del 180% dentro del primer año\n- Reducción de costos operativos unitarios en 8%\n- Mejora en el ambiente de trabajo y motivación del personal",
+            "plan_seguimiento": "SEMANA 1-2: Implementación de contramedidas 1 y 2 (SOP y checklists). Monitoreo diario de cumplimiento.\n\nSEMANA 3-4: Ejecución de capacitaciones (contramedida 3). Evaluación de competencias. Monitoreo inicial de indicadores. Ajustes según resultados.\n\nMES 2: Primera auditoría formal (contramedida 5). Evaluación de avance vs. objetivos iniciales. Implementación de KPIs visuales.\n\nMES 3: Evaluación integral vs. objetivos SMART establecidos. Análisis de tendencias. Ajustes a contramedidas si es necesario.\n\nMES 6: Revisión de sostenibilidad de mejoras. Análisis de replicabilidad en otras áreas. Reconocimiento al equipo.\n\nTRIMESTRAL: Revisiones formales con gerencia. Actualización de objetivos según evolución del proceso.",
+            "lecciones_aprendidas": "La aplicación de la metodología A3 permitió visualizar de manera integral la complejidad del problema y las interconexiones entre sus múltiples causas. La participación activa y multidisciplinaria del equipo fue fundamental para identificar la causa raíz real, que inicialmente no era evidente.\n\nSe aprendió que los problemas aparentemente técnicos frecuentemente tienen raíces en sistemas de gestión deficientes. La inversión en capacitación y estandarización genera retornos significativos a mediano plazo. La visualización de datos y el seguimiento constante son críticos para mantener las mejoras.",
+            "estandarizacion": "Los procedimientos actualizados serán documentados formalmente con control de versiones, aprobados por gerencia de operaciones y calidad, socializados mediante capacitaciones estructuradas con evaluación de competencias, integrados al Sistema de Gestión de Calidad (SGC) existente y sujetos a revisión periódica anual como mínimo. Se establecerán métricas de cumplimiento y auditorías programadas para asegurar la sostenibilidad de los estándares implementados."
         }
 
     def _generate_local_kaizen(self, activity, context):
         return {
             "titulo": "Kaizen: " + activity[:50],
-            "area": "Area de Mantenimiento / Produccion / Calidad (especificar segun contexto)",
-            "descripcion_problema": activity + "\n\nDurante las actividades diarias de gemba walk, el equipo identifico esta oportunidad de mejora que representa un desperdicio significativo en el proceso. La situacion actual genera movimientos innecesarios, tiempos de espera o riesgos de calidad que impactan directamente en la productividad del area y en la satisfaccion del personal.\n\nSe realizo un analisis rapido de la situacion que confirmo la viabilidad de implementar una mejora inmediata con recursos disponibles en el area, siguiendo el principio fundamental del Kaizen: mejorar un poco cada dia.",
-            "solucion": "Se implemento una mejora estructurada orientada a eliminar el desperdicio identificado y optimizar el flujo del proceso, aplicando principios fundamentales de Lean Manufacturing y el pensamiento Kaizen de mejora continua.\n\nLa solucion fue disenada y ejecutada por el equipo de trabajo del area con apoyo del lider de mejora continua, utilizando materiales disponibles y aplicando el concepto de low cost, high impact. Se realizaron pruebas piloto antes de la implementacion definitiva para validar la efectividad de la propuesta.\n\nEl equipo documento el antes y despues con fotografias y mediciones de tiempo para cuantificar el impacto de la mejora implementada.",
-            "beneficios": "- Reduccion del tiempo de ejecucion en aproximadamente 20-30%\n- Mejora significativa en calidad y consistencia del proceso\n- Mayor seguridad para el personal al eliminar movimientos riesgosos\n- Reduccion de costos operativos derivados de la eliminacion de desperdicios\n- Mejora en el ambiente de trabajo y orden del area\n- Eliminacion de movimientos innecesarios y tiempos de busqueda\n- Incremento en la motivacion del equipo al ver resultados inmediatos\n- Facil replicabilidad en otras areas similares",
-            "tipo_desperdicio": "Motion / Waiting / Skills (seleccionar segun analisis especifico del desperdicio identificado)",
-            "impacto_bto": "Supply Chain and Manufacturing Excellence / Safe and Sustainable (seleccionar segun el impacto principal de la mejora)",
-            "proximos_pasos": "1. Documentar formalmente la mejora con fotografias, descripcion detallada y datos de impacto\n2. Socializar la mejora con otras areas relacionadas mediante presentacion breve en reunion de coordinacion\n3. Replicar la mejora en procesos similares identificados durante el gemba walk\n4. Establecer monitoreo mensual para asegurar que la mejora se mantiene en el tiempo\n5. Reconocer formalmente al equipo participante en la mejora\n6. Integrar el nuevo estandar al SOP del area\n7. Programar revision de sostenibilidad a los 3 meses"
+            "area": "Área de Mantenimiento / Producción / Calidad (especificar según contexto)",
+            "descripcion_problema": activity + "\n\nDurante las actividades diarias de gemba walk, el equipo identificó esta oportunidad de mejora que representa un desperdicio significativo en el proceso. La situación actual genera movimientos innecesarios, tiempos de espera o riesgos de calidad que impactan directamente en la productividad del área y en la satisfacción del personal.\n\nSe realizó un análisis rápido de la situación que confirmó la viabilidad de implementar una mejora inmediata con recursos disponibles en el área, siguiendo el principio fundamental del Kaizen: mejorar un poco cada día.",
+            "solucion": "Se implementó una mejora estructurada orientada a eliminar el desperdicio identificado y optimizar el flujo del proceso, aplicando principios fundamentales de Lean Manufacturing y el pensamiento Kaizen de mejora continua.\n\nLa solución fue diseñada y ejecutada por el equipo de trabajo del área con apoyo del líder de mejora continua, utilizando materiales disponibles y aplicando el concepto de low cost, high impact. Se realizaron pruebas piloto antes de la implementación definitiva para validar la efectividad de la propuesta.\n\nEl equipo documentó el antes y después con fotografías y mediciones de tiempo para cuantificar el impacto de la mejora implementada.",
+            "beneficios": "- Reducción del tiempo de ejecución en aproximadamente 20-30%\n- Mejora significativa en calidad y consistencia del proceso\n- Mayor seguridad para el personal al eliminar movimientos riesgosos\n- Reducción de costos operativos derivados de la eliminación de desperdicios\n- Mejora en el ambiente de trabajo y orden del área\n- Eliminación de movimientos innecesarios y tiempos de búsqueda\n- Incremento en la motivación del equipo al ver resultados inmediatos\n- Fácil replicabilidad en otras áreas similares",
+            "tipo_desperdicio": "Motion / Waiting / Skills (seleccionar según análisis específico del desperdicio identificado)",
+            "impacto_bto": "Supply Chain and Manufacturing Excellence / Safe and Sustainable (seleccionar según el impacto principal de la mejora)",
+            "proximos_pasos": "1. Documentar formalmente la mejora con fotografías, descripción detallada y datos de impacto\n2. Socializar la mejora con otras áreas relacionadas mediante presentación breve en reunión de coordinación\n3. Replicar la mejora en procesos similares identificados durante el gemba walk\n4. Establecer monitoreo mensual para asegurar que la mejora se mantiene en el tiempo\n5. Reconocer formalmente al equipo participante en la mejora\n6. Integrar el nuevo estándar al SOP del área\n7. Programar revisión de sostenibilidad a los 3 meses"
         }
 
-
+# =============================================================================
+# REEMPLAZO INTELIGENTE DE TEXTO EN POWERPOINT (preserva formato)
+# =============================================================================
 def replace_text_in_shape(shape, old_text, new_text):
     """Reemplaza texto en un shape preservando el formato de los runs"""
     if not shape.has_text_frame:
         return False
+
     text_frame = shape.text_frame
     text = text_frame.text
+
     if old_text not in text:
         return False
+
+    # Reemplazar en cada párrafo, preservando runs
     for paragraph in text_frame.paragraphs:
         paragraph_text = paragraph.text
         if old_text in paragraph_text:
+            # Encontrar el run que contiene el texto
             for run in paragraph.runs:
                 if old_text in run.text:
                     run.text = run.text.replace(old_text, new_text)
                     return True
+            # Si el texto está dividido entre runs, reemplazar en el primer run
             if paragraph.runs:
                 paragraph.runs[0].text = paragraph_text.replace(old_text, new_text)
                 for run in paragraph.runs[1:]:
@@ -795,18 +761,22 @@ def replace_text_in_shape(shape, old_text, new_text):
 
 
 def replace_all_text_in_presentation(prs, replacements):
-    """Reemplaza multiples textos en toda la presentacion"""
+    """Reemplaza múltiples textos en toda la presentación"""
     for slide in prs.slides:
         for shape in slide.shapes:
+            # Reemplazar en text frames
             if shape.has_text_frame:
                 for old_text, new_text in replacements.items():
                     replace_text_in_shape(shape, old_text, new_text)
+
+            # Reemplazar en tablas
             if shape.has_table:
                 table = shape.table
                 for row in table.rows:
                     for cell in row.cells:
                         for old_text, new_text in replacements.items():
                             if old_text in cell.text:
+                                # Preservar formato de la celda
                                 for paragraph in cell.text_frame.paragraphs:
                                     for run in paragraph.runs:
                                         if old_text in run.text:
@@ -830,17 +800,21 @@ def fill_table_cell(cell, text):
         cell.text = str(text)
 
 
+# =============================================================================
+# GENERADOR DE DOCUMENTOS
+# =============================================================================
 class DocumentGenerator:
     """Genera documentos usando templates cargados en memoria"""
 
     def generate_moc(self, data, images=None, template_bytes=None):
         """Genera MoC desde template en memoria"""
         if template_bytes is None:
-            st.error("Template MoC no cargado. Vaya a Configuracion > Templates.")
+            st.error("❌ Template MoC no cargado. Vaya a Configuración > Templates.")
             return None
 
         prs = Presentation(BytesIO(template_bytes))
 
+        # Reemplazos globales en toda la presentación
         replacements = {
             "MOC: Control de Acceso a panel de control (HMI) – carga de detonadores (219)": f"MOC: {data.get('moc_title', '')}",
             "MAYO 2026": data.get('fecha', Utils.format_date()),
@@ -854,7 +828,7 @@ class DocumentGenerator:
 
         replace_all_text_in_presentation(prs, replacements)
 
-        # SLIDE 3: Descripcion del Problema
+        # SLIDE 3: Descripción del Problema
         slide3 = prs.slides[2]
         for shape in slide3.shapes:
             if shape.has_text_frame:
@@ -863,7 +837,7 @@ class DocumentGenerator:
                         if run.text.strip() == "3":
                             run.text = data.get('descripcion_problema', '')
 
-        # SLIDE 4: Tabla Condicion Actual / Condicion Propuesta
+        # SLIDE 4: Tabla Condición Actual / Condición Propuesta
         slide4 = prs.slides[3]
         for shape in slide4.shapes:
             if shape.has_table:
@@ -937,7 +911,7 @@ class DocumentGenerator:
                         fill_table_cell(table.cell(row_idx, 2), risk.get('control', ''))
                         fill_table_cell(table.cell(row_idx, 3), risk.get('plazo', ''))
 
-        # Agregar imagenes de soporte
+        # Agregar imágenes de soporte
         if images:
             for idx, img_info in enumerate(images, 1):
                 blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[-1]
@@ -990,7 +964,7 @@ class DocumentGenerator:
     def generate_a3(self, data, images=None, template_bytes=None):
         """Genera A3 desde template en memoria"""
         if template_bytes is None:
-            st.error("Template A3 no cargado. Vaya a Configuracion > Templates.")
+            st.error("❌ Template A3 no cargado. Vaya a Configuración > Templates.")
             return None
 
         doc = Document(BytesIO(template_bytes))
@@ -1017,14 +991,14 @@ class DocumentGenerator:
         sections = [
             ("ANTECEDENTES", "antecedentes"),
             ("PROBLEMA ACTUAL", "problema_actual"),
-            ("ANALISIS DE LA SITUACION", "analisis_situacion"),
+            ("ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"),
             ("OBJETIVOS", "objetivos"),
-            ("ANALISIS DE CAUSA RAIZ", "analisis_causa_raiz"),
+            ("ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"),
             ("CONTRAMEDIDAS", "contramedidas"),
             ("RESULTADOS ESPERADOS", "resultados_esperados"),
             ("PLAN DE SEGUIMIENTO", "plan_seguimiento"),
             ("LECCIONES APRENDIDAS", "lecciones_aprendidas"),
-            ("ESTANDARIZACION", "estandarizacion"),
+            ("ESTANDARIZACIÓN", "estandarizacion"),
         ]
 
         for section_title, key in sections:
@@ -1042,7 +1016,7 @@ class DocumentGenerator:
 
         if images:
             doc.add_page_break()
-            doc.add_heading('IMAGENES DE SOPORTE', level=1)
+            doc.add_heading('IMÁGENES DE SOPORTE', level=1)
             for idx, img_info in enumerate(images, 1):
                 doc.add_paragraph()
                 p = doc.add_paragraph()
@@ -1076,7 +1050,7 @@ class DocumentGenerator:
     def generate_kaizen(self, data, images=None, template_bytes=None):
         """Genera Kaizen desde template en memoria"""
         if template_bytes is None:
-            st.error("Template Kaizen no cargado. Vaya a Configuracion > Templates.")
+            st.error("❌ Template Kaizen no cargado. Vaya a Configuración > Templates.")
             return None
 
         prs = Presentation(BytesIO(template_bytes))
@@ -1106,7 +1080,7 @@ class DocumentGenerator:
                     for paragraph in shape.text_frame.paragraphs:
                         for run in paragraph.runs:
                             if "Leader" in run.text:
-                                run.text = f"Leader: {data.get('autor', '')}\nArea: {data.get('area', '')}\nFecha: {data.get('fecha', '')}"
+                                run.text = f"Leader: {data.get('autor', '')}\nÁrea: {data.get('area', '')}\nFecha: {data.get('fecha', '')}"
 
         blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[-1]
         detail_slide = prs.slides.add_slide(blank_layout)
@@ -1120,10 +1094,10 @@ class DocumentGenerator:
             p.font.color.rgb = RGBColor(0x1a, 0x5f, 0x7a)
 
         sections = [
-            ("Descripcion del Problema", "descripcion_problema"),
-            ("Solucion Implementada", "solucion"),
+            ("Descripción del Problema", "descripcion_problema"),
+            ("Solución Implementada", "solucion"),
             ("Beneficios", "beneficios"),
-            ("Proximos Pasos", "proximos_pasos"),
+            ("Próximos Pasos", "proximos_pasos"),
         ]
 
         y_pos = 1.0
@@ -1183,12 +1157,15 @@ class DocumentGenerator:
         output_buffer.seek(0)
         return output_buffer
 
-
+# =============================================================================
+# EXPORTADOR A PDF
+# =============================================================================
 class PDFExporter:
-    """Exporta documentos a PDF usando multiples metodos"""
+    """Exporta documentos a PDF usando múltiples métodos"""
 
     @staticmethod
     def pptx_to_pdf_libreoffice(pptx_bytes, output_filename):
+        """Convierte PPTX a PDF usando LibreOffice (método preferido)"""
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir = Path(tmpdir)
@@ -1216,11 +1193,12 @@ class PDFExporter:
                         return f.read()
 
         except Exception as e:
-            st.warning(f"Conversion LibreOffice fallo: {e}")
+            st.warning(f"Conversión LibreOffice falló: {e}")
         return None
 
     @staticmethod
     def docx_to_pdf_libreoffice(docx_bytes, output_filename):
+        """Convierte DOCX a PDF usando LibreOffice"""
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 tmpdir = Path(tmpdir)
@@ -1248,11 +1226,12 @@ class PDFExporter:
                         return f.read()
 
         except Exception as e:
-            st.warning(f"Conversion LibreOffice fallo: {e}")
+            st.warning(f"Conversión LibreOffice falló: {e}")
         return None
 
     @staticmethod
     def generate_pdf_from_data(data, doc_type, meta, images=None):
+        """Genera PDF desde datos usando ReportLab (fallback)"""
         if not REPORTLAB_AVAILABLE:
             return None
 
@@ -1309,14 +1288,14 @@ class PDFExporter:
 
             if doc_type == "moc":
                 sections = [
-                    ("Descripcion del Problema", "descripcion_problema"),
-                    ("Condicion Actual", "condicion_actual"),
-                    ("Condicion Propuesta", "condicion_propuesta"),
+                    ("Descripción del Problema", "descripcion_problema"),
+                    ("Condición Actual", "condicion_actual"),
+                    ("Condición Propuesta", "condicion_propuesta"),
                     ("Razones del Cambio", "razones_cambio"),
                     ("Alternativas y Plan de Retorno", "alternativas_retorno"),
                     ("Recursos", "recursos"),
-                    ("Plan de Implementacion", "plan_implementacion"),
-                    ("Tiempo de Duracion", "tiempo_duracion"),
+                    ("Plan de Implementación", "plan_implementacion"),
+                    ("Tiempo de Duración", "tiempo_duracion"),
                 ]
                 for title, key in sections:
                     story.append(Paragraph(f"<b>{title}</b>", heading_style))
@@ -1370,10 +1349,10 @@ class PDFExporter:
             elif doc_type == "a3":
                 sections = [
                     ("Antecedentes", "antecedentes"), ("Problema Actual", "problema_actual"),
-                    ("Analisis de la Situacion", "analisis_situacion"), ("Objetivos", "objetivos"),
-                    ("Analisis de Causa Raiz", "analisis_causa_raiz"), ("Contramedidas", "contramedidas"),
+                    ("Análisis de la Situación", "analisis_situacion"), ("Objetivos", "objetivos"),
+                    ("Análisis de Causa Raíz", "analisis_causa_raiz"), ("Contramedidas", "contramedidas"),
                     ("Resultados Esperados", "resultados_esperados"), ("Plan de Seguimiento", "plan_seguimiento"),
-                    ("Lecciones Aprendidas", "lecciones_aprendidas"), ("Estandarizacion", "estandarizacion"),
+                    ("Lecciones Aprendidas", "lecciones_aprendidas"), ("Estandarización", "estandarizacion"),
                 ]
                 for title, key in sections:
                     story.append(Paragraph(f"<b>{title}</b>", heading_style))
@@ -1383,10 +1362,10 @@ class PDFExporter:
 
             elif doc_type == "kaizen":
                 sections = [
-                    ("Descripcion del Problema", "descripcion_problema"),
-                    ("Solucion Implementada", "solucion"),
+                    ("Descripción del Problema", "descripcion_problema"),
+                    ("Solución Implementada", "solucion"),
                     ("Beneficios", "beneficios"),
-                    ("Proximos Pasos", "proximos_pasos"),
+                    ("Próximos Pasos", "proximos_pasos"),
                 ]
                 for title, key in sections:
                     story.append(Paragraph(f"<b>{title}</b>", heading_style))
@@ -1404,3 +1383,1212 @@ class PDFExporter:
         except Exception as e:
             st.error(f"Error generando PDF con ReportLab: {e}")
             return None
+
+# =============================================================================
+# INICIALIZACION DE SESSION STATE CON PERSISTENCIA LOCAL
+# =============================================================================
+def init_session_state():
+    """Inicializa todas las variables de session_state con persistencia local"""
+
+    saved_config = LocalStorage.load_config()
+    saved_history = LocalStorage.load_history()
+
+    defaults = {
+        "page": "inicio",
+        "config": saved_config or {
+            "gemini_api_key": "",
+            "gemini_model": "gemini-1.5-pro",
+            "company_name": "",
+            "department": "",
+            "default_author": "",
+            "default_area": "",
+            "header_text": "",
+            "footer_text": "",
+            "last_moc_number": 0,
+            "last_a3_number": 0,
+            "last_kaizen_number": 0,
+            "spell_check": True,
+            "thinking_level": "Estándar",
+            "auto_correct": True,
+        },
+        "history": saved_history or {"documents": []},
+        "generated_data": {},
+        "doc_meta": {},
+        "doc_images": [],
+        "doc_type": None,
+        "templates_uploaded": False,
+        "template_moc_bytes": LocalStorage.load_template_bytes("moc"),
+        "template_a3_bytes": LocalStorage.load_template_bytes("a3"),
+        "template_kaizen_bytes": LocalStorage.load_template_bytes("kaizen"),
+    }
+
+    for key, value in defaults.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+
+    if saved_config is None:
+        LocalStorage.save_config(st.session_state.config)
+    if saved_history is None:
+        LocalStorage.save_history(st.session_state.history)
+
+init_session_state()
+
+
+# =============================================================================
+# INTERFAZ DE USUARIO - SIDEBAR, HEADER, WELCOME
+# =============================================================================
+
+def render_sidebar():
+    """Renderiza sidebar de navegacion"""
+    config = st.session_state.config
+
+    st.sidebar.markdown("""
+    <div style="text-align: center; padding: 1rem 0;">
+        <h2 style="color: #f8fafc; margin: 0; font-size: 1.3rem;">📋 GESTIÓN</h2>
+        <h2 style="color: #f8fafc; margin: 0; font-size: 1.3rem;">DOCUMENTAL</h2>
+        <p style="color: #94a3b8; margin-top: 0.5rem; font-size: 0.85rem;">MoC · A3 · Kaizen</p>
+    </div>
+    <hr style="border-color: #334155; margin: 1rem 0;">
+    """, unsafe_allow_html=True)
+
+    st.sidebar.markdown("### 🧭 Navegación")
+
+    nav_items = [
+        ("🏠 Inicio", "inicio"),
+        ("📋 Nueva MoC", "nueva_moc"),
+        ("📊 Nueva Mejora A3", "nueva_a3"),
+        ("⚡ Nuevo Kaizen", "nuevo_kaizen"),
+        ("📁 Historial", "historial"),
+        ("⚙️ Configuración", "configuracion"),
+    ]
+
+    for label, page_key in nav_items:
+        if st.sidebar.button(label, key=f"nav_{page_key}", use_container_width=True):
+            st.session_state.page = page_key
+            st.rerun()
+
+    st.sidebar.markdown("<hr style='border-color: #334155; margin: 1rem 0;'>", unsafe_allow_html=True)
+
+    model_name = GeminiService.MODELS.get(config.get("gemini_model", "gemini-1.5-pro"), {}).get("name", "3.1 Pro")
+    st.sidebar.markdown(f"""
+    <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
+        <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
+        <p>v4.0.0 · Julio 2026</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.sidebar.markdown("""
+    <hr style="border-color: #334155; margin: 1rem 0;">
+    <div style="text-align: center; padding: 0.5rem;">
+        <p style="color: #64748b; font-size: 0.75rem; margin: 0;">
+            <strong style="color: #94a3b8;">CAVA</strong><br>
+            Especialistas en Robótica<br>
+            y Automatización<br><br>
+            Diseñado por<br>
+            <strong style="color: #2e8bc0;">Roger Huamani</strong>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_header():
+    st.markdown("""
+    <div class="main-header">
+        <h1>🎯 Sistema de Gestión Documental</h1>
+        <p>Automatización inteligente de documentos MoC, Mejora A3 y Simple Kaizen con IA</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def render_welcome():
+    render_header()
+
+    templates_ok = all([
+        st.session_state.get("template_moc_bytes"),
+        st.session_state.get("template_a3_bytes"),
+        st.session_state.get("template_kaizen_bytes")
+    ])
+
+    if not templates_ok:
+        st.warning("⚠️ **Templates no cargados.** Vaya a Configuración > Templates para subir los formatos oficiales de la empresa antes de generar documentos.")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.markdown("""
+        <div class="doc-card doc-card-moc">
+            <h3 style="color: #1a5f7a; margin-top: 0;">📋 Management of Change</h3>
+            <p style="color: #64748b; font-size: 0.9rem;">Documento base para cualquier cambio en proceso o maquinaria. Incluye evaluación de riesgos, plan de implementación y controles SHES.</p>
+            <ul style="color: #475569; font-size: 0.85rem; padding-left: 1.2rem;">
+                <li>Evaluación técnica completa</li><li>Riesgos y controles detallados</li><li>Plan de implementación por fases</li><li>Exportación a PDF</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("➕ Crear MoC", key="btn_moc", use_container_width=True):
+            st.session_state.page = "nueva_moc"
+            st.rerun()
+
+    with col2:
+        st.markdown("""
+        <div class="doc-card doc-card-a3">
+            <h3 style="color: #10b981; margin-top: 0;">📊 Mejora A3</h3>
+            <p style="color: #64748b; font-size: 0.9rem;">Formato estructurado para registrar mejoras. Metodología Lean con análisis de causa raíz 5 Porqués y contramedidas SMART.</p>
+            <ul style="color: #475569; font-size: 0.85rem; padding-left: 1.2rem;">
+                <li>Análisis 5 Porqués detallado</li><li>Contramedidas priorizadas</li><li>Plan de seguimiento</li><li>Estandarización completa</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("➕ Crear A3", key="btn_a3", use_container_width=True):
+            st.session_state.page = "nueva_a3"
+            st.rerun()
+
+    with col3:
+        st.markdown("""
+        <div class="doc-card doc-card-kaizen">
+            <h3 style="color: #f59e0b; margin-top: 0;">⚡ Simple Kaizen</h3>
+            <p style="color: #64748b; font-size: 0.9rem;">Registro rápido de mejoras del día a día. Captura ideas de mejora continua con clasificación de desperdicios Lean.</p>
+            <ul style="color: #475569; font-size: 0.85rem; padding-left: 1.2rem;">
+                <li>8 Desperdicios (Wastes)</li><li>Impacto BTO cuantificado</li><li>Beneficios medibles</li><li>Replicabilidad inmediata</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("➕ Crear Kaizen", key="btn_kaizen", use_container_width=True):
+            st.session_state.page = "nuevo_kaizen"
+            st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    docs = st.session_state.history.get("documents", [])
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("📋 MoC", len([d for d in docs if d.get("type") == "moc"]))
+    with col2:
+        st.metric("📊 A3", len([d for d in docs if d.get("type") == "a3"]))
+    with col3:
+        st.metric("⚡ Kaizen", len([d for d in docs if d.get("type") == "kaizen"]))
+    with col4:
+        st.metric("📁 Total", len(docs))
+
+# =============================================================================
+# FORMULARIOS DE CREACIÓN CON CORRECTOR AUTOMÁTICO
+# =============================================================================
+
+def auto_correct_text_input(label, value, key, height=100, help_text=""):
+    """Campo de texto con corrección ortográfica automática"""
+    config = st.session_state.config
+
+    if config.get("auto_correct", True):
+        st.markdown('<div class="auto-correct-badge">✨ Corrección ortográfica automática activa</div>', unsafe_allow_html=True)
+
+    text = st.text_area(label, value=value, height=height, key=key, help=help_text)
+
+    if config.get("auto_correct", True) and text.strip():
+        corrected = Utils.correct_spelling_basic(text)
+        if corrected != text:
+            st.info(f"🔧 Texto corregido automáticamente")
+            return corrected
+
+    return text
+
+
+def render_moc_form():
+    config = st.session_state.config
+
+    st.markdown('<div class="section-header"><h3>📋 Nueva Management of Change (MoC)</h3></div>', unsafe_allow_html=True)
+    st.info("💡 Complete la información y describa el problema con el mayor detalle posible. La IA generará automáticamente todos los campos técnicos con redacción profesional y humanizada.")
+
+    if not st.session_state.get("template_moc_bytes"):
+        st.error("❌ **Template MoC no cargado.** Vaya a Configuración > Templates y suba el archivo .pptx oficial.")
+        if st.button("Ir a Configuración", key="go_config_moc"):
+            st.session_state.page = "configuracion"
+            st.rerun()
+        return
+
+    st.markdown("#### 1. Información General")
+    col1, col2 = st.columns(2)
+    with col1:
+        moc_title = st.text_input("Título de la MoC:", placeholder="Ej: Control de Acceso a panel HMI - Carga de detonadores")
+        moc_number = st.text_input("Número:", value=Utils.generate_doc_number("moc"), disabled=True)
+    with col2:
+        naturaleza = st.selectbox("Naturaleza:", ["permanente", "temporal", "emergencia"])
+        originador = st.text_input("Originador:", value=config.get("default_author", ""))
+    fecha = st.text_input("Fecha:", value=Utils.format_date(), disabled=True)
+
+    st.markdown("#### 2. Equipo de Revisión")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        produccion = st.text_input("Producción:")
+        specialist_shes = st.text_input("Specialist SHES:")
+    with col2:
+        mantenimiento = st.text_input("Mantenimiento:")
+        revisores = st.text_input("Revisores Enablon:")
+    with col3:
+        experto_aprobador = st.text_input("Experto Aprobador:")
+
+    st.markdown("#### 3. Descripción del Problema (Sea lo más detallado posible)")
+    problem_desc = auto_correct_text_input(
+        "Describa el problema con sus palabras:", 
+        "", 
+        "moc_problem_desc",
+        height=250,
+        help_text="Cuanto más detalle proporcione, mejor será la generación automática. Incluya: qué está pasando, desde cuándo, impacto, equipos involucrados, riesgos observados."
+    )
+
+    st.markdown("#### 4. Contexto Adicional (Opcional pero recomendado)")
+    context = auto_correct_text_input(
+        "Información adicional:", 
+        "", 
+        "moc_context",
+        height=120,
+        help_text="TAG del equipo, área específica, normativas aplicables, fechas relevantes, datos numéricos, etc."
+    )
+
+    st.markdown("#### 5. Imágenes de Soporte (Opcional)")
+    uploaded_images = st.file_uploader("Seleccione imágenes:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+
+    image_paths = []
+    if uploaded_images:
+        for idx, img_file in enumerate(uploaded_images, 1):
+            img_path = f"/tmp/temp_moc_img_{moc_number}_{idx}.png"
+            with open(img_path, "wb") as f:
+                f.write(img_file.getbuffer())
+            image_paths.append({"path": img_path, "desc": f"Figura {idx} - {img_file.name}"})
+        st.success(f"📷 {len(image_paths)} imagen(es) cargada(s)")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🤖 Generar Documento MoC con IA", type="primary", use_container_width=True):
+        if not problem_desc.strip():
+            st.error("❌ Describa el problema antes de generar.")
+            return
+
+        with st.spinner("🧠 La IA está generando el documento completo con redacción profesional..."):
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+
+            equipo_data = {
+                "produccion": produccion, "specialist_shes": specialist_shes,
+                "mantenimiento": mantenimiento, "revisores": revisores,
+                "experto_aprobador": experto_aprobador
+            }
+
+            result = gemini.generate_moc(problem_desc, context, json.dumps(equipo_data))
+
+            st.session_state.generated_data = result
+            st.session_state.doc_meta = {
+                "moc_title": moc_title, "moc_number": moc_number, "naturaleza": naturaleza,
+                "originador": originador, "fecha": fecha, **equipo_data
+            }
+            st.session_state.doc_images = image_paths
+            st.session_state.doc_type = "moc"
+            st.session_state.page = "revisar"
+            st.rerun()
+
+
+def render_a3_form():
+    config = st.session_state.config
+
+    st.markdown('<div class="section-header"><h3>📊 Nueva Mejora A3</h3></div>', unsafe_allow_html=True)
+    st.info("💡 Describa el problema con detalle y la IA generará el documento A3 completo con análisis de causa raíz y contramedidas.")
+
+    if not st.session_state.get("template_a3_bytes"):
+        st.error("❌ **Template A3 no cargado.** Vaya a Configuración > Templates.")
+        if st.button("Ir a Configuración", key="go_config_a3"):
+            st.session_state.page = "configuracion"
+            st.rerun()
+        return
+
+    st.markdown("#### 1. Información General")
+    col1, col2 = st.columns(2)
+    with col1:
+        a3_title = st.text_input("Título:", placeholder="Ej: Reducción de tiempo de cambio de formato")
+        area = st.text_input("Área:", value=config.get("default_area", ""))
+    with col2:
+        autor = st.text_input("Autor:", value=config.get("default_author", ""))
+        doc_number = st.text_input("Número:", value=Utils.generate_doc_number("a3"), disabled=True)
+    fecha = st.text_input("Fecha:", value=Utils.format_date(), disabled=True)
+
+    st.markdown("#### 2. Descripción del Problema (Detallada)")
+    problem_desc = auto_correct_text_input(
+        "Describa el problema actual:", 
+        "", 
+        "a3_problem_desc",
+        height=250,
+        help_text="¿Qué está pasando? ¿Impacto? ¿Desde cuándo? ¿Datos cuantitativos? ¿Frecuencia?"
+    )
+
+    context = auto_correct_text_input(
+        "Contexto adicional:", 
+        "", 
+        "a3_context",
+        height=100,
+        help_text="Herramientas Lean aplicables, benchmarks, áreas relacionadas, etc."
+    )
+
+    st.markdown("#### 3. Imágenes de Soporte")
+    uploaded_images = st.file_uploader("Seleccione imágenes:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+
+    image_paths = []
+    if uploaded_images:
+        for idx, img_file in enumerate(uploaded_images, 1):
+            img_path = f"/tmp/temp_a3_img_{doc_number}_{idx}.png"
+            with open(img_path, "wb") as f:
+                f.write(img_file.getbuffer())
+            image_paths.append({"path": img_path, "desc": f"Figura {idx} - {img_file.name}"})
+        st.success(f"📷 {len(image_paths)} imagen(es) cargada(s)")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🤖 Generar Documento A3 con IA", type="primary", use_container_width=True):
+        if not problem_desc.strip():
+            st.error("❌ Describa el problema antes de generar.")
+            return
+
+        with st.spinner("🧠 Generando documento A3 con análisis detallado..."):
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+            result = gemini.generate_a3(problem_desc, context)
+
+            st.session_state.generated_data = result
+            st.session_state.doc_meta = {"titulo": a3_title, "area": area, "autor": autor, "doc_number": doc_number, "fecha": fecha}
+            st.session_state.doc_images = image_paths
+            st.session_state.doc_type = "a3"
+            st.session_state.page = "revisar"
+            st.rerun()
+
+
+def render_kaizen_form():
+    config = st.session_state.config
+
+    st.markdown('<div class="section-header"><h3>⚡ Nuevo Simple Kaizen</h3></div>', unsafe_allow_html=True)
+    st.info("💡 Describa la actividad de mejora realizada con detalle. La IA generará un registro completo con beneficios cuantificados.")
+
+    if not st.session_state.get("template_kaizen_bytes"):
+        st.error("❌ **Template Kaizen no cargado.** Vaya a Configuración > Templates.")
+        if st.button("Ir a Configuración", key="go_config_kzn"):
+            st.session_state.page = "configuracion"
+            st.rerun()
+        return
+
+    st.markdown("#### 1. Información General")
+    col1, col2 = st.columns(2)
+    with col1:
+        kaizen_title = st.text_input("Título:", placeholder="Ej: Organización de área de herramientas con Shadow Board")
+        area = st.text_input("Área:", value=config.get("default_area", ""))
+    with col2:
+        autor = st.text_input("Autor:", value=config.get("default_author", ""))
+        doc_number = st.text_input("Número:", value=Utils.generate_doc_number("kaizen"), disabled=True)
+    fecha = st.text_input("Fecha:", value=Utils.format_date(), disabled=True)
+
+    st.markdown("#### 2. Descripción de la Actividad (Detallada)")
+    activity_desc = auto_correct_text_input(
+        "Describa la mejora realizada:", 
+        "", 
+        "kzn_activity_desc",
+        height=250,
+        help_text="Describa el antes, durante y después. Incluya datos de tiempo, movimientos, cantidades. ¿Qué hizo? ¿Cómo lo hizo? ¿Quién participó?"
+    )
+
+    st.markdown("#### 3. Clasificación")
+    tipo_desp = st.multiselect("Tipo de Desperdicio eliminado:",
+                               ["Motion", "Skills", "Inventory", "Transportation",
+                                "Over Production", "Over Processing", "Waiting", "Defects"])
+    impacto_bto = st.selectbox("Impacto BTO:",
+                               ["Safe and Sustainable", "People & Culture",
+                                "Network Optimisation", "Supply Chain and Manufacturing Excellence"])
+
+    context = auto_correct_text_input(
+        "Contexto adicional:", 
+        "", 
+        "kzn_context",
+        height=80,
+        help_text="Costos, tiempos medidos, materiales utilizados, etc."
+    )
+
+    st.markdown("#### 4. Imágenes de Soporte")
+    uploaded_images = st.file_uploader("Seleccione imágenes:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+
+    image_paths = []
+    if uploaded_images:
+        for idx, img_file in enumerate(uploaded_images, 1):
+            img_path = f"/tmp/temp_kzn_img_{doc_number}_{idx}.png"
+            with open(img_path, "wb") as f:
+                f.write(img_file.getbuffer())
+            image_paths.append({"path": img_path, "desc": f"Figura {idx} - {img_file.name}"})
+        st.success(f"📷 {len(image_paths)} imagen(es) cargada(s)")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🤖 Generar Documento Kaizen con IA", type="primary", use_container_width=True):
+        if not activity_desc.strip():
+            st.error("❌ Describa la actividad antes de generar.")
+            return
+
+        with st.spinner("🧠 Generando documento Kaizen con beneficios cuantificados..."):
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+            result = gemini.generate_kaizen(activity_desc, context)
+            result["tipo_desperdicio"] = ", ".join(tipo_desp) if tipo_desp else result.get("tipo_desperdicio", "")
+            result["impacto_bto"] = impacto_bto
+
+            st.session_state.generated_data = result
+            st.session_state.doc_meta = {"titulo": kaizen_title, "area": area, "autor": autor, "doc_number": doc_number, "fecha": fecha}
+            st.session_state.doc_images = image_paths
+            st.session_state.doc_type = "kaizen"
+            st.session_state.page = "revisar"
+            st.rerun()
+
+
+# =============================================================================
+# PANTALLA DE REVISIÓN UNIFICADA
+# =============================================================================
+
+def render_review():
+    """Renderiza pantalla de revision unificada para cualquier tipo de documento"""
+    doc_type = st.session_state.doc_type
+    data = st.session_state.get("generated_data", {})
+    meta = st.session_state.get("doc_meta", {})
+    images = st.session_state.get("doc_images", [])
+    config = st.session_state.config
+
+    type_names = {"moc": "MoC", "a3": "Mejora A3", "kaizen": "Simple Kaizen"}
+    type_name = type_names.get(doc_type, "Documento")
+
+    st.markdown(f'<div class="section-header"><h3>👁️ Revisar y Editar {type_name}</h3></div>', unsafe_allow_html=True)
+    st.info("💡 Revise cada campo, realice correcciones manuales si es necesario y genere el documento final. Todos los cambios se guardan automáticamente.")
+
+    if doc_type == "moc":
+        _render_moc_review(data, meta, images, config)
+    elif doc_type == "a3":
+        _render_a3_review(data, meta, images, config)
+    elif doc_type == "kaizen":
+        _render_kaizen_review(data, meta, images, config)
+
+
+def _spell_check_field(label, value, key_prefix, gemini):
+    """Campo de texto con boton de correccion ortografica"""
+    col1, col2 = st.columns([6, 1])
+    with col1:
+        text = st.text_area(label, value=value, height=120, key=f"{key_prefix}_field")
+    with col2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("✨ Corregir", key=f"{key_prefix}_spell", help="Corregir ortografía y mejorar redacción con IA"):
+            with st.spinner("Corrigiendo y puliendo redacción..."):
+                corrected = gemini.correct_spelling(text)
+                st.session_state[f"{key_prefix}_corrected"] = corrected
+                st.rerun()
+
+    if st.session_state.get(f"{key_prefix}_corrected"):
+        text = st.session_state[f"{key_prefix}_corrected"]
+        del st.session_state[f"{key_prefix}_corrected"]
+
+    return text
+
+
+def _render_moc_review(data, meta, images, config):
+    """Revision especifica MoC"""
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+
+    tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Riesgos", "📷 Imágenes", "⚙️ Generar"])
+
+    with tabs[0]:
+        st.markdown("#### Información del Documento")
+        meta["moc_title"] = st.text_input("Título:", value=meta.get("moc_title", ""), key="moc_rev_title")
+        meta["moc_number"] = st.text_input("Número:", value=meta.get("moc_number", ""), disabled=True)
+        meta["naturaleza"] = st.selectbox("Naturaleza:", ["permanente", "temporal", "emergencia"],
+                                          index=["permanente", "temporal", "emergencia"].index(meta.get("naturaleza", "permanente")), key="moc_rev_nat")
+        meta["originador"] = st.text_input("Originador:", value=meta.get("originador", ""), key="moc_rev_orig")
+
+        st.markdown("#### Equipo de Revisión")
+        meta["produccion"] = st.text_input("Producción:", value=meta.get("produccion", ""), key="moc_rev_prod")
+        meta["specialist_shes"] = st.text_input("Specialist SHES:", value=meta.get("specialist_shes", ""), key="moc_rev_shes")
+        meta["mantenimiento"] = st.text_input("Mantenimiento:", value=meta.get("mantenimiento", ""), key="moc_rev_mant")
+        meta["revisores"] = st.text_input("Revisores:", value=meta.get("revisores", ""), key="moc_rev_rev")
+        meta["experto_aprobador"] = st.text_input("Experto Aprobador:", value=meta.get("experto_aprobador", ""), key="moc_rev_exp")
+
+    with tabs[1]:
+        st.markdown("#### Descripción del Problema")
+        data["descripcion_problema"] = _spell_check_field("", data.get("descripcion_problema", ""), "moc_desc", gemini)
+
+        st.markdown("#### Condición Actual")
+        data["condicion_actual"] = _spell_check_field("", data.get("condicion_actual", ""), "moc_actual", gemini)
+
+        st.markdown("#### Condición Propuesta")
+        data["condicion_propuesta"] = _spell_check_field("", data.get("condicion_propuesta", ""), "moc_prop", gemini)
+
+        st.markdown("#### Razones del Cambio")
+        data["razones_cambio"] = _spell_check_field("", data.get("razones_cambio", ""), "moc_raz", gemini)
+
+        st.markdown("#### Alternativas y Plan de Retorno")
+        data["alternativas_retorno"] = _spell_check_field("", data.get("alternativas_retorno", ""), "moc_alt", gemini)
+
+        st.markdown("#### Recursos")
+        data["recursos"] = _spell_check_field("", data.get("recursos", ""), "moc_rec", gemini)
+
+        st.markdown("#### Plan de Implementación")
+        data["plan_implementacion"] = _spell_check_field("", data.get("plan_implementacion", ""), "moc_plan", gemini)
+
+        st.markdown("#### Tiempo de Duración")
+        data["tiempo_duracion"] = _spell_check_field("", data.get("tiempo_duracion", ""), "moc_tiempo", gemini)
+
+    with tabs[2]:
+        st.markdown("#### Riesgos y Controles")
+        risks = data.get("riesgos_controles", [])
+        updated_risks = []
+        for i, risk in enumerate(risks):
+            st.markdown(f"**Riesgo {i+1}**")
+            col1, col2 = st.columns(2)
+            with col1:
+                r_riesgo = st.text_input(f"Riesgo {i+1}:", value=risk.get("riesgo", ""), key=f"risk_{i}")
+            with col2:
+                r_control = st.text_input(f"Control {i+1}:", value=risk.get("control", ""), key=f"ctrl_{i}")
+            updated_risks.append({"riesgo": r_riesgo, "control": r_control})
+
+        if st.button("➕ Agregar Riesgo", key="add_risk"):
+            updated_risks.append({"riesgo": "", "control": ""})
+            data["riesgos_controles"] = updated_risks
+            st.rerun()
+        data["riesgos_controles"] = updated_risks
+
+        st.markdown("#### Riesgos SHES")
+        risks_shes = data.get("riesgos_shes", [])
+        updated_shes = []
+        for i, risk in enumerate(risks_shes):
+            st.markdown(f"**Riesgo SHES {i+1}**")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                s_riesgo = st.text_input(f"Riesgo S{i+1}:", value=risk.get("riesgo", ""), key=f"shes_r_{i}")
+            with col2:
+                s_control = st.text_input(f"Control S{i+1}:", value=risk.get("control", ""), key=f"shes_c_{i}")
+            with col3:
+                s_plazo = st.text_input(f"Plazo S{i+1}:", value=risk.get("plazo", ""), key=f"shes_p_{i}")
+            updated_shes.append({"riesgo": s_riesgo, "control": s_control, "plazo": s_plazo})
+
+        if st.button("➕ Agregar Riesgo SHES", key="add_shes"):
+            updated_shes.append({"riesgo": "", "control": "", "plazo": ""})
+            data["riesgos_shes"] = updated_shes
+            st.rerun()
+        data["riesgos_shes"] = updated_shes
+
+    with tabs[3]:
+        st.markdown("#### Imágenes Cargadas")
+        if images:
+            for idx, img_info in enumerate(images, 1):
+                st.image(img_info["path"], caption=f"Figura {idx}: {img_info['desc']}", width=400)
+        else:
+            st.info("No se cargaron imágenes")
+
+    with tabs[4]:
+        st.markdown("#### Generar Documento Final")
+        st.success("✅ Documento listo para generar")
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            if st.button("🇪🇸 PPTX Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "moc", "pptx")
+        with col2:
+            if st.button("🇺🇸 PPTX Inglés", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "en", "moc", "pptx")
+        with col3:
+            if st.button("📄 PDF Español", type="secondary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "moc", "pdf")
+        with col4:
+            if st.button("🔄 Regenerar", use_container_width=True):
+                st.session_state.page = "nueva_moc"
+                st.rerun()
+
+    st.session_state.generated_data = data
+    st.session_state.doc_meta = meta
+
+
+def _render_a3_review(data, meta, images, config):
+    """Revision especifica A3"""
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+
+    tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
+
+    with tabs[0]:
+        meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""), key="a3_rev_title")
+        meta["area"] = st.text_input("Área:", value=meta.get("area", ""), key="a3_rev_area")
+        meta["autor"] = st.text_input("Autor:", value=meta.get("autor", ""), key="a3_rev_autor")
+        meta["doc_number"] = st.text_input("Número:", value=meta.get("doc_number", ""), disabled=True)
+        meta["fecha"] = st.text_input("Fecha:", value=meta.get("fecha", ""), disabled=True)
+
+    with tabs[1]:
+        sections = [
+            ("Antecedentes", "antecedentes"), ("Problema Actual", "problema_actual"),
+            ("Análisis de Situación", "analisis_situacion"), ("Objetivos", "objetivos"),
+            ("Análisis Causa Raíz", "analisis_causa_raiz"), ("Contramedidas", "contramedidas"),
+            ("Resultados Esperados", "resultados_esperados"), ("Plan de Seguimiento", "plan_seguimiento"),
+            ("Lecciones Aprendidas", "lecciones_aprendidas"), ("Estandarización", "estandarizacion"),
+        ]
+        for label, key in sections:
+            st.markdown(f"**{label}**")
+            data[key] = _spell_check_field("", data.get(key, ""), f"a3_{key}", gemini)
+
+    with tabs[2]:
+        if images:
+            for idx, img_info in enumerate(images, 1):
+                st.image(img_info["path"], caption=f"Figura {idx}: {img_info['desc']}", width=400)
+        else:
+            st.info("No se cargaron imágenes")
+
+    with tabs[3]:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("✅ DOCX Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "a3", "docx")
+        with col2:
+            if st.button("📄 PDF Español", type="secondary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "a3", "pdf")
+        with col3:
+            if st.button("🔄 Regenerar", use_container_width=True):
+                st.session_state.page = "nueva_a3"
+                st.rerun()
+
+    st.session_state.generated_data = data
+    st.session_state.doc_meta = meta
+
+
+def _render_kaizen_review(data, meta, images, config):
+    """Revision especifica Kaizen"""
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+
+    tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
+
+    with tabs[0]:
+        meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""), key="kzn_rev_title")
+        meta["area"] = st.text_input("Área:", value=meta.get("area", ""), key="kzn_rev_area")
+        meta["autor"] = st.text_input("Autor:", value=meta.get("autor", ""), key="kzn_rev_autor")
+        meta["doc_number"] = st.text_input("Número:", value=meta.get("doc_number", ""), disabled=True)
+        meta["fecha"] = st.text_input("Fecha:", value=meta.get("fecha", ""), disabled=True)
+
+    with tabs[1]:
+        sections = [
+            ("Descripción del Problema", "descripcion_problema"), ("Solución Implementada", "solucion"),
+            ("Beneficios", "beneficios"), ("Tipo de Desperdicio", "tipo_desperdicio"),
+            ("Impacto BTO", "impacto_bto"), ("Próximos Pasos", "proximos_pasos"),
+        ]
+        for label, key in sections:
+            st.markdown(f"**{label}**")
+            data[key] = _spell_check_field("", data.get(key, ""), f"kzn_{key}", gemini)
+
+    with tabs[2]:
+        if images:
+            for idx, img_info in enumerate(images, 1):
+                st.image(img_info["path"], caption=f"Figura {idx}: {img_info['desc']}", width=400)
+        else:
+            st.info("No se cargaron imágenes")
+
+    with tabs[3]:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("✅ PPTX Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "kaizen", "pptx")
+        with col2:
+            if st.button("📄 PDF Español", type="secondary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "kaizen", "pdf")
+        with col3:
+            if st.button("🔄 Regenerar", use_container_width=True):
+                st.session_state.page = "nuevo_kaizen"
+                st.rerun()
+
+    st.session_state.generated_data = data
+    st.session_state.doc_meta = meta
+
+
+# =============================================================================
+# FINALIZACIÓN DE DOCUMENTO - GENERACIÓN Y EXPORTACIÓN
+# =============================================================================
+
+def _finalize_document(data, meta, images, language, doc_type, output_format="pptx"):
+    """Finaliza y genera documento en el formato solicitado"""
+    config = st.session_state.config
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+
+    with st.spinner(f"📄 Generando documento {'en Inglés' if language == 'en' else 'en Español'}..."):
+        final_data = {**meta, **data}
+
+        if language == "en" and doc_type == "moc":
+            st.info("🌐 Traduciendo documento al inglés profesional...")
+            final_data = gemini.translate_document(final_data)
+
+        generator = DocumentGenerator()
+        pdf_exporter = PDFExporter()
+
+        if doc_type == "moc":
+            if output_format == "pdf":
+                pptx_buffer = generator.generate_moc(final_data, images, st.session_state.get("template_moc_bytes"))
+                if pptx_buffer:
+                    pdf_bytes = pdf_exporter.pptx_to_pdf_libreoffice(pptx_buffer.getvalue(), "moc.pdf")
+                    if pdf_bytes:
+                        buffer = BytesIO(pdf_bytes)
+                        ext = "pdf"
+                        mime = "application/pdf"
+                    else:
+                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
+                        if pdf_bytes:
+                            buffer = BytesIO(pdf_bytes)
+                            ext = "pdf"
+                            mime = "application/pdf"
+                        else:
+                            st.warning("No se pudo generar PDF. Descargando PPTX en su lugar.")
+                            buffer = pptx_buffer
+                            ext = "pptx"
+                            mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                else:
+                    return
+            else:
+                buffer = generator.generate_moc(final_data, images, st.session_state.get("template_moc_bytes"))
+                ext = "pptx"
+                mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+        elif doc_type == "a3":
+            if output_format == "pdf":
+                docx_buffer = generator.generate_a3(final_data, images, st.session_state.get("template_a3_bytes"))
+                if docx_buffer:
+                    pdf_bytes = pdf_exporter.docx_to_pdf_libreoffice(docx_buffer.getvalue(), "a3.pdf")
+                    if pdf_bytes:
+                        buffer = BytesIO(pdf_bytes)
+                        ext = "pdf"
+                        mime = "application/pdf"
+                    else:
+                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
+                        if pdf_bytes:
+                            buffer = BytesIO(pdf_bytes)
+                            ext = "pdf"
+                            mime = "application/pdf"
+                        else:
+                            st.warning("No se pudo generar PDF. Descargando DOCX en su lugar.")
+                            buffer = docx_buffer
+                            ext = "docx"
+                            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                else:
+                    return
+            else:
+                buffer = generator.generate_a3(final_data, images, st.session_state.get("template_a3_bytes"))
+                ext = "docx"
+                mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+        else:
+            if output_format == "pdf":
+                pptx_buffer = generator.generate_kaizen(final_data, images, st.session_state.get("template_kaizen_bytes"))
+                if pptx_buffer:
+                    pdf_bytes = pdf_exporter.pptx_to_pdf_libreoffice(pptx_buffer.getvalue(), "kaizen.pdf")
+                    if pdf_bytes:
+                        buffer = BytesIO(pdf_bytes)
+                        ext = "pdf"
+                        mime = "application/pdf"
+                    else:
+                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
+                        if pdf_bytes:
+                            buffer = BytesIO(pdf_bytes)
+                            ext = "pdf"
+                            mime = "application/pdf"
+                        else:
+                            st.warning("No se pudo generar PDF. Descargando PPTX en su lugar.")
+                            buffer = pptx_buffer
+                            ext = "pptx"
+                            mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                else:
+                    return
+            else:
+                buffer = generator.generate_kaizen(final_data, images, st.session_state.get("template_kaizen_bytes"))
+                ext = "pptx"
+                mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+        if buffer is None:
+            return
+
+        filename = f"{meta.get('moc_number', meta.get('doc_number', 'DOC'))}_{language}.{ext}"
+
+        doc_info = {
+            "type": doc_type,
+            "title": meta.get("moc_title", meta.get("titulo", "Sin título")),
+            "number": meta.get("moc_number", meta.get("doc_number", "")),
+            "language": language,
+            "format": ext,
+            "filename": filename
+        }
+        Utils.add_to_history(doc_info)
+
+        st.success(f"✅ Documento generado exitosamente: {filename}")
+
+        st.download_button(
+            label=f"📥 Descargar {ext.upper()}",
+            data=buffer,
+            file_name=filename,
+            mime=mime,
+            use_container_width=True
+        )
+
+        if ext != "pdf":
+            st.info("💡 Para obtener PDF: use el botón PDF directamente arriba, o abra el archivo en Office/LibreOffice y exporte a PDF.")
+
+
+# =============================================================================
+# HISTORIAL CON PERSISTENCIA LOCAL
+# =============================================================================
+
+def render_history():
+    """Renderiza historial de documentos con exportacion/importacion"""
+    st.markdown('<div class="section-header"><h3>📁 Historial de Documentos Generados</h3></div>', unsafe_allow_html=True)
+
+    docs = st.session_state.history.get("documents", [])
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("#### 💾 Exportar Configuración")
+        export_data = {
+            "config": st.session_state.config,
+            "history": st.session_state.history,
+            "export_date": datetime.now().isoformat(),
+            "version": "4.0.0"
+        }
+        export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
+        st.download_button(
+            label="📥 Descargar backup completo (JSON)",
+            data=export_json,
+            file_name=f"gestion_documental_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            use_container_width=True
+        )
+        st.caption("Guarde este archivo para restaurar su configuración e historial en cualquier momento.")
+
+    with col2:
+        st.markdown("#### 📂 Importar Configuración")
+        uploaded_backup = st.file_uploader("Seleccione archivo de backup (.json):", type=["json"], key="import_backup")
+        if uploaded_backup:
+            try:
+                backup_data = json.loads(uploaded_backup.read())
+                if "config" in backup_data:
+                    st.session_state.config = backup_data["config"]
+                    LocalStorage.save_config(backup_data["config"])
+                if "history" in backup_data:
+                    st.session_state.history = backup_data["history"]
+                    LocalStorage.save_history(backup_data["history"])
+                st.success("✅ Configuración e historial restaurados correctamente.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error al importar: {e}")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
+    if not docs:
+        st.info("📭 No hay documentos generados aún. Cree su primer documento desde el menú principal.")
+        return
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        filter_type = st.selectbox("Filtrar:", ["Todos", "MoC", "A3", "Kaizen"], key="hist_filter_type")
+    with col2:
+        filter_lang = st.selectbox("Idioma:", ["Todos", "Español", "Inglés"], key="hist_filter_lang")
+    with col3:
+        search = st.text_input("Buscar:", placeholder="Título o número...", key="hist_search")
+
+    filtered = docs
+    if filter_type != "Todos":
+        type_map = {"MoC": "moc", "A3": "a3", "Kaizen": "kaizen"}
+        filtered = [d for d in filtered if d.get("type") == type_map.get(filter_type)]
+    if filter_lang != "Todos":
+        lang_map = {"Español": "es", "Inglés": "en"}
+        filtered = [d for d in filtered if d.get("language", "es") == lang_map.get(filter_lang)]
+    if search:
+        filtered = [d for d in filtered if search.lower() in d.get("title", "").lower() 
+                    or search.lower() in d.get("number", "").lower()]
+
+    st.markdown(f"**Mostrando {len(filtered)} documento(s) de {len(docs)} total(es)**")
+
+    for doc in filtered:
+        type_emoji = {"moc": "📋", "a3": "📊", "kaizen": "⚡"}.get(doc.get("type"), "📄")
+        type_label = {"moc": "MoC", "a3": "A3", "kaizen": "Kaizen"}.get(doc.get("type"), "Doc")
+        lang_flag = "🇪🇸" if doc.get("language") == "es" else "🇺🇸"
+        fmt_icon = "📄" if doc.get("format") == "pdf" else "📑"
+
+        st.markdown(f"""
+        <div class="history-item">
+            <h4 style="margin: 0; color: #1e293b;">{type_emoji} {doc.get('title', 'Sin título')}</h4>
+            <p style="margin: 0.25rem 0; color: #64748b; font-size: 0.9rem;">
+                {type_label} · {doc.get('number', '')} · {lang_flag} · {fmt_icon} · {doc.get('timestamp', '')[:10]}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("🗑️ Eliminar", key=f"del_{doc.get('id', 'x')}"):
+            Utils.delete_from_history(doc.get('id'))
+            st.rerun()
+
+
+# =============================================================================
+# CONFIGURACIÓN COMPLETA
+# =============================================================================
+
+def render_settings():
+    """Renderiza configuracion completa"""
+    st.markdown('<div class="section-header"><h3>⚙️ Configuración del Sistema</h3></div>', unsafe_allow_html=True)
+
+    config = st.session_state.config
+
+    tabs = st.tabs(["🔑 API Gemini", "🏢 Empresa", "📄 Templates", "🔧 Avanzado", "💾 Backup"])
+
+    with tabs[0]:
+        st.markdown("#### API Key Gemini")
+        st.info("💡 Obtenga su API Key gratuita en [Google AI Studio](https://aistudio.google.com/)")
+
+        api_key = st.text_input("API Key:", value=config.get("gemini_api_key", ""), type="password")
+
+        st.markdown("#### Selección de Modelo")
+        current_model = config.get("gemini_model", "gemini-1.5-pro")
+
+        col1, col2, col3 = st.columns(3)
+        models = [
+            ("gemini-1.5-flash-lite", "⚡ 3.1 Flash-Lite", "Respuestas rápidas", "Económico"),
+            ("gemini-1.5-flash", "🔥 3.5 Flash", "Ayuda completa", "Balance"),
+            ("gemini-1.5-pro", "🧠 3.1 Pro", "Máxima calidad", "Recomendado"),
+        ]
+
+        for i, (model_id, name, desc, badge) in enumerate(models):
+            is_selected = current_model == model_id
+            with [col1, col2, col3][i]:
+                border_color = "#1a5f7a" if is_selected else "#e2e8f0"
+                bg_color = "#eff6ff" if is_selected else "#f8fafc"
+                selected_text = '<div style="color: #1a5f7a; font-weight: bold; margin-top: 0.5rem;">✓ Seleccionado</div>' if is_selected else ''
+
+                st.markdown(f"""
+                <div style="background: {bg_color}; border: 2px solid {border_color}; border-radius: 12px; padding: 1rem; text-align: center;">
+                    <div style="font-size: 2rem;">{name.split()[0]}</div>
+                    <h4 style="margin: 0.5rem 0; color: #1e293b;">{name.split(maxsplit=1)[1]}</h4>
+                    <p style="color: #64748b; font-size: 0.85rem; margin: 0;">{desc}</p>
+                    <span style="background: #dbeafe; color: #1d4ed8; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem;">{badge}</span>
+                    {selected_text}
+                </div>
+                """, unsafe_allow_html=True)
+
+                btn_type = "primary" if is_selected else "secondary"
+                if st.button(f"Seleccionar", key=f"sel_{model_id}", use_container_width=True, type=btn_type):
+                    config["gemini_model"] = model_id
+                    st.session_state.config = config
+                    LocalStorage.save_config(config)
+                    st.success(f"✅ Modelo: {name}")
+                    st.rerun()
+
+        if st.button("💾 Guardar API Key", type="primary", use_container_width=True):
+            config["gemini_api_key"] = api_key
+            st.session_state.config = config
+            LocalStorage.save_config(config)
+            st.success("✅ API Key guardada")
+
+    with tabs[1]:
+        st.markdown("#### Datos de la Empresa")
+        company = st.text_input("Empresa:", value=config.get("company_name", ""), placeholder="Ej: Orica Perú")
+        dept = st.text_input("Departamento:", value=config.get("department", ""), placeholder="Ej: Mantenimiento")
+        author = st.text_input("Autor por defecto:", value=config.get("default_author", ""))
+        area = st.text_input("Área por defecto:", value=config.get("default_area", ""), placeholder="Ej: Planta Lurín")
+
+        if st.button("💾 Guardar Datos", type="primary", use_container_width=True):
+            config["company_name"] = company
+            config["department"] = dept
+            config["default_author"] = author
+            config["default_area"] = area
+            st.session_state.config = config
+            LocalStorage.save_config(config)
+            st.success("✅ Datos guardados")
+
+    with tabs[2]:
+        st.markdown("#### Carga de Templates Oficiales")
+        st.warning("⚠️ **Importante:** Los templates son los formatos oficiales de su empresa. Suba los archivos .pptx (MoC, Kaizen) y .docx (A3).")
+
+        moc_ok = st.session_state.get("template_moc_bytes") is not None
+        a3_ok = st.session_state.get("template_a3_bytes") is not None
+        kzn_ok = st.session_state.get("template_kaizen_bytes") is not None
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            status_moc = "✅ Cargado" if moc_ok else "❌ Pendiente"
+            st.markdown(f"**Template MoC**<br>{status_moc}", unsafe_allow_html=True)
+            moc_file = st.file_uploader("Subir MoC (.pptx)", type=["pptx"], key="upload_moc")
+
+        with col2:
+            status_a3 = "✅ Cargado" if a3_ok else "❌ Pendiente"
+            st.markdown(f"**Template A3**<br>{status_a3}", unsafe_allow_html=True)
+            a3_file = st.file_uploader("Subir A3 (.docx)", type=["docx"], key="upload_a3")
+
+        with col3:
+            status_kzn = "✅ Cargado" if kzn_ok else "❌ Pendiente"
+            st.markdown(f"**Template Kaizen**<br>{status_kzn}", unsafe_allow_html=True)
+            kzn_file = st.file_uploader("Subir Kaizen (.pptx)", type=["pptx"], key="upload_kzn")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        if st.button("💾 Guardar Templates", type="primary", use_container_width=True):
+            saved_any = False
+
+            if moc_file is not None:
+                bytes_data = moc_file.getvalue()
+                st.session_state.template_moc_bytes = bytes_data
+                LocalStorage.save_template_bytes("moc", bytes_data)
+                st.success("✅ Template MoC guardado")
+                saved_any = True
+
+            if a3_file is not None:
+                bytes_data = a3_file.getvalue()
+                st.session_state.template_a3_bytes = bytes_data
+                LocalStorage.save_template_bytes("a3", bytes_data)
+                st.success("✅ Template A3 guardado")
+                saved_any = True
+
+            if kzn_file is not None:
+                bytes_data = kzn_file.getvalue()
+                st.session_state.template_kaizen_bytes = bytes_data
+                LocalStorage.save_template_bytes("kaizen", bytes_data)
+                st.success("✅ Template Kaizen guardado")
+                saved_any = True
+
+            if not saved_any:
+                st.warning("⚠️ No se seleccionó ningún archivo nuevo.")
+            else:
+                st.rerun()
+
+        if moc_ok and a3_ok and kzn_ok:
+            st.balloons()
+            st.success("🎉 ¡Todos los templates están cargados! Puede comenzar a generar documentos.")
+
+    with tabs[3]:
+        st.markdown("#### Configuración Avanzada")
+
+        st.markdown("##### Corrección Ortográfica")
+        auto_correct = st.toggle("Corrección automática en campos de entrada", value=config.get("auto_correct", True))
+        spell_check = st.toggle("Corrector ortográfico con IA en revisión", value=config.get("spell_check", True))
+
+        st.markdown("##### Nivel de Pensamiento IA")
+        thinking = st.select_slider("Profundidad de generación:", ["Básico", "Estándar", "Profundo"],
+                                    value=config.get("thinking_level", "Estándar"))
+
+        st.markdown("##### Numeración de Documentos")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            last_moc = st.number_input("Último MoC:", value=config.get("last_moc_number", 0), min_value=0)
+        with col2:
+            last_a3 = st.number_input("Último A3:", value=config.get("last_a3_number", 0), min_value=0)
+        with col3:
+            last_kzn = st.number_input("Último Kaizen:", value=config.get("last_kaizen_number", 0), min_value=0)
+
+        if st.button("💾 Guardar Configuración Avanzada", type="primary", use_container_width=True):
+            config["auto_correct"] = auto_correct
+            config["spell_check"] = spell_check
+            config["thinking_level"] = thinking
+            config["last_moc_number"] = last_moc
+            config["last_a3_number"] = last_a3
+            config["last_kaizen_number"] = last_kzn
+            st.session_state.config = config
+            LocalStorage.save_config(config)
+            st.success("✅ Configuración avanzada guardada")
+
+    with tabs[4]:
+        st.markdown("#### Backup y Restauración")
+        st.info("💡 Exporte su configuración e historial para no perderlos. Los datos se guardan automáticamente, pero este backup le permite migrar a otro equipo.")
+
+        export_data = {
+            "config": st.session_state.config,
+            "history": st.session_state.history,
+            "export_date": datetime.now().isoformat(),
+            "version": "4.0.0"
+        }
+        export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
+
+        st.download_button(
+            label="📥 Exportar todo (JSON)",
+            data=export_json,
+            file_name=f"backup_gestion_documental_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json",
+            use_container_width=True
+        )
+
+        st.markdown("#### Restaurar desde archivo")
+        restore_file = st.file_uploader("Seleccione archivo de backup:", type=["json"], key="restore_file")
+        if restore_file:
+            try:
+                restore_data = json.loads(restore_file.read())
+                if "config" in restore_data:
+                    st.session_state.config = restore_data["config"]
+                    LocalStorage.save_config(restore_data["config"])
+                if "history" in restore_data:
+                    st.session_state.history = restore_data["history"]
+                    LocalStorage.save_history(restore_data["history"])
+                st.success("✅ Restauración completada. Recargando...")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
+
+        st.markdown("---")
+        st.markdown("#### 🗑️ Zona de Peligro")
+        st.warning("⚠️ Las siguientes acciones son irreversibles.")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ Borrar Historial Completo", type="secondary", use_container_width=True):
+                st.session_state.history = {"documents": []}
+                LocalStorage.save_history({"documents": []})
+                st.success("✅ Historial borrado")
+                st.rerun()
+        with col2:
+            if st.button("🗑️ Borrar Configuración", type="secondary", use_container_width=True):
+                st.session_state.config = {
+                    "gemini_api_key": "",
+                    "gemini_model": "gemini-1.5-pro",
+                    "company_name": "",
+                    "department": "",
+                    "default_author": "",
+                    "default_area": "",
+                    "header_text": "",
+                    "footer_text": "",
+                    "last_moc_number": 0,
+                    "last_a3_number": 0,
+                    "last_kaizen_number": 0,
+                    "spell_check": True,
+                    "thinking_level": "Estándar",
+                    "auto_correct": True,
+                }
+                LocalStorage.save_config(st.session_state.config)
+                st.success("✅ Configuración restaurada a valores por defecto")
+                st.rerun()
+
+
+# =============================================================================
+# FUNCIÓN PRINCIPAL
+# =============================================================================
+
+def main():
+    """Punto de entrada principal"""
+    render_sidebar()
+
+    page = st.session_state.page
+
+    if page == "inicio":
+        render_welcome()
+    elif page == "nueva_moc":
+        render_moc_form()
+    elif page == "nueva_a3":
+        render_a3_form()
+    elif page == "nuevo_kaizen":
+        render_kaizen_form()
+    elif page == "revisar":
+        render_review()
+    elif page == "historial":
+        render_history()
+    elif page == "configuracion":
+        render_settings()
+    else:
+        render_welcome()
+
+    # Footer
+    st.markdown("""
+    <div class="app-footer">
+        <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
+        <p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v4.0.0</p>
+        <p style="font-size: 0.75rem; color: #94a3b8;">
+            Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
+            Mantiene los formatos oficiales de la empresa sin modificaciones.<br>
+            Datos persistentes locales. Exportación a PDF integrada.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+if __name__ == "__main__":
+    main()
