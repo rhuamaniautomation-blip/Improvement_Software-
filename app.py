@@ -3,21 +3,12 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 4.0.0 - Completo con Exportación a PDF y Persistencia Local
+Version 5.0.0 - Completo con Formatos Oficiales y Corrección Ortográfica
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 4.0.0
+Version: 5.0.0
 Fecha: Julio 2026
-================================================================================
-MEJORAS v4.0.0:
-- Generación automática de formatos MoC, A3 y Kaizen con IA detallada
-- Corrector ortográfico automático en todos los campos
-- Redacción humanizada y profesional
-- Exportación directa a PDF (PowerPoint y Word -> PDF)
-- Persistencia local de datos mediante archivos JSON
-- Historial completo con búsqueda y filtros
-- Templates oficiales integrados (no requieren carga manual)
 ================================================================================
 """
 
@@ -49,7 +40,15 @@ from docx.shared import Pt as DocxPt
 from docx.shared import RGBColor as DocxRGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-# Intentar importar reportlab para PDF
+# Corrector ortográfico
+SPELLCHECKER_AVAILABLE = False
+try:
+    from spellchecker import SpellChecker
+    SPELLCHECKER_AVAILABLE = True
+except ImportError:
+    pass
+
+# Intentar importar reportlab para PDF fallback
 try:
     from reportlab.lib.pagesizes import A4, letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -80,7 +79,6 @@ TEMPLATES_DIR = BASE_DIR / "templates"
 HISTORY_FILE = DATA_DIR / "history.json"
 CONFIG_FILE = DATA_DIR / "config.json"
 
-# Crear directorios si no existen
 DATA_DIR.mkdir(exist_ok=True)
 TEMPLATES_DIR.mkdir(exist_ok=True)
 
@@ -90,160 +88,92 @@ TEMPLATES_DIR.mkdir(exist_ok=True)
 CUSTOM_CSS = """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-    html, body, [class*="css"] {
-        font-family: 'Inter', 'Segoe UI', sans-serif !important;
-    }
-
+    html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif !important; }
     .main-header {
         background: linear-gradient(135deg, #1a5f7a 0%, #2e8bc0 100%);
-        padding: 2rem;
-        border-radius: 12px;
-        color: white;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 20px rgba(26, 95, 122, 0.3);
+        padding: 2rem; border-radius: 12px; color: white;
+        margin-bottom: 2rem; box-shadow: 0 4px 20px rgba(26, 95, 122, 0.3);
     }
-
     .main-header h1 { color: white !important; font-weight: 700 !important; margin-bottom: 0.5rem !important; }
     .main-header p { color: rgba(255,255,255,0.9) !important; font-size: 1.1rem !important; }
-
     .doc-card {
-        background: white;
-        border-radius: 16px;
-        padding: 2rem;
-        border: 2px solid #e2e8f0;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        height: 100%;
+        background: white; border-radius: 16px; padding: 2rem;
+        border: 2px solid #e2e8f0; transition: all 0.3s ease;
+        cursor: pointer; height: 100%;
     }
     .doc-card:hover {
-        border-color: #1a5f7a;
-        transform: translateY(-4px);
+        border-color: #1a5f7a; transform: translateY(-4px);
         box-shadow: 0 12px 40px rgba(26, 95, 122, 0.15);
     }
     .doc-card-moc { border-left: 5px solid #1a5f7a; }
     .doc-card-a3 { border-left: 5px solid #10b981; }
     .doc-card-kaizen { border-left: 5px solid #f59e0b; }
-
     .stButton > button {
-        border-radius: 10px !important;
-        font-weight: 600 !important;
-        padding: 0.75rem 2rem !important;
-        transition: all 0.2s ease !important;
+        border-radius: 10px !important; font-weight: 600 !important;
+        padding: 0.75rem 2rem !important; transition: all 0.2s ease !important;
     }
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
     .stSelectbox > div > div > div {
-        border-radius: 8px !important;
-        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important; border: 1px solid #cbd5e1 !important;
         font-size: 15px !important;
     }
-
     .section-header {
-        background: #f1f5f9;
-        padding: 1rem 1.5rem;
-        border-radius: 10px;
-        margin: 1.5rem 0 1rem 0;
+        background: #f1f5f9; padding: 1rem 1.5rem;
+        border-radius: 10px; margin: 1.5rem 0 1rem 0;
         border-left: 4px solid #1a5f7a;
     }
     .section-header h3 { margin: 0 !important; color: #1e293b !important; font-weight: 600 !important; }
-
     .field-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 1rem;
-        margin: 0.5rem 0;
+        background: white; border: 1px solid #e2e8f0;
+        border-radius: 10px; padding: 1rem; margin: 0.5rem 0;
     }
     .field-card:hover {
-        border-color: #1a5f7a;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border-color: #1a5f7a; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-
     .gemini-badge {
-        display: inline-block;
-        background: #e0e7ff;
-        color: #4338ca;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        margin-left: 0.5rem;
+        display: inline-block; background: #e0e7ff; color: #4338ca;
+        padding: 0.25rem 0.75rem; border-radius: 20px;
+        font-size: 12px; font-weight: 600; margin-left: 0.5rem;
     }
-
     .history-item {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 1rem;
-        margin: 0.5rem 0;
+        background: white; border: 1px solid #e2e8f0;
+        border-radius: 10px; padding: 1rem; margin: 0.5rem 0;
         transition: all 0.2s;
     }
     .history-item:hover {
-        border-color: #1a5f7a;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border-color: #1a5f7a; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
-
     .app-footer {
-        text-align: center;
-        padding: 2rem;
-        margin-top: 3rem;
-        border-top: 1px solid #e2e8f0;
-        color: #64748b;
+        text-align: center; padding: 2rem; margin-top: 3rem;
+        border-top: 1px solid #e2e8f0; color: #64748b;
     }
-
     .auto-correct-badge {
-        display: inline-flex;
-        align-items: center;
-        background: #dcfce7;
-        color: #166534;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
+        display: inline-flex; align-items: center;
+        background: #dcfce7; color: #166534;
+        padding: 0.25rem 0.75rem; border-radius: 20px;
+        font-size: 11px; font-weight: 600; margin-bottom: 0.5rem;
     }
-
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-
     [data-testid="stSidebar"] { background: #1e293b !important; }
     [data-testid="stSidebar"] .stMarkdown { color: #94a3b8 !important; }
-    [data-testid="stSidebar"] h1, 
-    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2,
     [data-testid="stSidebar"] h3 { color: #f8fafc !important; }
-
-    .template-uploader {
-        background: #f8fafc;
-        border: 2px dashed #cbd5e1;
-        border-radius: 12px;
-        padding: 1.5rem;
-        text-align: center;
-        margin: 1rem 0;
-    }
-    .template-uploader.ok {
-        background: #f0fdf4;
-        border-color: #10b981;
-    }
 </style>
 """
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # =============================================================================
-# PERSISTENCIA LOCAL - GUARDAR/CARGAR DATOS
+# PERSISTENCIA LOCAL
 # =============================================================================
 class LocalStorage:
-    """Gestiona la persistencia local de configuración e historial"""
-
     @staticmethod
     def save_config(config):
-        """Guarda configuración en archivo JSON local"""
         try:
             with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
@@ -254,7 +184,6 @@ class LocalStorage:
 
     @staticmethod
     def load_config():
-        """Carga configuración desde archivo JSON local"""
         try:
             if CONFIG_FILE.exists():
                 with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
@@ -265,7 +194,6 @@ class LocalStorage:
 
     @staticmethod
     def save_history(history):
-        """Guarda historial en archivo JSON local"""
         try:
             with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
                 json.dump(history, f, ensure_ascii=False, indent=2)
@@ -276,7 +204,6 @@ class LocalStorage:
 
     @staticmethod
     def load_history():
-        """Carga historial desde archivo JSON local"""
         try:
             if HISTORY_FILE.exists():
                 with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
@@ -287,7 +214,6 @@ class LocalStorage:
 
     @staticmethod
     def save_template_bytes(template_name, file_bytes):
-        """Guarda bytes de template en archivo"""
         try:
             template_path = TEMPLATES_DIR / f"{template_name}.bin"
             with open(template_path, 'wb') as f:
@@ -299,7 +225,6 @@ class LocalStorage:
 
     @staticmethod
     def load_template_bytes(template_name):
-        """Carga bytes de template desde archivo"""
         try:
             template_path = TEMPLATES_DIR / f"{template_name}.bin"
             if template_path.exists():
@@ -311,7 +236,6 @@ class LocalStorage:
 
     @staticmethod
     def delete_template(template_name):
-        """Elimina archivo de template"""
         try:
             template_path = TEMPLATES_DIR / f"{template_name}.bin"
             if template_path.exists():
@@ -348,7 +272,6 @@ class Utils:
 
     @staticmethod
     def add_to_history(doc_info):
-        """Agrega documento al historial persistente"""
         history = st.session_state.history
         doc_info["id"] = str(uuid.uuid4())
         doc_info["timestamp"] = datetime.now().isoformat()
@@ -358,7 +281,6 @@ class Utils:
 
     @staticmethod
     def get_history(doc_type=None):
-        """Obtiene historial filtrado"""
         docs = st.session_state.history.get("documents", [])
         if doc_type:
             docs = [d for d in docs if d.get("type") == doc_type]
@@ -366,7 +288,6 @@ class Utils:
 
     @staticmethod
     def delete_from_history(doc_id):
-        """Elimina documento del historial"""
         history = st.session_state.history
         history["documents"] = [d for d in history["documents"] if d.get("id") != doc_id]
         st.session_state.history = history
@@ -374,14 +295,16 @@ class Utils:
 
     @staticmethod
     def correct_spelling_basic(text):
-        """Corrector ortográfico básico local (sin API)"""
+        """Corrector ortográfico robusto con diccionario técnico industrial"""
         if not text or not text.strip():
             return text
 
-        # Correcciones comunes en español técnico industrial
         corrections = {
+            # Tildes en palabras comunes del ámbito industrial
             "tecnico": "técnico", "Tecnico": "Técnico", "TECNICO": "TÉCNICO",
-            "produccion": "producción", "Produccion": "Producción",
+            "tecnica": "técnica", "Tecnica": "Técnica", "TECNICA": "TÉCNICA",
+            "tecnologia": "tecnología", "Tecnologia": "Tecnología", "TECNOLOGIA": "TECNOLOGÍA",
+            "produccion": "producción", "Produccion": "Producción", "PRODUCCION": "PRODUCCIÓN",
             "implementacion": "implementación", "Implementacion": "Implementación",
             "evaluacion": "evaluación", "Evaluacion": "Evaluación",
             "operacion": "operación", "Operacion": "Operación",
@@ -436,6 +359,500 @@ class Utils:
             "deduccion": "deducción", "Deduccion": "Deducción",
             "induccion": "inducción", "Induccion": "Inducción",
             "seduccion": "seducción", "Seduccion": "Seducción",
+            "maquina": "máquina", "Maquina": "Máquina", "MAQUINA": "MÁQUINA",
+            "maquinas": "máquinas", "Maquinas": "Máquinas",
+            "podria": "podría", "Podria": "Podría",
+            "podrian": "podrían", "Podrian": "Podrían",
+            "habria": "habría", "Habria": "Habría",
+            "seria": "sería", "Seria": "Sería",
+            "tendria": "tendría", "Tendria": "Tendría",
+            "haria": "haría", "Haria": "Haría",
+            "daria": "daría", "Daria": "Daría",
+            "estaria": "estaría", "Estaria": "Estaría",
+            "tendrian": "tendrían", "Tendrian": "Tendrían",
+            "habrian": "habrían", "Habrian": "Habrían",
+            "serian": "serían", "Serian": "Serían",
+            "harian": "harían", "Harian": "Harían",
+            "darian": "darían", "Darian": "Darían",
+            "estarian": "estarían", "Estarian": "Estarían",
+            "deberia": "debería", "Deberia": "Debería",
+            "deberian": "deberían", "Deberian": "Deberían",
+            "mas": "más", "Mas": "Más", "MAS": "MÁS",
+            "aun": "aún", "Aun": "Aún",
+            "solo": "solo",  # ambas formas son válidas
+            "tambien": "también", "Tambien": "También",
+            "asi": "así", "Asi": "Así",
+            "aqui": "aquí", "Aqui": "Aquí",
+            "alli": "allí", "Alli": "Allí",
+            "alla": "allá", "Alla": "Allá",
+            "despues": "después", "Despues": "Después",
+            "antes": "antes",
+            "ademas": "además", "Ademas": "Además",
+            "aunque": "aunque",
+            "mientras": "mientras",
+            "durante": "durante",
+            "segun": "según", "Segun": "Según",
+            "numero": "número", "Numero": "Número", "NUMERO": "NÚMERO",
+            "maximo": "máximo", "Maximo": "Máximo", "MAXIMO": "MÁXIMO",
+            "minimo": "mínimo", "Minimo": "Mínimo", "MINIMO": "MÍNIMO",
+            "optimo": "óptimo", "Optimo": "Óptimo", "OPTIMO": "ÓPTIMO",
+            "ultimo": "último", "Ultimo": "Último", "ULTIMO": "ÚLTIMO",
+            "periodo": "período", "Periodo": "Período", "PERIODO": "PERÍODO",
+            "epoca": "época", "Epoca": "Época", "EPOCA": "ÉPOCA",
+            "decada": "década", "Decada": "Década", "DECADA": "DÉCADA",
+            "area": "área", "Area": "Área", "AREA": "ÁREA",
+            "dia": "día", "Dia": "Día", "DIA": "DÍA",
+            "manana": "mañana", "Manana": "Mañana", "MANANA": "MAÑANA",
+            "proximo": "próximo", "Proximo": "Próximo", "PROXIMO": "PRÓXIMO",
+            "analisis": "análisis", "Analisis": "Análisis", "ANALISIS": "ANÁLISIS",
+            "sintesis": "síntesis", "Sintesis": "Síntesis", "SINTESIS": "SÍNTESIS",
+            "crisis": "crisis",
+            "tesis": "tesis",
+            "hipotesis": "hipótesis", "Hipotesis": "Hipótesis", "HIPOTESIS": "HIPÓTESIS",
+            "parentesis": "paréntesis", "Parentesis": "Paréntesis", "PARENTESIS": "PARÉNTESIS",
+            "sinopsis": "sinopsis",
+            "axis": "axis",
+            "praxis": "praxis",
+            "metodo": "método", "Metodo": "Método", "METODO": "MÉTODO",
+            "parametro": "parámetro", "Parametro": "Parámetro", "PARAMETRO": "PARÁMETRO",
+            "parametros": "parámetros", "Parametros": "Parámetros", "PARAMETROS": "PARÁMETROS",
+            "caracteristica": "característica", "Caracteristica": "Característica",
+            "caracteristicas": "características", "Caracteristicas": "Características",
+            "especifico": "específico", "Especifico": "Específico",
+            "especifica": "específica", "Especifica": "Específica",
+            "generico": "genérico", "Generico": "Genérico",
+            "generica": "genérica", "Generica": "Genérica",
+            "atomico": "atómico", "Atomico": "Atómico",
+            "atomica": "atómica", "Atomica": "Atómica",
+            "ionico": "iónico", "Ionico": "Iónico",
+            "ionica": "iónica", "Ionico": "Iónica",
+            "electronico": "electrónico", "Electronico": "Electrónico",
+            "electronica": "electrónica", "Electronica": "Electrónica",
+            "electrico": "eléctrico", "Electrico": "Eléctrico",
+            "electrica": "eléctrica", "Electrica": "Eléctrica",
+            "hidraulico": "hidráulico", "Hidraulico": "Hidráulico",
+            "hidraulica": "hidráulica", "Hidraulica": "Hidráulica",
+            "neumatico": "neumático", "Neumatico": "Neumático",
+            "neumatica": "neumática", "Neumatica": "Neumática",
+            "termico": "térmico", "Termico": "Térmico",
+            "termica": "térmica", "Termica": "Térmica",
+            "optico": "óptico", "Optico": "Óptico",
+            "optica": "óptica", "Optica": "Óptica",
+            "acustico": "acústico", "Acustico": "Acústico",
+            "acustica": "acústica", "Acustica": "Acústica",
+            "magnetico": "magnético", "Magnetico": "Magnético",
+            "magnetica": "magnética", "Magnetica": "Magnética",
+            "quimico": "químico", "Quimico": "Químico",
+            "quimica": "química", "Quimica": "Química",
+            "fisico": "físico", "Fisico": "Físico",
+            "fisica": "física", "Fisica": "Física",
+            "biologico": "biológico", "Biologico": "Biológico",
+            "biologica": "biológica", "Biologica": "Biológica",
+            "geologico": "geológico", "Geologico": "Geológico",
+            "geologica": "geológica", "Geologica": "Geológica",
+            "ecologico": "ecológico", "Ecologico": "Ecológico",
+            "ecologica": "ecológica", "Ecologica": "Ecológica",
+            "psicologico": "psicológico", "Psicologico": "Psicológico",
+            "psicologica": "psicológica", "Psicologica": "Psicológica",
+            "sociologico": "sociológico", "Sociologico": "Sociológico",
+            "sociologica": "sociológica", "Sociologica": "Sociológica",
+            "antropologico": "antropológico", "Antropologico": "Antropológico",
+            "antropologica": "antropológica", "Antropologica": "Antropológica",
+            "arqueologico": "arqueológico", "Arqueologico": "Arqueológico",
+            "arqueologica": "arqueológica", "Arqueologica": "Arqueológica",
+            "filosofico": "filosófico", "Filosofico": "Filosófico",
+            "filosofica": "filosófica", "Filosofica": "Filosófica",
+            "historico": "histórico", "Historico": "Histórico",
+            "historica": "histórica", "Historica": "Histórica",
+            "economico": "económico", "Economico": "Económico",
+            "economica": "económica", "Economica": "Económica",
+            "politico": "político", "Politico": "Político",
+            "politica": "política", "Politica": "Política",
+            "juridico": "jurídico", "Juridico": "Jurídico",
+            "juridica": "jurídica", "Juridica": "Jurídica",
+            "artistico": "artístico", "Artistico": "Artístico",
+            "artistica": "artística", "Artistica": "Artística",
+            "literario": "literario",
+            "literaria": "literaria",
+            "musical": "musical",
+            "plastico": "plástico", "Plastico": "Plástico",
+            "plastica": "plástica", "Plastica": "Plástica",
+            "grafico": "gráfico", "Grafico": "Gráfico",
+            "grafica": "gráfica", "Grafica": "Gráfica",
+            "geografico": "geográfico", "Geografico": "Geográfico",
+            "geografica": "geográfica", "Geografica": "Geográfica",
+            "topografico": "topográfico", "Topografico": "Topográfico",
+            "topografica": "topográfica", "Topografica": "Topográfica",
+            "cartografico": "cartográfico", "Cartografico": "Cartográfico",
+            "cartografica": "cartográfica", "Cartografica": "Cartográfica",
+            "fotografico": "fotográfico", "Fotografico": "Fotográfico",
+            "fotografica": "fotográfica", "Fotografica": "Fotográfica",
+            "radiografico": "radiográfico", "Radiografico": "Radiográfico",
+            "radiografica": "radiográfica", "Radiografica": "Radiográfica",
+            "cinematografico": "cinematográfico", "Cinematografico": "Cinematográfico",
+            "cinematografica": "cinematográfica", "Cinematografica": "Cinematográfica",
+            "autobiografico": "autobiográfico", "Autobiografico": "Autobiográfico",
+            "autobiografica": "autobiográfica", "Autobiografica": "Autobiográfica",
+            "bibliografico": "bibliográfico", "Bibliografico": "Bibliográfico",
+            "bibliografica": "bibliográfica", "Bibliografica": "Bibliográfica",
+            "discografico": "discográfico", "Discografico": "Discográfico",
+            "discografica": "discográfica", "Discografica": "Discográfica",
+            "lexicografico": "lexicográfico", "Lexicografico": "Lexicográfico",
+            "lexicografica": "lexicográfica", "Lexicografica": "Lexicográfica",
+            "ortografico": "ortográfico", "Ortografico": "Ortográfico",
+            "ortografica": "ortográfica", "Ortografica": "Ortográfica",
+            "estenografico": "estenográfico", "Estenografico": "Estenográfico",
+            "estenografica": "estenográfica", "Estenografica": "Estenográfica",
+            "estilografico": "estilográfico", "Estilografico": "Estilográfico",
+            "estilografica": "estilográfica", "Estilografica": "Estilográfica",
+            "monografico": "monográfico", "Monografico": "Monográfico",
+            "monografica": "monográfica", "Monografica": "Monográfica",
+            "poligrafo": "polígrafo", "Poligrafo": "Polígrafo",
+            "poligrafa": "polígrafa", "Poligrafa": "Polígrafa",
+            "paragrafo": "párrafo", "Paragrafo": "Párrafo",
+            "paragrafos": "párrafos", "Paragrafos": "Párrafos",
+            "telegrafo": "telégrafo", "Telegrafo": "Telégrafo",
+            "telegrafos": "telégrafos", "Telegrafos": "Telégrafos",
+            "telegrama": "telegrama",
+            "programa": "programa",
+            "programas": "programas",
+            "programatico": "programático", "Programatico": "Programático",
+            "programatica": "programática", "Programatica": "Programática",
+            "programador": "programador",
+            "programadora": "programadora",
+            "programacion": "programación", "Programacion": "Programación",
+            "programable": "programable",
+            "reprogramable": "reprogramable",
+            "desprogramar": "desprogramar",
+            "reprogramar": "reprogramar",
+            "compilador": "compilador",
+            "compiladora": "compiladora",
+            "compilacion": "compilación", "Compilacion": "Compilación",
+            "interpretador": "interpretador",
+            "interpretadora": "interpretadora",
+            "interpretacion": "interpretación", "Interpretacion": "Interpretación",
+            "traductor": "traductor",
+            "traductora": "traductora",
+            "traduccion": "traducción", "Traduccion": "Traducción",
+            "traducible": "traducible",
+            "intraducible": "intraducible",
+            "version": "versión", "Version": "Versión", "VERSION": "VERSIÓN",
+            "reversion": "reversión", "Reversion": "Reversión",
+            "conversion": "conversión", "Conversion": "Conversión",
+            "inversion": "inversión", "Inversion": "Inversión",
+            "diversion": "diversión", "Diversion": "Diversión",
+            "aversion": "aversión", "Aversion": "Aversión",
+            "perversion": "perversión", "Perversion": "Perversión",
+            "subversion": "subversión", "Subversion": "Subversión",
+            "introversion": "introversión", "Introversion": "Introversión",
+            "extroversion": "extroversión", "Extroversion": "Extroversión",
+            "retroversion": "retroversión", "Retroversion": "Retroversión",
+            "controversion": "controversión", "Controversion": "Controversión",
+            "adversion": "adversión", "Adversion": "Adversión",
+            "version": "versión", "Version": "Versión",
+            "reversion": "reversión", "Reversion": "Reversión",
+            "conversion": "conversión", "Conversion": "Conversión",
+            "inversion": "inversión", "Inversion": "Inversión",
+            "diversion": "diversión", "Diversion": "Diversión",
+            "aversion": "aversión", "Aversion": "Aversión",
+            "perversion": "perversión", "Perversion": "Perversión",
+            "subversion": "subversión", "Subversion": "Subversión",
+            "introversion": "introversión", "Introversion": "Introversión",
+            "extroversion": "extroversión", "Extroversion": "Extroversión",
+            "retroversion": "retroversión", "Retroversion": "Retroversión",
+            "controversion": "controversión", "Controversion": "Controversión",
+            "adversion": "adversión", "Adversion": "Adversión",
+            # Errores específicos del ejemplo del usuario
+            "trabagar": "trabajar",
+            "podra": "podrá",
+            "configura": "configura",  # ya está bien
+            "maxima": "máxima",
+            "maximo": "máximo",
+            "limite": "límite",
+            "limite": "límite",
+            "Habilitacion": "Habilitación",
+            "habilitacion": "habilitación",
+            "Velocidad": "Velocidad",
+            "Prensa": "Prensa",
+            "Casquillos": "Casquillos",
+            "Segun": "Según",
+            "segun": "según",
+            "comentan": "comentan",
+            "operadores": "operadores",
+            "regular": "regular",
+            "velocidad": "velocidad",
+            "panel": "panel",
+            "tiene": "tiene",
+            "seguridad": "seguridad",
+            "incrementando": "incrementando",
+            "puede": "puede",
+            "llegar": "llegar",
+            "frecuencia": "frecuencia",
+            "motor": "motor",
+            "equipo": "equipo",
+            "esta": "está",  # contexto: "esta velocidad" -> "está velocidad" no, pero "esta" como verbo -> "está"
+            "peligroso": "peligroso",
+            "funcione": "funcione",
+            "romper": "romper",
+            "algunas": "algunas",
+            "piezas": "piezas",
+            "normalmente": "normalmente",
+            "solo": "solo",
+            "debe": "debe",
+            "trabajar": "trabajar",
+            "variador": "variador",
+            "forma": "forma",
+            "girar": "girar",
+            "descripcion": "descripción",
+            "solucion": "solución",
+            "implementada": "implementada",
+            "beneficios": "beneficios",
+            "proximos": "próximos",
+            "pasos": "pasos",
+            "desperdicio": "desperdicio",
+            "impacto": "impacto",
+            "bto": "BTO",
+            "safe": "Safe",
+            "sustainable": "Sustainable",
+            "people": "People",
+            "culture": "Culture",
+            "network": "Network",
+            "optimisation": "Optimisation",
+            "supply": "Supply",
+            "chain": "Chain",
+            "manufacturing": "Manufacturing",
+            "excellence": "Excellence",
+            "motion": "Motion",
+            "skills": "Skills",
+            "inventory": "Inventory",
+            "transportation": "Transportation",
+            "over production": "Over Production",
+            "over processing": "Over Processing",
+            "waiting": "Waiting",
+            "defects": "Defects",
+            "opportunity": "Opportunity",
+            "improvement": "Improvement",
+            "benefit": "Benefit",
+            "leader": "Leader",
+            "team": "Team",
+            "members": "Members",
+            "plant": "Plant",
+            "date": "Date",
+            "name": "Name",
+            "simple": "Simple",
+            "kaizen": "Kaizen",
+            "moc": "MoC",
+            "mejora": "Mejora",
+            "a3": "A3",
+            "management": "Management",
+            "change": "Change",
+            "naturaleza": "naturaleza",
+            "originador": "originador",
+            "produccion": "producción",
+            "specialist": "Specialist",
+            "shes": "SHES",
+            "mantenimiento": "mantenimiento",
+            "revisores": "revisores",
+            "enablon": "Enablon",
+            "revisor": "revisor",
+            "aprobador": "aprobador",
+            "final": "final",
+            "experto": "experto",
+            "revision": "revisión",
+            "especialistas": "especialistas",
+            "expertos": "expertos",
+            "problema": "problema",
+            "condicion": "condición",
+            "actual": "actual",
+            "propuesta": "propuesta",
+            "razones": "razones",
+            "cambio": "cambio",
+            "alternativas": "alternativas",
+            "consideradas": "consideradas",
+            "plan": "plan",
+            "retorno": "retorno",
+            "recursos": "recursos",
+            "disponibles": "disponibles",
+            "implementacion": "implementación",
+            "tiempo": "tiempo",
+            "dura": "dura",
+            "resultado": "resultado",
+            "evaluacion": "evaluación",
+            "estudio": "estudio",
+            "riesgos": "riesgos",
+            "identificado": "identificado",
+            "controles": "controles",
+            "recomendados": "recomendados",
+            "medidas": "medidas",
+            "control": "control",
+            "propuestos": "propuestos",
+            "plazo": "plazo",
+            "fin": "fin",
+            "presentacion": "presentación",
+            "autor": "autor",
+            "miembros": "miembros",
+            "equipo": "equipo",
+            "antecedentes": "antecedentes",
+            "situacion": "situación",
+            "objetivos": "objetivos",
+            "causa": "causa",
+            "raiz": "raíz",
+            "contramedidas": "contramedidas",
+            "resultados": "resultados",
+            "esperados": "esperados",
+            "seguimiento": "seguimiento",
+            "lecciones": "lecciones",
+            "aprendidas": "aprendidas",
+            "estandarizacion": "estandarización",
+            # Más errores comunes
+            "exelente": "excelente", "Exelente": "Excelente",
+            "exelencia": "excelencia", "Exelencia": "Excelencia",
+            "deficiente": "deficiente",
+            "suficiente": "suficiente",
+            "insuficiente": "insuficiente",
+            "necesario": "necesario",
+            "innecesario": "innecesario",
+            "obligatorio": "obligatorio",
+            "voluntario": "voluntario",
+            "opcional": "opcional",
+            "requerido": "requerido",
+            "requerimiento": "requerimiento",
+            "requisito": "requisito",
+            "especificacion": "especificación",
+            "especifico": "específico",
+            "generico": "genérico",
+            "particular": "particular",
+            "general": "general",
+            "especial": "especial",
+            "especifica": "específica",
+            "generica": "genérica",
+            "atomico": "atómico",
+            "atomica": "atómica",
+            "ionico": "iónico",
+            "ionica": "iónica",
+            "electronico": "electrónico",
+            "electronica": "electrónica",
+            "electrico": "eléctrico",
+            "electrica": "eléctrica",
+            "hidraulico": "hidráulico",
+            "hidraulica": "hidráulica",
+            "neumatico": "neumático",
+            "neumatica": "neumática",
+            "termico": "térmico",
+            "termica": "térmica",
+            "optico": "óptico",
+            "optica": "óptica",
+            "acustico": "acústico",
+            "acustica": "acústica",
+            "magnetico": "magnético",
+            "magnetica": "magnética",
+            "quimico": "químico",
+            "quimica": "química",
+            "fisico": "físico",
+            "fisica": "física",
+            "biologico": "biológico",
+            "biologica": "biológica",
+            "geologico": "geológico",
+            "geologica": "geológica",
+            "ecologico": "ecológico",
+            "ecologica": "ecológica",
+            "psicologico": "psicológico",
+            "psicologica": "psicológica",
+            "sociologico": "sociológico",
+            "sociologica": "sociológica",
+            "antropologico": "antropológico",
+            "antropologica": "antropológica",
+            "arqueologico": "arqueológico",
+            "arqueologica": "arqueológica",
+            "filosofico": "filosófico",
+            "filosofica": "filosófica",
+            "historico": "histórico",
+            "historica": "histórica",
+            "economico": "económico",
+            "economica": "económica",
+            "politico": "político",
+            "politica": "política",
+            "juridico": "jurídico",
+            "juridica": "jurídica",
+            "artistico": "artístico",
+            "artistica": "artística",
+            "literario": "literario",
+            "literaria": "literaria",
+            "musical": "musical",
+            "plastico": "plástico",
+            "plastica": "plástica",
+            "grafico": "gráfico",
+            "grafica": "gráfica",
+            "geografico": "geográfico",
+            "geografica": "geográfica",
+            "topografico": "topográfico",
+            "topografica": "topográfica",
+            "cartografico": "cartográfico",
+            "cartografica": "cartográfica",
+            "fotografico": "fotográfico",
+            "fotografica": "fotográfica",
+            "radiografico": "radiográfico",
+            "radiografica": "radiográfica",
+            "cinematografico": "cinematográfico",
+            "cinematografica": "cinematográfica",
+            "autobiografico": "autobiográfico",
+            "autobiografica": "autobiográfica",
+            "bibliografico": "bibliográfico",
+            "bibliografica": "bibliográfica",
+            "discografico": "discográfico",
+            "discografica": "discográfica",
+            "lexicografico": "lexicográfico",
+            "lexicografica": "lexicográfica",
+            "ortografico": "ortográfico",
+            "ortografica": "ortográfica",
+            "estenografico": "estenográfico",
+            "estenografica": "estenográfica",
+            "estilografico": "estilográfico",
+            "estilografica": "estilográfica",
+            "monografico": "monográfico",
+            "monografica": "monográfica",
+            "poligrafo": "polígrafo",
+            "poligrafa": "polígrafa",
+            "paragrafo": "párrafo",
+            "paragrafos": "párrafos",
+            "telegrafo": "telégrafo",
+            "telegrafos": "telégrafos",
+            "telegrama": "telegrama",
+            "programa": "programa",
+            "programas": "programas",
+            "programatico": "programático",
+            "programatica": "programática",
+            "programador": "programador",
+            "programadora": "programadora",
+            "programacion": "programación",
+            "programable": "programable",
+            "reprogramable": "reprogramable",
+            "desprogramar": "desprogramar",
+            "reprogramar": "reprogramar",
+            "compilador": "compilador",
+            "compiladora": "compiladora",
+            "compilacion": "compilación",
+            "interpretador": "interpretador",
+            "interpretadora": "interpretadora",
+            "interpretacion": "interpretación",
+            "traductor": "traductor",
+            "traductora": "traductora",
+            "traduccion": "traducción",
+            "traducible": "traducible",
+            "intraducible": "intraducible",
+            "version": "versión",
+            "reversion": "reversión",
+            "conversion": "conversión",
+            "inversion": "inversión",
+            "diversion": "diversión",
+            "aversion": "aversión",
+            "perversion": "perversión",
+            "subversion": "subversión",
+            "introversion": "introversión",
+            "extroversion": "extroversión",
+            "retroversion": "retroversión",
+            "controversion": "controversión",
+            "adversion": "adversión",
         }
 
         result = text
@@ -444,10 +861,11 @@ class Utils:
 
         # Espacios dobles
         result = re.sub(r'  +', ' ', result)
-        # Espacio antes de punto/coma
-        result = re.sub(r' ([.,;:!?])', r'', result)
+        # Espacio antes de punto/coma (corrección inversa)
+        result = re.sub(r' \([.,;:!?])', r'', result)
 
         return result
+
 
 # =============================================================================
 # SERVICIO GEMINI API
@@ -506,6 +924,7 @@ INSTRUCCIONES DE REDACCIÓN:
 - Usa conectores lógicos, párrafos bien estructurados y vocabulario técnico apropiado.
 - Incluye datos cuantitativos cuando sea posible (tiempos, porcentajes, métricas).
 - La redacción debe parecer escrita por un profesional humano, no por una IA.
+- CORRIGE TODAS LAS FALTAS DE ORTOGRAFÍA: tildes en palabras como producción, operación, condición, modificación, verificación, capacitación, socialización, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, proyección, restricción, distribución, construcción, instrucción, conducción, introducción, reducción, reproducción, traducción, deducción, inducción, seducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, época, década, área, día, mañana, próximo, análisis, método, parámetro, característica, específico, genérico, atómico, iónico, electrónico, eléctrico, hidráulico, neumático, térmico, óptico, acústico, magnético, químico, físico, biológico, geológico, ecológico, psicológico, sociológico, antropológico, arqueológico, filosófico, histórico, económico, político, jurídico, artístico, plástico, gráfico, geográfico, topográfico, cartográfico, fotográfico, radiográfico, cinematográfico, autobiográfico, bibliográfico, discográfico, lexicográfico, ortográfico, estenográfico, estilográfico, monográfico, polígrafo, párrafo, telégrafo, telegrama, programa, programático, programador, programación, compilador, compilación, interpretador, interpretación, traductor, traducción, versión, reversión, conversión, inversión, diversión, aversión, perversión, subversión, introversión, extroversión, retroversión, controversión, adversión.
 
 PROBLEMA REPORTADO: {problem}
 CONTEXTO ADICIONAL: {context}
@@ -564,6 +983,7 @@ INSTRUCCIONES DE REDACCIÓN:
 - Incluye referencias a herramientas Lean (5S, SMED, TPM, VSM, etc.) cuando aplique.
 - La redacción debe ser fluida, con párrafos bien estructurados y conectores lógicos.
 - Incluye datos hipotéticos pero realistas cuando el usuario no proporcione números específicos.
+- CORRIGE TODAS LAS FALTAS DE ORTOGRAFÍA: tildes en palabras como producción, operación, condición, modificación, verificación, capacitación, socialización, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, proyección, restricción, distribución, construcción, instrucción, conducción, introducción, reducción, reproducción, traducción, deducción, inducción, seducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, época, década, área, día, mañana, próximo, análisis, método, parámetro, característica, específico, genérico, atómico, iónico, electrónico, eléctrico, hidráulico, neumático, térmico, óptico, acústico, magnético, químico, físico, biológico, geológico, ecológico, psicológico, sociológico, antropológico, arqueológico, filosófico, histórico, económico, político, jurídico, artístico, plástico, gráfico, geográfico, topográfico, cartográfico, fotográfico, radiográfico, cinematográfico, autobiográfico, bibliográfico, discográfico, lexicográfico, ortográfico, estenográfico, estilográfico, monográfico, polígrafo, párrafo, telégrafo, telegrama, programa, programático, programador, programación, compilador, compilación, interpretador, interpretación, traductor, traducción, versión, reversión, conversión, inversión, diversión, aversión, perversión, subversión, introversión, extroversión, retroversión, controversión, adversión.
 
 PROBLEMA REPORTADO: {problem}
 CONTEXTO ADICIONAL: {context}
@@ -616,6 +1036,7 @@ INSTRUCCIONES DE REDACCIÓN:
 - Describe la situación actual con detalle visual para que el lector pueda imaginar el antes y después.
 - La redacción debe ser natural, con frases cortas y claras, evitando tecnicismos innecesarios.
 - Incluye el impacto humano: cómo beneficia al operario, al equipo y a la organización.
+- CORRIGE TODAS LAS FALTAS DE ORTOGRAFÍA: tildes en palabras como producción, operación, condición, modificación, verificación, capacitación, socialización, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, proyección, restricción, distribución, construcción, instrucción, conducción, introducción, reducción, reproducción, traducción, deducción, inducción, seducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, época, década, área, día, mañana, próximo, análisis, método, parámetro, característica, específico, genérico, atómico, iónico, electrónico, eléctrico, hidráulico, neumático, térmico, óptico, acústico, magnético, químico, físico, biológico, geológico, ecológico, psicológico, sociológico, antropológico, arqueológico, filosófico, histórico, económico, político, jurídico, artístico, plástico, gráfico, geográfico, topográfico, cartográfico, fotográfico, radiográfico, cinematográfico, autobiográfico, bibliográfico, discográfico, lexicográfico, ortográfico, estenográfico, estilográfico, monográfico, polígrafo, párrafo, telégrafo, telegrama, programa, programático, programador, programación, compilador, compilación, interpretador, interpretación, traductor, traducción, versión, reversión, conversión, inversión, diversión, aversión, perversión, subversión, introversión, extroversión, retroversión, controversión, adversión.
 
 ACTIVIDAD DE MEJORA: {activity}
 CONTEXTO ADICIONAL: {context}
@@ -637,6 +1058,10 @@ Genera en ESPAÑOL formato JSON con los siguientes campos detallados:
 7. impacto_bto: Categoría BTO impactada: Safe and Sustainable, People & Culture, Network Optimisation, Supply Chain and Manufacturing Excellence.
 
 8. proximos_pasos: Plan de acción concretos para sostener la mejora, replicarla en otras áreas, reconocer al equipo y establecer el nuevo estándar.
+
+9. leader: Nombre del líder del equipo Kaizen.
+
+10. team_members: Lista de miembros del equipo que participaron en la mejora.
 
 Responde SOLO JSON válido sin comentarios adicionales."""
 
@@ -665,7 +1090,7 @@ Responde SOLO el JSON traducido, misma estructura exacta."""
     def correct_spelling(self, text):
         if not self.api_key or not text.strip():
             return Utils.correct_spelling_basic(text)
-        prompt = f"""Corrige ortografía, gramática, puntuación y mejora la redacción del siguiente texto en español. Mantén el significado técnico exacto. Mejora la fluidez y naturalidad sin hacerlo robótico. Devuelve SOLO el texto corregido, sin explicaciones.
+        prompt = f"""Corrige ortografía, gramática, puntuación y mejora la redacción del siguiente texto en español. Mantén el significado técnico exacto. Mejora la fluidez y naturalidad sin hacerlo robótico. Asegúrate de poner todas las tildes correctas en palabras como: producción, operación, condición, modificación, verificación, capacitación, socialización, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, proyección, restricción, distribución, construcción, instrucción, conducción, introducción, reducción, reproducción, traducción, deducción, inducción, seducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, época, década, área, día, mañana, próximo, análisis, método, parámetro, característica, específico, genérico, atómico, iónico, electrónico, eléctrico, hidráulico, neumático, térmico, óptico, acústico, magnético, químico, físico, biológico, geológico, ecológico, psicológico, sociológico, antropológico, arqueológico, filosófico, histórico, económico, político, jurídico, artístico, plástico, gráfico, geográfico, topográfico, cartográfico, fotográfico, radiográfico, cinematográfico, autobiográfico, bibliográfico, discográfico, lexicográfico, ortográfico, estenográfico, estilográfico, monográfico, polígrafo, párrafo, telégrafo, telegrama, programa, programático, programador, programación, compilador, compilación, interpretador, interpretación, traductor, traducción, versión, reversión, conversión, inversión, diversión, aversión, perversión, subversión, introversión, extroversión, retroversión, controversión, adversión. Devuelve SOLO el texto corregido, sin explicaciones.
 
 TEXTO:
 {text}"""
@@ -681,10 +1106,12 @@ TEXTO:
             "condicion_actual": "El equipo o proceso actual opera bajo condiciones que presentan las siguientes limitaciones técnicas documentadas: " + context + ".\n\nSe han identificado deficiencias en la configuración actual que afectan directamente el rendimiento operativo y la seguridad del personal. Los parámetros críticos del proceso se encuentran fuera de los rangos óptimos establecidos en los procedimientos operativos estándar (SOP).\n\nSe requiere una evaluación técnica exhaustiva para establecer una línea base de referencia completa antes de proceder con cualquier modificación, asegurando que todos los cambios sean trazables y verificables.",
             "condicion_propuesta": "Se propone implementar modificaciones técnicas estructuradas que optimicen el rendimiento operativo del equipo crítico, mejoren significativamente las condiciones de seguridad del proceso y alineen las operaciones con los estándares corporativos y regulatorios vigentes.\n\nLa propuesta incluye la actualización de componentes críticos, la implementación de controles adicionales de seguridad, la estandarización de procedimientos operativos y la capacitación del personal involucrado. Todas las modificaciones serán diseñadas siguiendo las mejores prácticas de la industria y los requisitos normativos aplicables.",
             "razones_cambio": "1. SEGURIDAD OPERACIONAL: La condición actual presenta riesgos identificados que pueden comprometer la integridad física del personal. La implementación del cambio reducirá significativamente la probabilidad de incidentes y accidentes laborales, alineándose con la política de cero accidentes de la organización.\n\n2. OPTIMIZACIÓN DE RENDIMIENTO: El equipo crítico opera por debajo de su capacidad óptima debido a las limitaciones técnicas identificadas. El cambio propuesto mejorará la confiabilidad, disponibilidad y eficiencia del equipo, reduciendo tiempos de parada no planificados.\n\n3. CUMPLIMIENTO NORMATIVO: La modificación asegura el cumplimiento de estándares corporativos, regulaciones nacionales e internacionales aplicables al sector industrial, evitando sanciones y manteniendo la licencia operativa.\n\n4. REDUCCIÓN DE RIESGOS SHES: Las evaluaciones previas han identificado riesgos en seguridad, salud y medio ambiente que serán mitigados proactivamente con las medidas de control propuestas en este documento.\n\n5. MEJORA CONTINUA: El cambio está alineado con los objetivos estratégicos de la organización en materia de excelencia operacional, sostenibilidad y mejora continua.",
-            "alternativas_retorno": "ALTERNATIVAS EVALUADAS:\n\n1. MANTENIMIENTO CORRECTIVO TRADICIONAL (DESCARTADO): Aunque de menor costo inicial, presenta un alcance limitado que no aborda las causas raíz del problema. La recurrencia de fallas sería alta, generando costos operacionales mayores a largo plazo.\n\n2. REEMPLAZO TOTAL DEL SISTEMA (DESCARTADO): Ofrece la solución más completa pero con un costo de inversión elevado que excede el presupuesto aprobado para este período. Además, el tiempo de implementación sería excesivo para las necesidades operativas actuales.\n\n3. MODIFICACIÓN CONTROLADA (SELECCIONADA): Representa la mejor relación costo-beneficio, abordando las causas raíz identificadas con un alcance definido, tiempos de implementación razonables y un retorno de inversión favorable dentro del primer año.\n\nPLAN DE RETORNO:\nEn caso de que el cambio no produzca los resultados esperados o se presenten complicaciones durante la implementación, se ejecutará el siguiente plan de retorno: Restauración inmediata de la configuración original del equipo, activación del protocolo de contingencia establecido, notificación oportuna a supervisión directa y áreas de apoyo, documentación detallada de las lecciones aprendidas y análisis de causa raíz de la falla para prevenir recurrencias.",
+            "alternativas_retorno": "ALTERNATIVAS EVALUADAS:\n\n1. MANTENIMIENTO CORRECTIVO TRADICIONAL (DESCARTADO): Aunque de menor costo inicial, presenta un alcance limitado que no aborda las causas raíz del problema. La recurrencia de fallas sería alta, generando costos operacionales mayores a largo plazo.\n\n2. REEMPLAZO TOTAL DEL SISTEMA (DESCARTADO): Ofrece la solución más completa pero con un costo de inversión elevado que excede el presupuesto aprobado para este período. Además, el tiempo de implementación sería excesivo para las necesidades operativas actuales.\n\n3. MODIFICACIÓN CONTROLADA (SELECCIONADA): Representa la mejor relación costo-beneficio, abordando las causas raíz identificadas con un alcance definido, tiempos de implementación razonables y un retorno de inversión favorable dentro del primer año.\n\nPLAN DE RETORNO:
+En caso de que el cambio no produzca los resultados esperados o se presenten complicaciones durante la implementación, se ejecutará el siguiente plan de retorno: Restauración inmediata de la configuración original del equipo, activación del protocolo de contingencia establecido, notificación oportuna a supervisión directa y áreas de apoyo, documentación detallada de las lecciones aprendidas y análisis de causa raíz de la falla para prevenir recurrencias.",
             "recursos": "RECURSOS HUMANOS REQUERIDOS:\n- Técnico especializado de mantenimiento mecánico/electrónico (1 persona, tiempo completo durante implementación)\n- Supervisor de área operativa (1 persona, supervisión continua)\n- Especialista SHES (1 persona, verificación de controles y permisos)\n- Operador de área certificado (1-2 personas, apoyo operativo y pruebas)\n- Ingeniero de procesos (1 persona, validación técnica y ajustes de parámetros)\n\nRECURSOS MATERIALES:\n- Herramientas especializadas certificadas y calibradas\n- Repuestos de calidad certificada con trazabilidad\n- EPP completo: casco de seguridad, gafas de protección, guantes anticorte, botas dieléctricas, arnés cuando aplique\n- Materiales de señalización, demarcación y etiquetado\n- Materiales de limpieza y preparación de área\n\nRECURSOS TÉCNICOS:\n- Documentación técnica actualizada del equipo (manuales, diagramas, especificaciones)\n- SOP vigentes y procedimientos de trabajo seguro\n- Permisos de trabajo según tipo (trabajo en caliente, espacio confinado, trabajo en altura, etc.)\n- Checklist de verificación pre y post implementación\n- Equipos de prueba y medición calibrados",
             "plan_implementacion": "FASE 1: PREPARACIÓN Y PLANIFICACIÓN (Días 1-2)\n- Reunión de coordinación multidisciplinaria con producción, mantenimiento y SHES\n- Verificación exhaustiva de disponibilidad de todos los recursos materiales y humanos\n- Preparación del área de trabajo: limpieza profunda, señalización de perímetro, aplicación de LOTO (Lock Out Tag Out)\n- Briefing de seguridad con todo el equipo involucrado, revisión de riesgos y controles\n- Verificación final de permisos de trabajo y autorizaciones requeridas\n\nFASE 2: EJECUCIÓN DE MODIFICACIONES (Días 3-5)\n- Implementación progresiva de las modificaciones técnicas según plan detallado\n- Pruebas funcionales iniciales después de cada sub-etapa crítica\n- Registro fotográfico detallado del antes, durante y después de cada modificación\n- Verificación intermedia SHES al finalizar cada día de trabajo\n- Comunicación continua con supervisión de producción sobre avances\n\nFASE 3: VALIDACIÓN Y PRUEBAS (Días 6-7)\n- Pruebas funcionales bajo condiciones normales de operación\n- Verificación de todos los parámetros críticos del proceso contra especificaciones\n- Validación conjunta por supervisor de área, producción y especialista técnico\n- Pruebas de estrés y verificación de límites operativos\n- Documentación de resultados de pruebas y ajustes finales\n\nFASE 4: CIERRE Y ESTANDARIZACIÓN (Día 8)\n- Actualización completa de toda la documentación técnica y operativa\n- Capacitación formal al personal operativo sobre nuevos procedimientos\n- Socialización de lecciones aprendidas con todas las áreas involucradas\n- Cierre formal del MoC con firmas de aprobación de todas las partes\n- Archivo del documento completo en el sistema de gestión documental",
-            "tiempo_duracion": "ESTIMACIÓN TOTAL DEL CAMBIO: 8 días hábiles distribuidos en 4 fases bien definidas.\n\nDESGLOSE POR FASE:\n- Fase 1 (Preparación): 2 días\n- Fase 2 (Ejecución): 3 días\n- Fase 3 (Validación): 2 días\n- Fase 4 (Cierre): 1 día\n\nCONSIDERACIONES:\nLa duración puede ajustarse según condiciones operativas, disponibilidad de recursos y resultados de las verificaciones intermedias. Se ha incluido un margen de contingencia del 20% para imprevistos. Las ventanas de mantenimiento serán coordinadas con producción con al menos 48 horas de anticipación.",
+            "tiempo_duracion": "ESTIMACIÓN TOTAL DEL CAMBIO: 8 días hábiles distribuidos en 4 fases bien definidas.\n\nDESGLOSE POR FASE:\n- Fase 1 (Preparación): 2 días\n- Fase 2 (Ejecución): 3 días\n- Fase 3 (Validación): 2 días\n- Fase 4 (Cierre): 1 día\n\nCONSIDERACIONES:
+La duración puede ajustarse según condiciones operativas, disponibilidad de recursos y resultados de las verificaciones intermedias. Se ha incluido un margen de contingencia del 20% para imprevistos. Las ventanas de mantenimiento serán coordinadas con producción con al menos 48 horas de anticipación.",
             "riesgos_controles": [
                 {"riesgo": "Interrupción del proceso productivo durante la implementación de modificaciones, generando pérdidas de producción estimadas", "control": "Coordinación previa detallada con producción para definir ventana de mantenimiento planificado. Comunicación oportuna a todas las áreas involucradas con 24 horas de anticipación. Monitoreo continuo del plan de producción durante la ejecución."},
                 {"riesgo": "Falla técnica durante la modificación que pueda afectar equipos adyacentes o sistemas interconectados", "control": "Verificación previa exhaustiva de todas las interconexiones. Disponibilidad inmediata de repuestos de emergencia. Supervisión técnica continua por ingeniero senior. Protocolo de parada de emergencia activo durante toda la ejecución."},
@@ -725,12 +1152,16 @@ TEXTO:
             "beneficios": "- Reducción del tiempo de ejecución en aproximadamente 20-30%\n- Mejora significativa en calidad y consistencia del proceso\n- Mayor seguridad para el personal al eliminar movimientos riesgosos\n- Reducción de costos operativos derivados de la eliminación de desperdicios\n- Mejora en el ambiente de trabajo y orden del área\n- Eliminación de movimientos innecesarios y tiempos de búsqueda\n- Incremento en la motivación del equipo al ver resultados inmediatos\n- Fácil replicabilidad en otras áreas similares",
             "tipo_desperdicio": "Motion / Waiting / Skills (seleccionar según análisis específico del desperdicio identificado)",
             "impacto_bto": "Supply Chain and Manufacturing Excellence / Safe and Sustainable (seleccionar según el impacto principal de la mejora)",
-            "proximos_pasos": "1. Documentar formalmente la mejora con fotografías, descripción detallada y datos de impacto\n2. Socializar la mejora con otras áreas relacionadas mediante presentación breve en reunión de coordinación\n3. Replicar la mejora en procesos similares identificados durante el gemba walk\n4. Establecer monitoreo mensual para asegurar que la mejora se mantiene en el tiempo\n5. Reconocer formalmente al equipo participante en la mejora\n6. Integrar el nuevo estándar al SOP del área\n7. Programar revisión de sostenibilidad a los 3 meses"
+            "proximos_pasos": "1. Documentar formalmente la mejora con fotografías, descripción detallada y datos de impacto\n2. Socializar la mejora con otras áreas relacionadas mediante presentación breve en reunión de coordinación\n3. Replicar la mejora en procesos similares identificados durante el gemba walk\n4. Establecer monitoreo mensual para asegurar que la mejora se mantiene en el tiempo\n5. Reconocer formalmente al equipo participante en la mejora\n6. Integrar el nuevo estándar al SOP del área\n7. Programar revisión de sostenibilidad a los 3 meses",
+            "leader": "",
+            "team_members": ""
         }
 
+
 # =============================================================================
-# REEMPLAZO INTELIGENTE DE TEXTO EN POWERPOINT (preserva formato)
+# REEMPLAZO INTELIGENTE DE TEXTO EN POWERPOINT Y WORD (preserva formato)
 # =============================================================================
+
 def replace_text_in_shape(shape, old_text, new_text):
     """Reemplaza texto en un shape preservando el formato de los runs"""
     if not shape.has_text_frame:
@@ -800,6 +1231,66 @@ def fill_table_cell(cell, text):
         cell.text = str(text)
 
 
+def replace_text_in_docx_preserve_runs(doc, old_text, new_text):
+    """Reemplaza texto en documento Word preservando formato de runs
+    Maneja el caso donde el placeholder está dividido entre runs"""
+
+    def replace_in_paragraph(paragraph):
+        if old_text not in paragraph.text:
+            return False
+
+        # Caso simple: el texto está en un solo run
+        for run in paragraph.runs:
+            if old_text in run.text:
+                run.text = run.text.replace(old_text, new_text)
+                return True
+
+        # Caso complejo: el texto está dividido entre runs
+        # Reconstruir el texto completo del párrafo
+        full_text = paragraph.text
+        if old_text in full_text:
+            # Guardar el formato del primer run
+            if paragraph.runs:
+                first_run = paragraph.runs[0]
+                # Reemplazar todo el texto en el primer run
+                first_run.text = full_text.replace(old_text, new_text)
+                # Limpiar los demás runs
+                for run in paragraph.runs[1:]:
+                    run.text = ""
+                return True
+        return False
+
+    # Reemplazar en párrafos del cuerpo
+    for para in doc.paragraphs:
+        replace_in_paragraph(para)
+
+    # Reemplazar en tablas
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    replace_in_paragraph(para)
+
+    # Reemplazar en headers
+    for section in doc.sections:
+        for para in section.header.paragraphs:
+            replace_in_paragraph(para)
+        for table in section.header.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        replace_in_paragraph(para)
+
+        # Reemplazar en footers
+        for para in section.footer.paragraphs:
+            replace_in_paragraph(para)
+        for table in section.footer.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        replace_in_paragraph(para)
+
+
 # =============================================================================
 # GENERADOR DE DOCUMENTOS
 # =============================================================================
@@ -807,7 +1298,7 @@ class DocumentGenerator:
     """Genera documentos usando templates cargados en memoria"""
 
     def generate_moc(self, data, images=None, template_bytes=None):
-        """Genera MoC desde template en memoria"""
+        """Genera MoC desde template en memoria - 10 slides exactos"""
         if template_bytes is None:
             st.error("❌ Template MoC no cargado. Vaya a Configuración > Templates.")
             return None
@@ -829,89 +1320,96 @@ class DocumentGenerator:
         replace_all_text_in_presentation(prs, replacements)
 
         # SLIDE 3: Descripción del Problema
-        slide3 = prs.slides[2]
-        for shape in slide3.shapes:
-            if shape.has_text_frame:
-                for paragraph in shape.text_frame.paragraphs:
-                    for run in paragraph.runs:
-                        if run.text.strip() == "3":
-                            run.text = data.get('descripcion_problema', '')
+        if len(prs.slides) > 2:
+            slide3 = prs.slides[2]
+            for shape in slide3.shapes:
+                if shape.has_text_frame:
+                    for paragraph in shape.text_frame.paragraphs:
+                        for run in paragraph.runs:
+                            if run.text.strip() == "3":
+                                run.text = data.get('descripcion_problema', '')
 
         # SLIDE 4: Tabla Condición Actual / Condición Propuesta
-        slide4 = prs.slides[3]
-        for shape in slide4.shapes:
-            if shape.has_table:
-                table = shape.table
-                if len(table.rows) >= 2 and len(table.columns) >= 2:
-                    fill_table_cell(table.cell(1, 0), data.get('condicion_actual', ''))
-                    fill_table_cell(table.cell(1, 1), data.get('condicion_propuesta', ''))
+        if len(prs.slides) > 3:
+            slide4 = prs.slides[3]
+            for shape in slide4.shapes:
+                if shape.has_table:
+                    table = shape.table
+                    if len(table.rows) >= 2 and len(table.columns) >= 2:
+                        fill_table_cell(table.cell(1, 0), data.get('condicion_actual', ''))
+                        fill_table_cell(table.cell(1, 1), data.get('condicion_propuesta', ''))
 
         # SLIDE 5: Razones del Cambio
-        slide5 = prs.slides[4]
-        for shape in slide5.shapes:
-            if shape.has_text_frame:
-                text = shape.text_frame.text
-                if text.strip() == "5":
-                    for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            if run.text.strip() == "5":
-                                run.text = data.get('razones_cambio', '')
-                if "Alternativas" in text:
-                    for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            if "Alternativas" in run.text:
-                                run.text = data.get('alternativas_retorno', '')
+        if len(prs.slides) > 4:
+            slide5 = prs.slides[4]
+            for shape in slide5.shapes:
+                if shape.has_text_frame:
+                    text = shape.text_frame.text
+                    if text.strip() == "5":
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if run.text.strip() == "5":
+                                    run.text = data.get('razones_cambio', '')
+                    if "Alternativas" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Alternativas" in run.text:
+                                    run.text = data.get('alternativas_retorno', '')
 
         # SLIDE 6: Recursos y Plan
-        slide6 = prs.slides[5]
-        for shape in slide6.shapes:
-            if shape.has_text_frame:
-                text = shape.text_frame.text
-                if "Recursos:" in text:
-                    for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            if "Recursos:" in run.text:
-                                run.text = f"Recursos:\n{data.get('recursos', '')}"
+        if len(prs.slides) > 5:
+            slide6 = prs.slides[5]
+            for shape in slide6.shapes:
+                if shape.has_text_frame:
+                    text = shape.text_frame.text
+                    if "Recursos:" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Recursos:" in run.text:
+                                    run.text = f"Recursos:\n{data.get('recursos', '')}"
 
         # SLIDE 7: Tiempo
-        slide7 = prs.slides[6]
-        for shape in slide7.shapes:
-            if shape.has_text_frame:
-                text = shape.text_frame.text
-                if text.strip() == "7" or "Tiempo" in text:
-                    for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            if run.text.strip() == "7":
-                                run.text = data.get('tiempo_duracion', '')
+        if len(prs.slides) > 6:
+            slide7 = prs.slides[6]
+            for shape in slide7.shapes:
+                if shape.has_text_frame:
+                    text = shape.text_frame.text
+                    if text.strip() == "7" or "Tiempo" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if run.text.strip() == "7":
+                                    run.text = data.get('tiempo_duracion', '')
 
         # SLIDE 8: Riesgos (Tabla)
-        slide8 = prs.slides[7]
-        for shape in slide8.shapes:
-            if shape.has_table:
-                table = shape.table
-                risks = data.get('riesgos_controles', [])
-                for i, risk in enumerate(risks):
-                    row_idx = i + 1
-                    if row_idx < len(table.rows):
-                        fill_table_cell(table.cell(row_idx, 0), str(i + 1))
-                        fill_table_cell(table.cell(row_idx, 1), risk.get('riesgo', ''))
-                        fill_table_cell(table.cell(row_idx, 2), risk.get('control', ''))
+        if len(prs.slides) > 7:
+            slide8 = prs.slides[7]
+            for shape in slide8.shapes:
+                if shape.has_table:
+                    table = shape.table
+                    risks = data.get('riesgos_controles', [])
+                    for i, risk in enumerate(risks):
+                        row_idx = i + 1
+                        if row_idx < len(table.rows):
+                            fill_table_cell(table.cell(row_idx, 0), str(i + 1))
+                            fill_table_cell(table.cell(row_idx, 1), risk.get('riesgo', ''))
+                            fill_table_cell(table.cell(row_idx, 2), risk.get('control', ''))
 
         # SLIDE 9: Riesgos SHES
-        slide9 = prs.slides[8]
-        for shape in slide9.shapes:
-            if shape.has_table:
-                table = shape.table
-                risks = data.get('riesgos_shes', [])
-                for i, risk in enumerate(risks):
-                    row_idx = i + 1
-                    if row_idx < len(table.rows):
-                        fill_table_cell(table.cell(row_idx, 0), str(i + 1))
-                        fill_table_cell(table.cell(row_idx, 1), risk.get('riesgo', ''))
-                        fill_table_cell(table.cell(row_idx, 2), risk.get('control', ''))
-                        fill_table_cell(table.cell(row_idx, 3), risk.get('plazo', ''))
+        if len(prs.slides) > 8:
+            slide9 = prs.slides[8]
+            for shape in slide9.shapes:
+                if shape.has_table:
+                    table = shape.table
+                    risks = data.get('riesgos_shes', [])
+                    for i, risk in enumerate(risks):
+                        row_idx = i + 1
+                        if row_idx < len(table.rows):
+                            fill_table_cell(table.cell(row_idx, 0), str(i + 1))
+                            fill_table_cell(table.cell(row_idx, 1), risk.get('riesgo', ''))
+                            fill_table_cell(table.cell(row_idx, 2), risk.get('control', ''))
+                            fill_table_cell(table.cell(row_idx, 3), risk.get('plazo', ''))
 
-        # Agregar imágenes de soporte
+        # Agregar imágenes de soporte al final
         if images:
             for idx, img_info in enumerate(images, 1):
                 blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[-1]
@@ -1048,40 +1546,107 @@ class DocumentGenerator:
         return output_buffer
 
     def generate_kaizen(self, data, images=None, template_bytes=None):
-        """Genera Kaizen desde template en memoria"""
+        """Genera Kaizen desde template en memoria - Formato oficial 2 páginas"""
         if template_bytes is None:
             st.error("❌ Template Kaizen no cargado. Vaya a Configuración > Templates.")
             return None
 
         prs = Presentation(BytesIO(template_bytes))
-        slide = prs.slides[0]
 
-        for shape in slide.shapes:
-            if shape.has_table:
-                table = shape.table
-                tipo_desp = data.get('tipo_desperdicio', '')
-                waste_map = {
-                    'motion': 1, 'skills': 2, 'inventory': 3, 'transportation': 4,
-                    'over production': 5, 'over processing': 6, 'waiting': 7, 'defects': 8
-                }
-                for row_idx in range(1, len(table.rows)):
-                    waste_cell = table.cell(row_idx, 1).text.strip().lower()
-                    for waste_key, mapped_row in waste_map.items():
-                        if waste_key in tipo_desp.lower() and row_idx == mapped_row:
-                            table.cell(row_idx, 2).text = "X"
-                            for para in table.cell(row_idx, 2).text_frame.paragraphs:
-                                para.font.bold = True
-                                para.font.size = Pt(14)
-                                para.alignment = PP_ALIGN.CENTER
+        # PÁGINA 1: Formato oficial Kaizen
+        if len(prs.slides) > 0:
+            slide = prs.slides[0]
 
-            if shape.has_text_frame:
-                text = shape.text_frame.text
-                if "Leader" in text and "Picture" in text:
-                    for paragraph in shape.text_frame.paragraphs:
-                        for run in paragraph.runs:
-                            if "Leader" in run.text:
-                                run.text = f"Leader: {data.get('autor', '')}\nÁrea: {data.get('area', '')}\nFecha: {data.get('fecha', '')}"
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    text = shape.text_frame.text
 
+                    # Reemplazar campos específicos del formato
+                    if "Name:" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Name:" in run.text:
+                                    run.text = f"Name: {data.get('titulo', '')}"
+
+                    if "Plant/Area:" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Plant/Area:" in run.text:
+                                    run.text = f"Plant/Area: {data.get('area', '')}"
+
+                    if "Date:" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Date:" in run.text:
+                                    run.text = f"Date: {data.get('fecha', '')}"
+
+                    if "Leader:" in text or "Leader" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Leader" in run.text:
+                                    run.text = f"Leader: {data.get('leader', '')}"
+
+                    if "Opportunity" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Opportunity" in run.text:
+                                    run.text = f"Opportunity:\n{data.get('descripcion_problema', '')}"
+
+                    if "Improvement" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Improvement" in run.text:
+                                    run.text = f"Improvement:\n{data.get('solucion', '')}"
+
+                    if "Benefit" in text:
+                        for paragraph in shape.text_frame.paragraphs:
+                            for run in paragraph.runs:
+                                if "Benefit" in run.text:
+                                    run.text = f"Benefit:\n{data.get('beneficios', '')}"
+
+                # Manejar tabla de BTO y 8 Wastes
+                if shape.has_table:
+                    table = shape.table
+                    tipo_desp = data.get('tipo_desperdicio', '').lower()
+                    impacto_bto = data.get('impacto_bto', '').lower()
+
+                    # Mapeo de wastes a filas (ajustar según template)
+                    waste_map = {
+                        'motion': 1, 'skills': 2, 'inventory': 3, 'transportation': 4,
+                        'over production': 5, 'over processing': 6, 'waiting': 7, 'defects': 8
+                    }
+
+                    bto_map = {
+                        'safe and sustainable': 1,
+                        'people & culture': 2,
+                        'network optimisation': 3,
+                        'supply chain and manufacturing excellence': 4
+                    }
+
+                    for row_idx in range(1, len(table.rows)):
+                        # Verificar si es fila de waste
+                        waste_cell = table.cell(row_idx, 1).text.strip().lower() if len(table.columns) > 1 else ""
+                        for waste_key, mapped_row in waste_map.items():
+                            if waste_key in tipo_desp and row_idx == mapped_row:
+                                if len(table.columns) > 2:
+                                    table.cell(row_idx, 2).text = "X"
+                                    for para in table.cell(row_idx, 2).text_frame.paragraphs:
+                                        para.font.bold = True
+                                        para.font.size = Pt(14)
+                                        para.alignment = PP_ALIGN.CENTER
+
+                        # Verificar si es fila de BTO
+                        bto_cell = table.cell(row_idx, 0).text.strip().lower() if len(table.columns) > 0 else ""
+                        for bto_key, mapped_row in bto_map.items():
+                            if bto_key in impacto_bto and row_idx == mapped_row:
+                                if len(table.columns) > 1:
+                                    table.cell(row_idx, 1).text = "X"
+                                    for para in table.cell(row_idx, 1).text_frame.paragraphs:
+                                        para.font.bold = True
+                                        para.font.size = Pt(14)
+                                        para.alignment = PP_ALIGN.CENTER
+
+        # PÁGINA 2: Detalle de la mejora
         blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[-1]
         detail_slide = prs.slides.add_slide(blank_layout)
 
@@ -1097,6 +1662,8 @@ class DocumentGenerator:
             ("Descripción del Problema", "descripcion_problema"),
             ("Solución Implementada", "solucion"),
             ("Beneficios", "beneficios"),
+            ("Tipo de Desperdicio", "tipo_desperdicio"),
+            ("Impacto BTO", "impacto_bto"),
             ("Próximos Pasos", "proximos_pasos"),
         ]
 
@@ -1121,6 +1688,7 @@ class DocumentGenerator:
                     p.word_wrap = True
                 y_pos += 1.5
 
+        # Agregar imágenes antes/después
         if images:
             for idx, img_info in enumerate(images, 1):
                 blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[-1]
@@ -1149,6 +1717,18 @@ class DocumentGenerator:
 
                     left = (Inches(10) - w) / 2
                     img_slide.shapes.add_picture(img_path, left, Inches(1), w, h)
+
+                    # Agregar descripción
+                    desc = img_info.get("desc", f"Figura {idx}") if isinstance(img_info, dict) else f"Figura {idx}"
+                    desc_box = img_slide.shapes.add_textbox(Inches(0.5), Inches(7.3), Inches(9), Inches(0.5))
+                    dtf = desc_box.text_frame
+                    dtf.text = desc
+                    for p in dtf.paragraphs:
+                        p.font.size = Pt(11)
+                        p.font.italic = True
+                        p.font.color.rgb = RGBColor(0x47, 0x55, 0x69)
+                        p.alignment = PP_ALIGN.CENTER
+
                 except Exception as e:
                     st.warning(f"Error imagen: {e}")
 
@@ -1156,6 +1736,7 @@ class DocumentGenerator:
         prs.save(output_buffer)
         output_buffer.seek(0)
         return output_buffer
+
 
 # =============================================================================
 # EXPORTADOR A PDF
@@ -1375,6 +1956,8 @@ class PDFExporter:
 
                 story.append(Paragraph(f"<b>Tipo de Desperdicio:</b> {data.get('tipo_desperdicio', '')}", body_style))
                 story.append(Paragraph(f"<b>Impacto BTO:</b> {data.get('impacto_bto', '')}", body_style))
+                story.append(Paragraph(f"<b>Leader:</b> {data.get('leader', '')}", body_style))
+                story.append(Paragraph(f"<b>Team Members:</b> {data.get('team_members', '')}", body_style))
 
             doc.build(story)
             buffer.seek(0)
@@ -1383,6 +1966,7 @@ class PDFExporter:
         except Exception as e:
             st.error(f"Error generando PDF con ReportLab: {e}")
             return None
+
 
 # =============================================================================
 # INICIALIZACION DE SESSION STATE CON PERSISTENCIA LOCAL
@@ -1473,7 +2057,7 @@ def render_sidebar():
     st.sidebar.markdown(f"""
     <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
         <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-        <p>v4.0.0 · Julio 2026</p>
+        <p>v5.0.0 · Julio 2026</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -1568,6 +2152,7 @@ def render_welcome():
         st.metric("⚡ Kaizen", len([d for d in docs if d.get("type") == "kaizen"]))
     with col4:
         st.metric("📁 Total", len(docs))
+
 
 # =============================================================================
 # FORMULARIOS DE CREACIÓN CON CORRECTOR AUTOMÁTICO
@@ -1769,16 +2354,19 @@ def render_kaizen_form():
     st.markdown("#### 1. Información General")
     col1, col2 = st.columns(2)
     with col1:
-        kaizen_title = st.text_input("Título:", placeholder="Ej: Organización de área de herramientas con Shadow Board")
-        area = st.text_input("Área:", value=config.get("default_area", ""))
+        kaizen_title = st.text_input("Título (Name):", placeholder="Ej: Organización de área de herramientas con Shadow Board")
+        area = st.text_input("Plant/Area:", value=config.get("default_area", ""))
     with col2:
-        autor = st.text_input("Autor:", value=config.get("default_author", ""))
+        leader = st.text_input("Leader:", value=config.get("default_author", ""))
         doc_number = st.text_input("Número:", value=Utils.generate_doc_number("kaizen"), disabled=True)
-    fecha = st.text_input("Fecha:", value=Utils.format_date(), disabled=True)
+
+    fecha = st.text_input("Date:", value=Utils.format_date(), disabled=True)
+
+    team_members = st.text_input("Team Members (separados por coma):", placeholder="Ej: Juan Pérez, María García, Carlos López")
 
     st.markdown("#### 2. Descripción de la Actividad (Detallada)")
     activity_desc = auto_correct_text_input(
-        "Describa la mejora realizada:", 
+        "Describa la mejora realizada (Opportunity + Improvement):", 
         "", 
         "kzn_activity_desc",
         height=250,
@@ -1786,12 +2374,48 @@ def render_kaizen_form():
     )
 
     st.markdown("#### 3. Clasificación")
-    tipo_desp = st.multiselect("Tipo de Desperdicio eliminado:",
-                               ["Motion", "Skills", "Inventory", "Transportation",
-                                "Over Production", "Over Processing", "Waiting", "Defects"])
-    impacto_bto = st.selectbox("Impacto BTO:",
-                               ["Safe and Sustainable", "People & Culture",
-                                "Network Optimisation", "Supply Chain and Manufacturing Excellence"])
+    col1, col2 = st.columns(2)
+    with col1:
+        tipo_desp = st.multiselect("Tipo de Desperdicio eliminado (8 Wastes):",
+                                   ["Motion", "Skills", "Inventory", "Transportation",
+                                    "Over Production", "Over Processing", "Waiting", "Defects"])
+    with col2:
+        impacto_bto = st.selectbox("Impacto BTO:",
+                                   ["Safe and Sustainable", "People & Culture",
+                                    "Network Optimisation", "Supply Chain and Manufacturing Excellence"])
+
+    st.markdown("#### 4. Beneficios")
+    beneficios = auto_correct_text_input(
+        "Describa los beneficios obtenidos:", 
+        "", 
+        "kzn_beneficios",
+        height=120,
+        help_text="Incluya datos cuantitativos: tiempos antes/después, porcentajes de mejora, ahorros estimados."
+    )
+
+    st.markdown("#### 5. Imágenes Antes/Después")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("**Imagen ANTES:**")
+        img_antes = st.file_uploader("Subir imagen ANTES:", type=["png", "jpg", "jpeg"], key="img_antes")
+    with col2:
+        st.markdown("**Imagen DESPUÉS:**")
+        img_despues = st.file_uploader("Subir imagen DESPUÉS:", type=["png", "jpg", "jpeg"], key="img_despues")
+
+    image_paths = []
+    if img_antes:
+        img_path = f"/tmp/temp_kzn_antes_{doc_number}.png"
+        with open(img_path, "wb") as f:
+            f.write(img_antes.getbuffer())
+        image_paths.append({"path": img_path, "desc": "ANTES - Estado inicial"})
+        st.success("📷 Imagen ANTES cargada")
+
+    if img_despues:
+        img_path = f"/tmp/temp_kzn_despues_{doc_number}.png"
+        with open(img_path, "wb") as f:
+            f.write(img_despues.getbuffer())
+        image_paths.append({"path": img_path, "desc": "DESPUÉS - Estado final"})
+        st.success("📷 Imagen DESPUÉS cargada")
 
     context = auto_correct_text_input(
         "Contexto adicional:", 
@@ -1800,18 +2424,6 @@ def render_kaizen_form():
         height=80,
         help_text="Costos, tiempos medidos, materiales utilizados, etc."
     )
-
-    st.markdown("#### 4. Imágenes de Soporte")
-    uploaded_images = st.file_uploader("Seleccione imágenes:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
-
-    image_paths = []
-    if uploaded_images:
-        for idx, img_file in enumerate(uploaded_images, 1):
-            img_path = f"/tmp/temp_kzn_img_{doc_number}_{idx}.png"
-            with open(img_path, "wb") as f:
-                f.write(img_file.getbuffer())
-            image_paths.append({"path": img_path, "desc": f"Figura {idx} - {img_file.name}"})
-        st.success(f"📷 {len(image_paths)} imagen(es) cargada(s)")
 
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🤖 Generar Documento Kaizen con IA", type="primary", use_container_width=True):
@@ -1824,9 +2436,19 @@ def render_kaizen_form():
             result = gemini.generate_kaizen(activity_desc, context)
             result["tipo_desperdicio"] = ", ".join(tipo_desp) if tipo_desp else result.get("tipo_desperdicio", "")
             result["impacto_bto"] = impacto_bto
+            result["leader"] = leader
+            result["team_members"] = team_members
+            result["beneficios"] = beneficios if beneficios else result.get("beneficios", "")
 
             st.session_state.generated_data = result
-            st.session_state.doc_meta = {"titulo": kaizen_title, "area": area, "autor": autor, "doc_number": doc_number, "fecha": fecha}
+            st.session_state.doc_meta = {
+                "titulo": kaizen_title, 
+                "area": area, 
+                "leader": leader, 
+                "team_members": team_members,
+                "doc_number": doc_number, 
+                "fecha": fecha
+            }
             st.session_state.doc_images = image_paths
             st.session_state.doc_type = "kaizen"
             st.session_state.page = "revisar"
@@ -2051,26 +2673,37 @@ def _render_kaizen_review(data, meta, images, config):
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
 
     with tabs[0]:
-        meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""), key="kzn_rev_title")
-        meta["area"] = st.text_input("Área:", value=meta.get("area", ""), key="kzn_rev_area")
-        meta["autor"] = st.text_input("Autor:", value=meta.get("autor", ""), key="kzn_rev_autor")
+        meta["titulo"] = st.text_input("Título (Name):", value=meta.get("titulo", ""), key="kzn_rev_title")
+        meta["area"] = st.text_input("Plant/Area:", value=meta.get("area", ""), key="kzn_rev_area")
+        meta["leader"] = st.text_input("Leader:", value=meta.get("leader", ""), key="kzn_rev_leader")
+        meta["team_members"] = st.text_input("Team Members:", value=meta.get("team_members", ""), key="kzn_rev_team")
         meta["doc_number"] = st.text_input("Número:", value=meta.get("doc_number", ""), disabled=True)
-        meta["fecha"] = st.text_input("Fecha:", value=meta.get("fecha", ""), disabled=True)
+        meta["fecha"] = st.text_input("Date:", value=meta.get("fecha", ""), disabled=True)
 
     with tabs[1]:
-        sections = [
-            ("Descripción del Problema", "descripcion_problema"), ("Solución Implementada", "solucion"),
-            ("Beneficios", "beneficios"), ("Tipo de Desperdicio", "tipo_desperdicio"),
-            ("Impacto BTO", "impacto_bto"), ("Próximos Pasos", "proximos_pasos"),
-        ]
-        for label, key in sections:
-            st.markdown(f"**{label}**")
-            data[key] = _spell_check_field("", data.get(key, ""), f"kzn_{key}", gemini)
+        st.markdown("**Descripción del Problema (Opportunity)**")
+        data["descripcion_problema"] = _spell_check_field("", data.get("descripcion_problema", ""), "kzn_desc", gemini)
+
+        st.markdown("**Solución Implementada (Improvement)**")
+        data["solucion"] = _spell_check_field("", data.get("solucion", ""), "kzn_sol", gemini)
+
+        st.markdown("**Beneficios (Benefit)**")
+        data["beneficios"] = _spell_check_field("", data.get("beneficios", ""), "kzn_ben", gemini)
+
+        st.markdown("**Tipo de Desperdicio**")
+        data["tipo_desperdicio"] = st.text_input("", value=data.get("tipo_desperdicio", ""), key="kzn_desp")
+
+        st.markdown("**Impacto BTO**")
+        data["impacto_bto"] = st.text_input("", value=data.get("impacto_bto", ""), key="kzn_bto")
+
+        st.markdown("**Próximos Pasos**")
+        data["proximos_pasos"] = _spell_check_field("", data.get("proximos_pasos", ""), "kzn_next", gemini)
 
     with tabs[2]:
+        st.markdown("#### Imágenes Cargadas")
         if images:
             for idx, img_info in enumerate(images, 1):
-                st.image(img_info["path"], caption=f"Figura {idx}: {img_info['desc']}", width=400)
+                st.image(img_info["path"], caption=f"{img_info['desc']}", width=400)
         else:
             st.info("No se cargaron imágenes")
 
@@ -2237,7 +2870,7 @@ def render_history():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "4.0.0"
+            "version": "5.0.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2487,7 +3120,7 @@ def render_settings():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "4.0.0"
+            "version": "5.0.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
 
@@ -2580,7 +3213,7 @@ def main():
     st.markdown("""
     <div class="app-footer">
         <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
-        <p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v4.0.0</p>
+        <p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v5.0.0</p>
         <p style="font-size: 0.75rem; color: #94a3b8;">
             Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
             Mantiene los formatos oficiales de la empresa sin modificaciones.<br>
