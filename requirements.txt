@@ -1,29 +1,24 @@
 # =============================================================================
-# REQUIREMENTS.TXT - Sistema de Gestión Documental v4.0.0
-# MoC | Mejora A3 | Simple Kaizen
-# =============================================================================
-# Instalar con: pip install -r requirements.txt
-# O en Streamlit Cloud: se detecta automáticamente
+# Sistema de Gestión Documental - MoC | A3 | Kaizen v5.0.0
+# CAVA - Especialistas en Robótica y Automatización
+# Diseñado por: Roger Huamani
 # =============================================================================
 
 # Framework principal
-streamlit>=1.35.0
+streamlit>=1.30.0
 
-# Manejo de documentos PowerPoint
+# Manejo de documentos Office
 python-pptx>=0.6.23
-
-# Manejo de documentos Word
 python-docx>=1.1.0
 
 # Procesamiento de imágenes
 Pillow>=10.0.0
 
-# Generación de PDF (fallback cuando no hay LibreOffice)
+# Corrector ortográfico (opcional pero recomendado)
+pyspellchecker>=0.7.2
+
+# Generación de PDF fallback
 reportlab>=4.0.0
 
-# Peticiones HTTP para API Gemini
-requests>=2.31.0
-
 # Utilidades
-# Nota: uuid, json, re, os, datetime, pathlib, copy, io, tempfile, subprocess 
-# son parte de la librería estándar de Python y no requieren instalación
+requests>=2.31.0
