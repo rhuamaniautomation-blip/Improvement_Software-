@@ -3,11 +3,11 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 8.0.0 - Modelos API Actualizados (Gemini 2.5) y Contexto Específico
+Version 8.1.0 - Modelos API Actualizados con Migración Automática
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 8.0.0
+Version: 8.1.0
 Fecha: Agosto 2026
 ================================================================================
 """
@@ -25,7 +25,6 @@ from datetime import datetime
 from pathlib import Path
 from copy import deepcopy
 from io import BytesIO
-# Librerías para documentos
 from PIL import Image
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
@@ -37,14 +36,14 @@ from docx.shared import Inches as DocxInches
 from docx.shared import Pt as DocxPt
 from docx.shared import RGBColor as DocxRGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-# Corrector ortográfico
+
 SPELLCHECKER_AVAILABLE = False
 try:
     from spellchecker import SpellChecker
     SPELLCHECKER_AVAILABLE = True
 except ImportError:
     pass
-# Intentar importar reportlab para PDF fallback
+
 try:
     from reportlab.lib.pagesizes import A4, letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -56,9 +55,6 @@ try:
 except ImportError:
     REPORTLAB_AVAILABLE = False
 
-# =============================================================================
-# CONFIGURACION INICIAL DE PAGINA
-# =============================================================================
 st.set_page_config(
     page_title="Gestión Documental - MoC | A3 | Kaizen",
     page_icon="📋",
@@ -66,9 +62,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# =============================================================================
-# RUTAS Y DIRECTORIOS DE PERSISTENCIA
-# =============================================================================
 BASE_DIR = Path(__file__).parent if "__file__" in dir() else Path(".")
 DATA_DIR = BASE_DIR / "data"
 TEMPLATES_DIR = BASE_DIR / "templates"
@@ -77,9 +70,6 @@ CONFIG_FILE = DATA_DIR / "config.json"
 DATA_DIR.mkdir(exist_ok=True)
 TEMPLATES_DIR.mkdir(exist_ok=True)
 
-# =============================================================================
-# CSS PERSONALIZADO EMPRESARIAL
-# =============================================================================
 CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -155,9 +145,6 @@ footer {visibility: hidden;}
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# =============================================================================
-# PERSISTENCIA LOCAL
-# =============================================================================
 class LocalStorage:
     @staticmethod
     def save_config(config):
@@ -221,9 +208,6 @@ class LocalStorage:
             st.warning(f"Error cargando template {template_name}: {e}")
         return None
 
-# =============================================================================
-# UTILIDADES
-# =============================================================================
 class Utils:
     @staticmethod
     def format_date():
@@ -277,7 +261,6 @@ class Utils:
 
     @staticmethod
     def correct_spelling_basic(text):
-        """Corrector ortográfico robusto con diccionario técnico industrial"""
         if not text or not text.strip():
             return text
         corrections = {
@@ -411,20 +394,31 @@ class Utils:
         return result
 
 # =============================================================================
-# SERVICIO GEMINI API - MODELOS ACTUALIZADOS (GEMINI 2.5)
+# SERVICIO GEMINI API - MODELOS ACTUALIZADOS CON MIGRACIÓN AUTOMÁTICA
 # =============================================================================
 class GeminiService:
-    # CORRECCIÓN CRÍTICA: Los modelos gemini-1.5-flash y gemini-1.0-pro YA NO EXISTEN en v1beta.
-    # Los modelos actuales disponibles son gemini-2.5-flash, gemini-2.5-pro y gemini-2.0-flash.
+    # MODELOS VÁLIDOS ACTUALMENTE EN LA API v1beta (Agosto 2026)
     MODELS = {
         "gemini-2.5-flash": {"name": "Gemini 2.5 Flash", "desc": "Rápido, eficiente y recomendado"},
         "gemini-2.5-pro": {"name": "Gemini 2.5 Pro", "desc": "Máxima calidad y razonamiento"},
-        "gemini-2.0-flash": {"name": "Gemini 2.0 Flash", "desc": "Alternativa estable"},
     }
+    
+    # Modelos obsoletos que deben migrarse automáticamente
+    DEPRECATED_MODELS = {
+        "gemini-1.5-flash-lite", "gemini-1.5-flash", "gemini-1.5-pro",
+        "gemini-1.0-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite",
+        "gemini-2.0-pro", "gemini-2.5-flash-lite"
+    }
+    
+    DEFAULT_MODEL = "gemini-2.5-flash"
 
-    def __init__(self, api_key="", model="gemini-2.5-flash"):
+    def __init__(self, api_key="", model=None):
         self.api_key = api_key
-        self.model = model
+        # Si el modelo es None o está obsoleto, usar el default
+        if model is None or model in self.DEPRECATED_MODELS or model not in self.MODELS:
+            self.model = self.DEFAULT_MODEL
+        else:
+            self.model = model
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
 
     def _call_api(self, prompt, temperature=0.3, max_tokens=4096):
@@ -445,14 +439,13 @@ class GeminiService:
             return ""
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
-                raise Exception(f"Error 404: El modelo '{self.model}' no está disponible. Verifica que la 'Generative Language API' esté habilitada en tu proyecto de Google Cloud y que la API Key sea válida.")
+                raise Exception(f"Error 404: El modelo '{self.model}' no está disponible. Use el botón 'Probar Conexión API' en Configuración para verificar.")
             elif e.response.status_code == 403:
-                raise Exception("Error 403: Acceso denegado. Verifica que la API Key sea válida y no tenga restricciones.")
+                raise Exception("Error 403: Acceso denegado. Verifique que la API Key sea válida.")
             else:
                 raise Exception(f"Error HTTP {e.response.status_code}: {e.response.text}")
 
     def _extract_json(self, text):
-        import json
         json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
         if json_match:
             try:
@@ -477,9 +470,9 @@ class GeminiService:
         prompt = f"""Eres un ingeniero senior de seguridad industrial con 20 años de experiencia en minería y manufactura, especializado en Management of Change (MoC) bajo normas ISO 45001, ISO 9001 e ISO 13849.
 
 REGLAS CRÍTICAS OBLIGATORIAS (LEER DETENIDAMENTE):
-1. CONTEXTO EXCLUSIVO: Toda la redacción debe basarse ÚNICA Y EXCLUSIVAMENTE en el problema reportado por el usuario a continuación.
-2. PROHIBICIÓN DE TEXTO GENÉRICO: Está TERMINANTEMENTE PROHIBIDO usar frases genéricas como "degradación progresiva de componentes", "parámetros fuera de rango", "desviaciones del proceso" o "condición técnica que afecta la continuidad" a menos que el usuario las haya escrito explícitamente.
-3. EXTRACCIÓN DE ENTIDADES: Debes identificar y usar los elementos específicos del usuario: equipos, componentes (interlocks, compuertas, sensores, PLC), riesgos (atrapamiento, material energético) y normas (ISO 13849).
+1. CONTEXTO EXCLUSIVO: Toda la redacción debe basarse ÚNICA Y EXCLUSIVAMENTE en el problema reportado por el usuario.
+2. PROHIBICIÓN DE TEXTO GENÉRICO: Está TERMINANTEMENTE PROHIBIDO usar frases como "degradación progresiva de componentes", "parámetros fuera de rango", "desviaciones del proceso" o "condición técnica que afecta la continuidad" a menos que el usuario las haya escrito explícitamente.
+3. EXTRACCIÓN DE ENTIDADES: Identifica y usa los elementos específicos del usuario: equipos, componentes (interlocks, compuertas, sensores, PLC), riesgos (atrapamiento, material energético) y normas (ISO 13849).
 4. REDACCIÓN HUMANIZADA Y TÉCNICA: Escribe como un ingeniero senior. Usa voz activa, conectores lógicos y párrafos bien estructurados.
 5. ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras.
 
@@ -612,16 +605,15 @@ Genera JSON con: titulo, area, descripcion_problema, solucion, beneficios, tipo_
     def correct_spelling(self, text):
         if not self.api_key or not text.strip():
             return Utils.correct_spelling_basic(text)
-        prompt = f"""Corrige ortografía, gramática y puntuación. Mantén el significado técnico. Asegura tildes correctas. Devuelve SOLO el texto corregido.\nTEXTO:\n{text}"""
+        prompt = f"""Corrige ortografía, gramática y puntuación. Mantén el significado técnico. Asegura tildes correctas. Devuelve SOLO el texto corregido.
+TEXTO:
+{text}"""
         try:
             corrected = self._call_api(prompt, temperature=0.2, max_tokens=4096).strip()
             return Utils.correct_spelling_basic(corrected)
         except:
             return Utils.correct_spelling_basic(text)
 
-# =============================================================================
-# REEMPLAZO INTELIGENTE DE TEXTO EN POWERPOINT Y WORD
-# =============================================================================
 def replace_text_in_shape(shape, old_text, new_text):
     if not shape.has_text_frame:
         return False
@@ -715,9 +707,6 @@ def replace_text_in_docx_preserve_runs(doc, old_text, new_text):
                     for para in cell.paragraphs:
                         replace_in_paragraph(para)
 
-# =============================================================================
-# GENERADOR DE DOCUMENTOS - FORMATO OFICIAL MDET 12 SLIDES
-# =============================================================================
 class DocumentGenerator:
     def generate_moc(self, data, images=None, template_bytes=None):
         if template_bytes is None:
@@ -995,16 +984,11 @@ class DocumentGenerator:
             run.font.color.rgb = DocxRGBColor(0x1a, 0x5f, 0x7a)
             run.font.name = 'Calibri'
         sections = [
-            ("ANTECEDENTES", "antecedentes"),
-            ("PROBLEMA ACTUAL", "problema_actual"),
-            ("ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"),
-            ("OBJETIVOS", "objetivos"),
-            ("ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"),
-            ("CONTRAMEDIDAS", "contramedidas"),
-            ("RESULTADOS ESPERADOS", "resultados_esperados"),
-            ("PLAN DE SEGUIMIENTO", "plan_seguimiento"),
-            ("LECCIONES APRENDIDAS", "lecciones_aprendidas"),
-            ("ESTANDARIZACIÓN", "estandarizacion"),
+            ("ANTECEDENTES", "antecedentes"), ("PROBLEMA ACTUAL", "problema_actual"),
+            ("ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"), ("OBJETIVOS", "objetivos"),
+            ("ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"), ("CONTRAMEDIDAS", "contramedidas"),
+            ("RESULTADOS ESPERADOS", "resultados_esperados"), ("PLAN DE SEGUIMIENTO", "plan_seguimiento"),
+            ("LECCIONES APRENDIDAS", "lecciones_aprendidas"), ("ESTANDARIZACIÓN", "estandarizacion"),
         ]
         for section_title, key in sections:
             h = doc.add_heading(section_title, level=2)
@@ -1097,9 +1081,6 @@ class DocumentGenerator:
         output_buffer.seek(0)
         return output_buffer
 
-# =============================================================================
-# EXPORTADOR A PDF
-# =============================================================================
 class PDFExporter:
     @staticmethod
     def pptx_to_pdf_libreoffice(pptx_bytes, output_filename):
@@ -1161,25 +1142,12 @@ class PDFExporter:
             return None
         try:
             buffer = BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=A4,
-                                    rightMargin=72, leftMargin=72,
-                                    topMargin=72, bottomMargin=18)
+            doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=72, leftMargin=72, topMargin=72, bottomMargin=18)
             styles = getSampleStyleSheet()
             story = []
-            title_style = ParagraphStyle(
-                'CustomTitle', parent=styles['Heading1'],
-                fontSize=20, textColor=colors.HexColor('#1a5f7a'),
-                spaceAfter=30, alignment=TA_CENTER, fontName='Helvetica-Bold'
-            )
-            heading_style = ParagraphStyle(
-                'CustomHeading', parent=styles['Heading2'],
-                fontSize=14, textColor=colors.HexColor('#1a5f7a'),
-                spaceAfter=12, spaceBefore=12, fontName='Helvetica-Bold'
-            )
-            body_style = ParagraphStyle(
-                'CustomBody', parent=styles['BodyText'],
-                fontSize=10, leading=14, alignment=TA_JUSTIFY, fontName='Helvetica'
-            )
+            title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#1a5f7a'), spaceAfter=30, alignment=TA_CENTER, fontName='Helvetica-Bold')
+            heading_style = ParagraphStyle('CustomHeading', parent=styles['Heading2'], fontSize=14, textColor=colors.HexColor('#1a5f7a'), spaceAfter=12, spaceBefore=12, fontName='Helvetica-Bold')
+            body_style = ParagraphStyle('CustomBody', parent=styles['BodyText'], fontSize=10, leading=14, alignment=TA_JUSTIFY, fontName='Helvetica')
             type_names = {"moc": "Management of Change (MoC)", "a3": "Mejora A3", "kaizen": "Simple Kaizen"}
             doc_title = type_names.get(doc_type, "Documento")
             story.append(Paragraph(f"<b>{doc_title}</b>", title_style))
@@ -1240,16 +1208,24 @@ class PDFExporter:
             return None
 
 # =============================================================================
-# INICIALIZACION DE SESSION STATE
+# INICIALIZACIÓN CON MIGRACIÓN AUTOMÁTICA DE MODELOS OBSOLETOS
 # =============================================================================
 def init_session_state():
     saved_config = LocalStorage.load_config()
     saved_history = LocalStorage.load_history()
+    
+    # MIGRACIÓN AUTOMÁTICA: Si el modelo guardado está obsoleto, migrar al nuevo
+    if saved_config and saved_config.get("gemini_model") in GeminiService.DEPRECATED_MODELS:
+        old_model = saved_config.get("gemini_model")
+        saved_config["gemini_model"] = GeminiService.DEFAULT_MODEL
+        LocalStorage.save_config(saved_config)
+        st.info(f"🔄 Modelo migrado automáticamente: '{old_model}' → '{GeminiService.DEFAULT_MODEL}'")
+    
     defaults = {
         "page": "inicio",
         "config": saved_config or {
             "gemini_api_key": "",
-            "gemini_model": "gemini-2.5-flash",  # CORREGIDO: Modelo actualizado
+            "gemini_model": GeminiService.DEFAULT_MODEL,
             "company_name": "",
             "department": "",
             "default_author": "",
@@ -1283,9 +1259,6 @@ def init_session_state():
 
 init_session_state()
 
-# =============================================================================
-# INTERFAZ DE USUARIO
-# =============================================================================
 def render_sidebar():
     config = st.session_state.config
     st.sidebar.markdown("""
@@ -1310,11 +1283,11 @@ def render_sidebar():
             st.session_state.page = page_key
             st.rerun()
     st.sidebar.markdown("<hr style='border-color: #334155; margin: 1rem 0;'>", unsafe_allow_html=True)
-    model_name = GeminiService.MODELS.get(config.get("gemini_model", "gemini-2.5-flash"), {}).get("name", "Gemini 2.5 Flash")
+    model_name = GeminiService.MODELS.get(config.get("gemini_model", GeminiService.DEFAULT_MODEL), {}).get("name", "Gemini 2.5 Flash")
     st.sidebar.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
 <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-<p>v8.0.0 · Agosto 2026</p>
+<p>v8.1.0 · Agosto 2026</p>
 </div>
 """, unsafe_allow_html=True)
     st.sidebar.markdown("""
@@ -1441,7 +1414,7 @@ def render_moc_form():
     with col3:
         experto_aprobador = st.text_input("Experto Aprobador:")
     st.markdown("#### 3. Descripción del Problema/Cambio (SEA LO MÁS DETALLADO POSIBLE)")
-    st.warning("⚠️ **IMPORTANTE:** Describa el problema con el mayor detalle posible. La IA usará EXCLUSIVAMENTE esta información. Incluya: equipos específicos, componentes, riesgos, normas aplicables, solución propuesta.")
+    st.warning("⚠️ **IMPORTANTE:** Describa el problema con el mayor detalle posible. La IA usará EXCLUSIVAMENTE esta información.")
     problem_desc = auto_correct_text_input(
         "Describa el problema o cambio con sus palabras:",
         "",
@@ -1473,7 +1446,7 @@ def render_moc_form():
             st.error("❌ Describa el problema antes de generar.")
             return
         with st.spinner("🧠 La IA está generando los 12 slides del formato oficial MDET basándose en su problema específico..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
             equipo_data = {
                 "produccion": produccion, "specialist_shes": specialist_shes,
                 "mantenimiento": mantenimiento, "revisores": revisores,
@@ -1543,7 +1516,7 @@ def render_a3_form():
             st.error("❌ Describa el problema antes de generar.")
             return
         with st.spinner("🧠 Generando documento A3 con análisis detallado..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
             result = gemini.generate_a3(problem_desc, context)
             if result is None:
                 st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
@@ -1633,7 +1606,7 @@ def render_kaizen_form():
             st.error("❌ Describa la actividad antes de generar.")
             return
         with st.spinner("🧠 Generando documento Kaizen..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
             result = gemini.generate_kaizen(activity_desc, context)
             if result is None:
                 st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
@@ -1687,7 +1660,7 @@ def _spell_check_field(label, value, key_prefix, gemini):
     return text
 
 def _render_moc_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Checklist 360°", "📄 Documentos", "⚠️ Riesgos", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         st.markdown("#### Información del Documento")
@@ -1812,7 +1785,7 @@ def _render_moc_review(data, meta, images, config):
     st.session_state.doc_meta = meta
 
 def _render_a3_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""), key="a3_rev_title")
@@ -1853,7 +1826,7 @@ def _render_a3_review(data, meta, images, config):
     st.session_state.doc_meta = meta
 
 def _render_kaizen_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título (Name):", value=meta.get("titulo", ""), key="kzn_rev_title")
@@ -1899,7 +1872,7 @@ def _render_kaizen_review(data, meta, images, config):
 
 def _finalize_document(data, meta, images, language, doc_type, output_format="pptx"):
     config = st.session_state.config
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
     with st.spinner(f"📄 Generando documento..."):
         final_data = {**meta, **data}
         if language == "en" and doc_type == "moc":
@@ -2016,7 +1989,7 @@ def render_history():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "8.0.0"
+            "version": "8.1.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2090,21 +2063,22 @@ def render_settings():
         st.info("💡 Obtenga su API Key gratuita en [Google AI Studio](https://aistudio.google.com/)")
         api_key = st.text_input("API Key:", value=config.get("gemini_api_key", ""), type="password")
         
-        # BOTÓN DE DIAGNÓSTICO
+        # BOTÓN DE DIAGNÓSTICO - USA EL MODELO SELECCIONADO
         if st.button("🔌 Probar Conexión API", type="secondary", use_container_width=True):
             if not api_key:
                 st.error("⚠️ Ingrese una API Key primero.")
             else:
-                with st.spinner("Probando conexión con Gemini 2.5 Flash..."):
+                selected_model = config.get("gemini_model", GeminiService.DEFAULT_MODEL)
+                with st.spinner(f"Probando conexión con {GeminiService.MODELS[selected_model]['name']}..."):
                     try:
                         import requests
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{selected_model}:generateContent?key={api_key}"
                         payload = {"contents": [{"parts": [{"text": "Responde solo con la palabra 'OK'"}]}]}
                         resp = requests.post(url, json=payload, timeout=15)
                         if resp.status_code == 200:
-                            st.success("✅ ¡Conexión exitosa! Tu API Key es válida y los modelos Gemini 2.5 están disponibles.")
+                            st.success(f"✅ ¡Conexión exitosa con {GeminiService.MODELS[selected_model]['name']}! Tu API Key es válida.")
                         elif resp.status_code == 404:
-                            st.error("❌ Error 404: La 'Generative Language API' NO está habilitada en tu proyecto.")
+                            st.error(f"❌ Error 404: El modelo '{selected_model}' no está disponible.")
                             st.info("👉 **Solución:** Ve a [Google Cloud Console](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com), selecciona tu proyecto y haz clic en **HABILITAR**.")
                             st.code(resp.text, language="json")
                         elif resp.status_code == 403:
@@ -2116,25 +2090,24 @@ def render_settings():
                         st.error(f"❌ Error de conexión: {e}")
         
         st.markdown("#### Selección de Modelo")
-        current_model = config.get("gemini_model", "gemini-2.5-flash")
-        col1, col2, col3 = st.columns(3)
-        models = [
-            ("gemini-2.5-flash", "⚡ Gemini 2.5 Flash", "Rápido, eficiente y recomendado", "Recomendado"),
-            ("gemini-2.5-pro", "🧠 Gemini 2.5 Pro", "Máxima calidad y razonamiento", "Avanzado"),
-            ("gemini-2.0-flash", "🔥 Gemini 2.0 Flash", "Alternativa estable", "Estable"),
-        ]
-        for i, (model_id, name, desc, badge) in enumerate(models):
-            is_selected = current_model == model_id
-            with [col1, col2, col3][i]:
+        current_model = config.get("gemini_model", GeminiService.DEFAULT_MODEL)
+        # Si el modelo actual está obsoleto, mostrar advertencia
+        if current_model in GeminiService.DEPRECATED_MODELS:
+            st.warning(f"⚠️ El modelo '{current_model}' está obsoleto. Se migrará automáticamente a '{GeminiService.DEFAULT_MODEL}' al guardar.")
+        
+        col1, col2 = st.columns(2)
+        models_list = list(GeminiService.MODELS.items())
+        for i, (model_id, model_info) in enumerate(models_list):
+            is_selected = current_model == model_id or (current_model in GeminiService.DEPRECATED_MODELS and model_id == GeminiService.DEFAULT_MODEL)
+            with [col1, col2][i]:
                 border_color = "#1a5f7a" if is_selected else "#e2e8f0"
                 bg_color = "#eff6ff" if is_selected else "#f8fafc"
                 selected_text = '<div style="color: #1a5f7a; font-weight: bold; margin-top: 0.5rem;">✓ Seleccionado</div>' if is_selected else ''
                 st.markdown(f"""
 <div style="background: {bg_color}; border: 2px solid {border_color}; border-radius: 12px; padding: 1rem; text-align: center;">
-<div style="font-size: 2rem;">{name.split()[0]}</div>
-<h4 style="margin: 0.5rem 0; color: #1e293b;">{name.split(maxsplit=1)[1]}</h4>
-<p style="color: #64748b; font-size: 0.85rem; margin: 0;">{desc}</p>
-<span style="background: #dbeafe; color: #1d4ed8; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem;">{badge}</span>
+<div style="font-size: 2rem;">{model_info['name'].split()[0]}</div>
+<h4 style="margin: 0.5rem 0; color: #1e293b;">{model_info['name'].split(maxsplit=1)[1]}</h4>
+<p style="color: #64748b; font-size: 0.85rem; margin: 0;">{model_info['desc']}</p>
 {selected_text}
 </div>
 """, unsafe_allow_html=True)
@@ -2143,10 +2116,13 @@ def render_settings():
                     config["gemini_model"] = model_id
                     st.session_state.config = config
                     LocalStorage.save_config(config)
-                    st.success(f"✅ Modelo: {name}")
+                    st.success(f"✅ Modelo: {model_info['name']}")
                     st.rerun()
         if st.button("💾 Guardar API Key", type="primary", use_container_width=True):
             config["gemini_api_key"] = api_key
+            # Migrar modelo obsoleto si es necesario
+            if config.get("gemini_model") in GeminiService.DEPRECATED_MODELS:
+                config["gemini_model"] = GeminiService.DEFAULT_MODEL
             st.session_state.config = config
             LocalStorage.save_config(config)
             st.success("✅ API Key guardada")
@@ -2240,7 +2216,7 @@ def render_settings():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "8.0.0"
+            "version": "8.1.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2279,7 +2255,7 @@ def render_settings():
             if st.button("🗑️ Borrar Configuración", type="secondary", use_container_width=True):
                 st.session_state.config = {
                     "gemini_api_key": "",
-                    "gemini_model": "gemini-2.5-flash",
+                    "gemini_model": GeminiService.DEFAULT_MODEL,
                     "company_name": "",
                     "department": "",
                     "default_author": "",
@@ -2319,7 +2295,7 @@ def main():
     st.markdown("""
 <div class="app-footer">
 <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
-<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v8.0.0</p>
+<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v8.1.0</p>
 <p style="font-size: 0.75rem; color: #94a3b8;">
 Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
 Formato oficial MDET de 12 slides con Checklist 360° y análisis integral.<br>
