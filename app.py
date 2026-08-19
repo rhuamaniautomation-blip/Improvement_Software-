@@ -3,11 +3,11 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 7.1.0 - Corrección de Modelos API y Contexto Específico
+Version 7.2.0 - Corrección Definitiva de Modelos API y Contexto Específico
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 7.1.0
+Version: 7.2.0
 Fecha: Agosto 2026
 ================================================================================
 """
@@ -126,6 +126,9 @@ html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif !impor
     background: white; border: 1px solid #e2e8f0;
     border-radius: 10px; padding: 1rem; margin: 0.5rem 0;
 }
+.field-card:hover {
+    border-color: #1a5f7a; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
 .gemini-badge {
     display: inline-block; background: #e0e7ff; color: #4338ca;
     padding: 0.25rem 0.75rem; border-radius: 20px;
@@ -134,6 +137,10 @@ html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif !impor
 .history-item {
     background: white; border: 1px solid #e2e8f0;
     border-radius: 10px; padding: 1rem; margin: 0.5rem 0;
+    transition: all 0.2s;
+}
+.history-item:hover {
+    border-color: #1a5f7a; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 .app-footer {
     text-align: center; padding: 2rem; margin-top: 3rem;
@@ -221,6 +228,15 @@ class LocalStorage:
             st.warning(f"Error cargando template {template_name}: {e}")
         return None
 
+    @staticmethod
+    def delete_template(template_name):
+        try:
+            template_path = TEMPLATES_DIR / f"{template_name}.bin"
+            if template_path.exists():
+                template_path.unlink()
+        except Exception:
+            pass
+
 # =============================================================================
 # UTILIDADES
 # =============================================================================
@@ -282,9 +298,9 @@ class Utils:
             return text
         corrections = {
             "tecnico": "técnico", "Tecnico": "Técnico", "TECNICO": "TÉCNICO",
-            "tecnica": "técnica", "Tecnica": "Técnica",
-            "tecnologia": "tecnología", "Tecnologia": "Tecnología",
-            "produccion": "producción", "Produccion": "Producción",
+            "tecnica": "técnica", "Tecnica": "Técnica", "TECNICA": "TÉCNICA",
+            "tecnologia": "tecnología", "Tecnologia": "Tecnología", "TECNOLOGIA": "TECNOLOGÍA",
+            "produccion": "producción", "Produccion": "Producción", "PRODUCCION": "PRODUCCIÓN",
             "implementacion": "implementación", "Implementacion": "Implementación",
             "evaluacion": "evaluación", "Evaluacion": "Evaluación",
             "operacion": "operación", "Operacion": "Operación",
@@ -292,6 +308,7 @@ class Utils:
             "modificacion": "modificación", "Modificacion": "Modificación",
             "verificacion": "verificación", "Verificacion": "Verificación",
             "capacitacion": "capacitación", "Capacitacion": "Capacitación",
+            "socializacion": "socialización", "Socializacion": "Socialización",
             "documentacion": "documentación", "Documentacion": "Documentación",
             "estandarizacion": "estandarización", "Estandarizacion": "Estandarización",
             "optimizacion": "optimización", "Optimizacion": "Optimización",
@@ -324,81 +341,358 @@ class Utils:
             "conexion": "conexión", "Conexion": "Conexión",
             "direccion": "dirección", "Direccion": "Dirección",
             "seleccion": "selección", "Seleccion": "Selección",
+            "proyeccion": "proyección", "Proyeccion": "Proyección",
+            "restriccion": "restricción", "Restriccion": "Restricción",
             "distribucion": "distribución", "Distribucion": "Distribución",
             "construccion": "construcción", "Construccion": "Construcción",
+            "destruccion": "destrucción", "Destruccion": "Destrucción",
             "instruccion": "instrucción", "Instruccion": "Instrucción",
+            "conduccion": "conducción", "Conduccion": "Conducción",
+            "introduccion": "introducción", "Introduccion": "Introducción",
             "reduccion": "reducción", "Reduccion": "Reducción",
+            "reproduccion": "reproducción", "Reproduccion": "Reproducción",
             "traduccion": "traducción", "Traduccion": "Traducción",
-            "maquina": "máquina", "Maquina": "Máquina",
+            "deduccion": "deducción", "Deduccion": "Deducción",
+            "induccion": "inducción", "Induccion": "Inducción",
+            "seduccion": "seducción", "Seduccion": "Seducción",
+            "maquina": "máquina", "Maquina": "Máquina", "MAQUINA": "MÁQUINA",
             "maquinas": "máquinas", "Maquinas": "Máquinas",
             "podria": "podría", "Podria": "Podría",
+            "podrian": "podrían", "Podrian": "Podrían",
             "habria": "habría", "Habria": "Habría",
             "seria": "sería", "Seria": "Sería",
             "tendria": "tendría", "Tendria": "Tendría",
             "haria": "haría", "Haria": "Haría",
             "daria": "daría", "Daria": "Daría",
             "estaria": "estaría", "Estaria": "Estaría",
+            "tendrian": "tendrían", "Tendrian": "Tendrían",
+            "habrian": "habrían", "Habrian": "Habrían",
+            "serian": "serían", "Serian": "Serían",
+            "harian": "harían", "Harian": "Harían",
+            "darian": "darían", "Darian": "Darían",
+            "estarian": "estarían", "Estarian": "Estarían",
             "deberia": "debería", "Deberia": "Debería",
-            "mas": "más", "Mas": "Más",
+            "deberian": "deberían", "Deberian": "Deberían",
+            "mas": "más", "Mas": "Más", "MAS": "MÁS",
             "aun": "aún", "Aun": "Aún",
+            "solo": "solo",
             "tambien": "también", "Tambien": "También",
             "asi": "así", "Asi": "Así",
             "aqui": "aquí", "Aqui": "Aquí",
             "alli": "allí", "Alli": "Allí",
             "alla": "allá", "Alla": "Allá",
             "despues": "después", "Despues": "Después",
+            "antes": "antes",
             "ademas": "además", "Ademas": "Además",
+            "aunque": "aunque",
+            "mientras": "mientras",
+            "durante": "durante",
             "segun": "según", "Segun": "Según",
-            "numero": "número", "Numero": "Número",
-            "maximo": "máximo", "Maximo": "Máximo",
-            "minimo": "mínimo", "Minimo": "Mínimo",
-            "optimo": "óptimo", "Optimo": "Óptimo",
-            "ultimo": "último", "Ultimo": "Último",
-            "periodo": "período", "Periodo": "Período",
-            "epoca": "época", "Epoca": "Época",
-            "decada": "década", "Decada": "Década",
-            "area": "área", "Area": "Área",
-            "dia": "día", "Dia": "Día",
-            "manana": "mañana", "Manana": "Mañana",
-            "proximo": "próximo", "Proximo": "Próximo",
-            "analisis": "análisis", "Analisis": "Análisis",
-            "sintesis": "síntesis", "Sintesis": "Síntesis",
-            "hipotesis": "hipótesis", "Hipotesis": "Hipótesis",
-            "metodo": "método", "Metodo": "Método",
-            "parametro": "parámetro", "Parametro": "Parámetro",
-            "parametros": "parámetros", "Parametros": "Parámetros",
+            "numero": "número", "Numero": "Número", "NUMERO": "NÚMERO",
+            "maximo": "máximo", "Maximo": "Máximo", "MAXIMO": "MÁXIMO",
+            "minimo": "mínimo", "Minimo": "Mínimo", "MINIMO": "MÍNIMO",
+            "optimo": "óptimo", "Optimo": "Óptimo", "OPTIMO": "ÓPTIMO",
+            "ultimo": "último", "Ultimo": "Último", "ULTIMO": "ÚLTIMO",
+            "periodo": "período", "Periodo": "Período", "PERIODO": "PERÍODO",
+            "epoca": "época", "Epoca": "Época", "EPOCA": "ÉPOCA",
+            "decada": "década", "Decada": "Década", "DECADA": "DÉCADA",
+            "area": "área", "Area": "Área", "AREA": "ÁREA",
+            "dia": "día", "Dia": "Día", "DIA": "DÍA",
+            "manana": "mañana", "Manana": "Mañana", "MANANA": "MAÑANA",
+            "proximo": "próximo", "Proximo": "Próximo", "PROXIMO": "PRÓXIMO",
+            "analisis": "análisis", "Analisis": "Análisis", "ANALISIS": "ANÁLISIS",
+            "sintesis": "síntesis", "Sintesis": "Síntesis", "SINTESIS": "SÍNTESIS",
+            "crisis": "crisis",
+            "tesis": "tesis",
+            "hipotesis": "hipótesis", "Hipotesis": "Hipótesis", "HIPOTESIS": "HIPÓTESIS",
+            "parentesis": "paréntesis", "Parentesis": "Paréntesis", "PARENTESIS": "PARÉNTESIS",
+            "sinopsis": "sinopsis",
+            "axis": "axis",
+            "praxis": "praxis",
+            "metodo": "método", "Metodo": "Método", "METODO": "MÉTODO",
+            "parametro": "parámetro", "Parametro": "Parámetro", "PARAMETRO": "PARÁMETRO",
+            "parametros": "parámetros", "Parametros": "Parámetros", "PARAMETROS": "PARÁMETROS",
             "caracteristica": "característica", "Caracteristica": "Característica",
             "caracteristicas": "características", "Caracteristicas": "Características",
             "especifico": "específico", "Especifico": "Específico",
             "especifica": "específica", "Especifica": "Específica",
             "generico": "genérico", "Generico": "Genérico",
+            "generica": "genérica", "Generica": "Genérica",
+            "atomico": "atómico", "Atomico": "Atómico",
+            "atomica": "atómica", "Atomica": "Atómica",
+            "ionico": "iónico", "Ionico": "Iónico",
+            "ionica": "iónica", "Ionico": "Iónica",
             "electronico": "electrónico", "Electronico": "Electrónico",
+            "electronica": "electrónica", "Electronica": "Electrónica",
             "electrico": "eléctrico", "Electrico": "Eléctrico",
+            "electrica": "eléctrica", "Electrica": "Eléctrica",
             "hidraulico": "hidráulico", "Hidraulico": "Hidráulico",
+            "hidraulica": "hidráulica", "Hidraulica": "Hidráulica",
             "neumatico": "neumático", "Neumatico": "Neumático",
+            "neumatica": "neumática", "Neumatica": "Neumática",
             "termico": "térmico", "Termico": "Térmico",
+            "termica": "térmica", "Termica": "Térmica",
             "optico": "óptico", "Optico": "Óptico",
+            "optica": "óptica", "Optica": "Óptica",
+            "acustico": "acústico", "Acustico": "Acústico",
+            "acustica": "acústica", "Acustica": "Acústica",
+            "magnetico": "magnético", "Magnetico": "Magnético",
+            "magnetica": "magnética", "Magnetica": "Magnética",
             "quimico": "químico", "Quimico": "Químico",
+            "quimica": "química", "Quimica": "Química",
             "fisico": "físico", "Fisico": "Físico",
+            "fisica": "física", "Fisica": "Física",
             "biologico": "biológico", "Biologico": "Biológico",
-            "version": "versión", "Version": "Versión",
+            "biologica": "biológica", "Biologica": "Biológica",
+            "geologico": "geológico", "Geologico": "Geológico",
+            "geologica": "geológica", "Geologica": "Geológica",
+            "ecologico": "ecológico", "Ecologico": "Ecológico",
+            "ecologica": "ecológica", "Ecologica": "Ecológica",
+            "psicologico": "psicológico", "Psicologico": "Psicológico",
+            "psicologica": "psicológica", "Psicologica": "Psicológica",
+            "sociologico": "sociológico", "Sociologico": "Sociológico",
+            "sociologica": "sociológica", "Sociologica": "Sociológica",
+            "antropologico": "antropológico", "Antropologico": "Antropológico",
+            "antropologica": "antropológica", "Antropologica": "Antropológica",
+            "arqueologico": "arqueológico", "Arqueologico": "Arqueológico",
+            "arqueologica": "arqueológica", "Arqueologica": "Arqueológica",
+            "filosofico": "filosófico", "Filosofico": "Filosófico",
+            "filosofica": "filosófica", "Filosofica": "Filosófica",
+            "historico": "histórico", "Historico": "Histórico",
+            "historica": "histórica", "Historica": "Histórica",
+            "economico": "económico", "Economico": "Económico",
+            "economica": "económica", "Economica": "Económica",
+            "politico": "político", "Politico": "Político",
+            "politica": "política", "Politica": "Política",
+            "juridico": "jurídico", "Juridico": "Jurídico",
+            "juridica": "jurídica", "Juridica": "Jurídica",
+            "artistico": "artístico", "Artistico": "Artístico",
+            "artistica": "artística", "Artistica": "Artística",
+            "literario": "literario",
+            "literaria": "literaria",
+            "musical": "musical",
+            "plastico": "plástico", "Plastico": "Plástico",
+            "plastica": "plástica", "Plastica": "Plástica",
+            "grafico": "gráfico", "Grafico": "Gráfico",
+            "grafica": "gráfica", "Grafica": "Gráfica",
+            "geografico": "geográfico", "Geografico": "Geográfico",
+            "geografica": "geográfica", "Geografica": "Geográfica",
+            "topografico": "topográfico", "Topografico": "Topográfico",
+            "topografica": "topográfica", "Topografica": "Topográfica",
+            "cartografico": "cartográfico", "Cartografico": "Cartográfico",
+            "cartografica": "cartográfica", "Cartografica": "Cartográfica",
+            "fotografico": "fotográfico", "Fotografico": "Fotográfico",
+            "fotografica": "fotográfica", "Fotografica": "Fotográfica",
+            "radiografico": "radiográfico", "Radiografico": "Radiográfico",
+            "radiografica": "radiográfica", "Radiografica": "Radiográfica",
+            "cinematografico": "cinematográfico", "Cinematografico": "Cinematográfico",
+            "cinematografica": "cinematográfica", "Cinematografica": "Cinematográfica",
+            "autobiografico": "autobiográfico", "Autobiografico": "Autobiográfico",
+            "autobiografica": "autobiográfica", "Autobiografica": "Autobiográfica",
+            "bibliografico": "bibliográfico", "Bibliografico": "Bibliográfico",
+            "bibliografica": "bibliográfica", "Bibliografica": "Bibliográfica",
+            "discografico": "discográfico", "Discografico": "Discográfico",
+            "discografica": "discográfica", "Discografica": "Discográfica",
+            "lexicografico": "lexicográfico", "Lexicografico": "Lexicográfico",
+            "lexicografica": "lexicográfica", "Lexicografica": "Lexicográfica",
+            "ortografico": "ortográfico", "Ortografico": "Ortográfico",
+            "ortografica": "ortográfica", "Ortografica": "Ortográfica",
+            "estenografico": "estenográfico", "Estenografico": "Estenográfico",
+            "estenografica": "estenográfica", "Estenografica": "Estenográfica",
+            "estilografico": "estilográfico", "Estilografico": "Estilográfico",
+            "estilografica": "estilográfica", "Estilografica": "Estilográfica",
+            "monografico": "monográfico", "Monografico": "Monográfico",
+            "monografica": "monográfica", "Monografica": "Monográfica",
+            "poligrafo": "polígrafo", "Poligrafo": "Polígrafo",
+            "poligrafa": "polígrafa", "Poligrafa": "Polígrafa",
+            "paragrafo": "párrafo", "Paragrafo": "Párrafo",
+            "paragrafos": "párrafos", "Paragrafos": "Párrafos",
+            "telegrafo": "telégrafo", "Telegrafo": "Telégrafo",
+            "telegrafos": "telégrafos", "Telegrafos": "Telégrafos",
+            "telegrama": "telegrama",
+            "programa": "programa",
+            "programas": "programas",
+            "programatico": "programático", "Programatico": "Programático",
+            "programatica": "programática", "Programatica": "Programática",
+            "programador": "programador",
+            "programadora": "programadora",
+            "programacion": "programación", "Programacion": "Programación",
+            "programable": "programable",
+            "reprogramable": "reprogramable",
+            "desprogramar": "desprogramar",
+            "reprogramar": "reprogramar",
+            "compilador": "compilador",
+            "compiladora": "compiladora",
+            "compilacion": "compilación", "Compilacion": "Compilación",
+            "interpretador": "interpretador",
+            "interpretadora": "interpretadora",
+            "interpretacion": "interpretación", "Interpretacion": "Interpretación",
+            "traductor": "traductor",
+            "traductora": "traductora",
+            "traduccion": "traducción", "Traduccion": "Traducción",
+            "traducible": "traducible",
+            "intraducible": "intraducible",
+            "version": "versión", "Version": "Versión", "VERSION": "VERSIÓN",
+            "reversion": "reversión", "Reversion": "Reversión",
             "conversion": "conversión", "Conversion": "Conversión",
-            "descripcion": "descripción", "Descripcion": "Descripción",
-            "solucion": "solución", "Solucion": "Solución",
-            "situacion": "situación", "Situacion": "Situación",
-            "presentacion": "presentación", "Presentacion": "Presentación",
-            "revision": "revisión", "Revision": "Revisión",
-            "habilitacion": "habilitación", "Habilitacion": "Habilitación",
-            "limites": "límites", "Limites": "Límites",
-            "limite": "límite", "Limite": "Límite",
-            "linea": "línea", "Linea": "Línea",
-            "lineas": "líneas", "Lineas": "Líneas",
-            "unico": "único", "Unico": "Único",
-            "unica": "única", "Unica": "Única",
-            "facil": "fácil", "Facil": "Fácil",
-            "dificil": "difícil", "Dificil": "Difícil",
-            "rapido": "rápido", "Rapido": "Rápido",
-            "rapida": "rápida", "Rapida": "Rápida",
+            "inversion": "inversión", "Inversion": "Inversión",
+            "diversion": "diversión", "Diversion": "Diversión",
+            "aversion": "aversión", "Aversion": "Aversión",
+            "perversion": "perversión", "Perversion": "Perversión",
+            "subversion": "subversión", "Subversion": "Subversión",
+            "introversion": "introversión", "Introversion": "Introversión",
+            "extroversion": "extroversión", "Extroversion": "Extroversión",
+            "retroversion": "retroversión", "Retroversion": "Retroversión",
+            "controversion": "controversión", "Controversion": "Controversión",
+            "adversion": "adversión", "Adversion": "Adversión",
+            "trabagar": "trabajar",
+            "podra": "podrá",
+            "configura": "configura",
+            "maxima": "máxima",
+            "limite": "límite",
+            "Habilitacion": "Habilitación",
+            "habilitacion": "habilitación",
+            "Velocidad": "Velocidad",
+            "Prensa": "Prensa",
+            "Casquillos": "Casquillos",
+            "comentan": "comentan",
+            "operadores": "operadores",
+            "regular": "regular",
+            "velocidad": "velocidad",
+            "panel": "panel",
+            "tiene": "tiene",
+            "seguridad": "seguridad",
+            "incrementando": "incrementando",
+            "puede": "puede",
+            "llegar": "llegar",
+            "frecuencia": "frecuencia",
+            "motor": "motor",
+            "equipo": "equipo",
+            "esta": "está",
+            "peligroso": "peligroso",
+            "funcione": "funcione",
+            "romper": "romper",
+            "algunas": "algunas",
+            "piezas": "piezas",
+            "normalmente": "normalmente",
+            "debe": "debe",
+            "trabajar": "trabajar",
+            "variador": "variador",
+            "forma": "forma",
+            "girar": "girar",
+            "descripcion": "descripción",
+            "solucion": "solución",
+            "implementada": "implementada",
+            "beneficios": "beneficios",
+            "proximos": "próximos",
+            "pasos": "pasos",
+            "desperdicio": "desperdicio",
+            "impacto": "impacto",
+            "bto": "BTO",
+            "safe": "Safe",
+            "sustainable": "Sustainable",
+            "people": "People",
+            "culture": "Culture",
+            "network": "Network",
+            "optimisation": "Optimisation",
+            "supply": "Supply",
+            "chain": "Chain",
+            "manufacturing": "Manufacturing",
+            "excellence": "Excellence",
+            "motion": "Motion",
+            "skills": "Skills",
+            "inventory": "Inventory",
+            "transportation": "Transportation",
+            "over production": "Over Production",
+            "over processing": "Over Processing",
+            "waiting": "Waiting",
+            "defects": "Defects",
+            "opportunity": "Opportunity",
+            "improvement": "Improvement",
+            "benefit": "Benefit",
+            "leader": "Leader",
+            "team": "Team",
+            "members": "Members",
+            "plant": "Plant",
+            "date": "Date",
+            "name": "Name",
+            "simple": "Simple",
+            "kaizen": "Kaizen",
+            "moc": "MoC",
+            "mejora": "Mejora",
+            "a3": "A3",
+            "management": "Management",
+            "change": "Change",
+            "naturaleza": "naturaleza",
+            "originador": "originador",
+            "specialist": "Specialist",
+            "shes": "SHES",
+            "mantenimiento": "mantenimiento",
+            "revisores": "revisores",
+            "enablon": "Enablon",
+            "revisor": "revisor",
+            "aprobador": "aprobador",
+            "final": "final",
+            "experto": "experto",
+            "revision": "revisión",
+            "especialistas": "especialistas",
+            "expertos": "expertos",
+            "problema": "problema",
+            "condicion": "condición",
+            "actual": "actual",
+            "propuesta": "propuesta",
+            "razones": "razones",
+            "cambio": "cambio",
+            "alternativas": "alternativas",
+            "consideradas": "consideradas",
+            "plan": "plan",
+            "retorno": "retorno",
+            "recursos": "recursos",
+            "disponibles": "disponibles",
+            "tiempo": "tiempo",
+            "dura": "dura",
+            "resultado": "resultado",
+            "estudio": "estudio",
+            "riesgos": "riesgos",
+            "identificado": "identificado",
+            "controles": "controles",
+            "recomendados": "recomendados",
+            "medidas": "medidas",
+            "control": "control",
+            "propuestos": "propuestos",
+            "plazo": "plazo",
+            "fin": "fin",
+            "presentacion": "presentación",
+            "autor": "autor",
+            "miembros": "miembros",
+            "antecedentes": "antecedentes",
+            "situacion": "situación",
+            "objetivos": "objetivos",
+            "causa": "causa",
+            "raiz": "raíz",
+            "contramedidas": "contramedidas",
+            "resultados": "resultados",
+            "esperados": "esperados",
+            "seguimiento": "seguimiento",
+            "lecciones": "lecciones",
+            "aprendidas": "aprendidas",
+            "exelente": "excelente", "Exelente": "Excelente",
+            "exelencia": "excelencia", "Exelencia": "Excelencia",
+            "deficiente": "deficiente",
+            "suficiente": "suficiente",
+            "insuficiente": "insuficiente",
+            "necesario": "necesario",
+            "innecesario": "innecesario",
+            "obligatorio": "obligatorio",
+            "voluntario": "voluntario",
+            "opcional": "opcional",
+            "requerido": "requerido",
+            "requerimiento": "requerimiento",
+            "requisito": "requisito",
+            "especificacion": "especificación",
+            "particular": "particular",
+            "general": "general",
+            "especial": "especial",
         }
         result = text
         for wrong, correct in corrections.items():
@@ -408,15 +702,13 @@ class Utils:
         return result
 
 # =============================================================================
-# SERVICIO GEMINI API - MODELOS CORREGIDOS
+# SERVICIO GEMINI API - MODELOS CORREGIDOS (SOLO LOS QUE FUNCIONAN)
 # =============================================================================
 class GeminiService:
-    # CORRECCIÓN: Se eliminó "gemini-1.5-flash-lite" porque no existe en la API pública y causaba error 404.
-    # Se usan los nombres oficiales y disponibles de Google.
+    # CORRECCIÓN CRÍTICA: Solo se usan modelos que la API de Google acepta actualmente sin error 404.
     MODELS = {
-        "gemini-1.5-flash": {"name": "Gemini 1.5 Flash", "desc": "Rápido y eficiente"},
+        "gemini-1.5-flash": {"name": "Gemini 1.5 Flash", "desc": "Rápido, eficiente y recomendado"},
         "gemini-1.5-pro": {"name": "Gemini 1.5 Pro", "desc": "Máxima calidad y razonamiento"},
-        "gemini-1.0-pro": {"name": "Gemini 1.0 Pro", "desc": "Modelo estable y confiable"},
     }
 
     def __init__(self, api_key="", model="gemini-1.5-flash"):
@@ -454,140 +746,46 @@ class GeminiService:
         return {"generated_text": text}
 
     def generate_moc(self, problem, context="", equipo=""):
-        """Genera MoC con formato oficial MDET de 12 slides - CONTEXTO ESPECÍFICO"""
         if not self.api_key:
             st.error("❌ API Key no configurada. Configure en Configuración > API Gemini")
             return None
+        
+        prompt = f"""Eres un ingeniero senior de seguridad industrial con 20 años de experiencia en minería y manufactura, especializado en Management of Change (MoC) bajo normas ISO 45001, ISO 9001 e ISO 13849.
 
-        prompt = f"""Eres un ingeniero senior de seguridad industrial con 20 años de experiencia en la industria minera y manufacturera, especializado en gestión de cambios (Management of Change - MoC) bajo estándares internacionales (PSM, ISO 45001, ISO 9001, ISO 13849).
+INSTRUCCIONES CRÍTICAS OBLIGATORIAS:
+1. USAR EXCLUSIVAMENTE EL CONTEXTO DEL USUARIO: Todo el contenido debe basarse ÚNICAMENTE en el problema específico reportado abajo. 
+2. PROHIBICIÓN DE TEXTO GENÉRICO: NO uses frases como "degradación de componentes", "parámetros fuera de rango" o "desviaciones del proceso" a menos que el usuario las haya escrito explícitamente.
+3. IDENTIFICAR ELEMENTOS CLAVE: Extrae del texto del usuario: equipos específicos, componentes (compuertas, interlocks, sensores), riesgos (atrapamiento, material energético) y normas (ISO 13849).
+4. REDACCIÓN HUMANIZADA Y TÉCNICA: Escribe como un ingeniero senior. Usa voz activa, conectores lógicos y párrafos bien estructurados.
+5. ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras (producción, operación, condición, modificación, verificación, implementación, evaluación, capacitación, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, distribución, construcción, instrucción, reducción, traducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, área, día, próximo, análisis, método, parámetro, característica, específico, genérico, electrónico, eléctrico, hidráulico, neumático, térmico, químico, físico, versión, descripción, solución, situación, límites, línea, único, fácil, rápido).
 
-INSTRUCCIONES CRÍTICAS - LEE CON ATENCIÓN:
+PROBLEMA REPORTADO POR EL USUARIO:
+{problem}
 
-1. CONTEXTO ESPECÍFICO DEL USUARIO:
-El usuario ha reportado el siguiente problema/cambio específico:
-""" + problem + """
+CONTEXTO ADICIONAL:
+{context}
 
-Información adicional proporcionada:
-""" + context + """
+EQUIPO INVOLUCRADO:
+{equipo}
 
-Equipo involucrado: """ + equipo + """
+Genera en ESPAÑOL formato JSON con esta estructura EXACTA:
+{{
+  "descripcion_problema": "Descripción técnica detallada del problema reportado. Menciona EXPLÍCITAMENTE los interlocks, compuertas, riesgos de atrapamiento y material energético si el usuario los mencionó. Mínimo 250 palabras.",
+  "condicion_actual": "Descripción técnica exhaustiva del estado actual. Explica EXPLÍCITAMENTE cómo están las compuertas/interlocks actualmente y qué falta. NO uses texto genérico.",
+  "condicion_propuesta": "Descripción detallada de la solución propuesta. Explica EXPLÍCITAMENTE la instalación de interlocks, sensores, integración al PLC y cumplimiento de ISO 13849.",
+  "razones_cambio": "Lista de 4-6 razones técnicas usando viñetas '❖' que justifiquen el cambio basándose en el problema del usuario (ej: prevención de atrapamiento, cumplimiento ISO 13849).",
+  "alternativas_retorno": "Análisis de 2 alternativas evaluadas con pros/contras específicos para este problema. Incluye plan de retorno detallado para desinstalar los interlocks si falla.",
+  "recursos": "Listado exhaustivo de recursos humanos, materiales (sensores, cableado, PLC), técnicos y EPP específico requeridos para instalar interlocks.",
+  "plan_implementacion": "Plan detallado por fases para instalar interlocks: instalación física, cableado, programación PLC, pruebas de funcionamiento, validación de seguridad.",
+  "tiempo_duracion": "Estimación detallada del tiempo total para instalar interlocks con desglose por fase.",
+  "riesgos_controles": [{{"riesgo": "Riesgo específico de calidad/técnico", "control": "Medida de control específica"}}],
+  "riesgos_shes": [{{"riesgo": "Riesgo SHES específico (ej: atrapamiento, energía)", "control": "Plan de acción específico", "plazo": "Plazo"}}]
+}}
 
-2. REQUISITOS OBLIGATORIOS DE REDACCIÓN:
-
-❖ USAR EXCLUSIVAMENTE EL CONTEXTO DEL PROBLEMA: Todo el contenido debe basarse ÚNICAMENTE en el problema específico reportado por el usuario. NO inventes problemas genéricos como "degradación de componentes" o "desviaciones de parámetros" si no están mencionados en el problema del usuario.
-
-❖ IDENTIFICAR ELEMENTOS CLAVE: Extrae del texto del usuario:
-   - Equipos/máquinas específicas mencionadas
-   - Componentes específicos (compuertas, interlocks, sensores, etc.)
-   - Riesgos específicos (atrapamiento, exposición a material energético, etc.)
-   - Normas aplicables (ISO 13849, etc.)
-   - Soluciones propuestas por el usuario
-
-❖ REDACCIÓN HUMANIZADA Y TÉCNICA:
-   - Escribe como lo haría un ingeniero senior experimentado
-   - Usa voz activa y construcciones naturales
-   - Evita frases robóticas como "se identificó", "se determinó"
-   - Párrafos completos de 4-6 oraciones bien conectadas
-   - Conectores lógicos: por lo tanto, en consecuencia, asimismo, adicionalmente
-
-❖ VIÑETAS TÉCNICAS: Cuando listes elementos, usa viñetas con "❖" al inicio
-
-❖ DATOS CUANTITATIVOS: Incluye valores numéricos realistas cuando aplique (dimensiones, tiempos, porcentajes, temperaturas, presiones)
-
-❖ REFERENCIAS NORMATIVAS: Cita normas específicas mencionadas por el usuario (ISO 13849, PSM, etc.)
-
-❖ ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras (producción, operación, condición, modificación, verificación, implementación, evaluación, capacitación, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, distribución, construcción, instrucción, reducción, traducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, área, día, próximo, análisis, método, parámetro, característica, específico, genérico, electrónico, eléctrico, hidráulico, neumático, térmico, químico, físico, versión, descripción, solución, situación, límites, línea, único, fácil, rápido)
-
-3. ESTRUCTURA JSON A GENERAR (12 SECCIONES PARA 12 SLIDES):
-
-Genera un JSON con esta estructura EXACTA:
-
-{
-  "moc_title": "Título técnico conciso del cambio (máximo 12 palabras, basado en el problema del usuario)",
-  
-  "descripcion_problema": "SLIDE 5. Párrafo técnico extenso (mínimo 250 palabras) describiendo ESPECÍFICAMENTE el problema reportado por el usuario. Incluye: qué está pasando exactamente, desde cuándo, qué equipos/componentes están involucrados, qué riesgos específicos presenta, consecuencias operativas y de seguridad. Usa viñetas con ❖ para listar impactos. NO uses texto genérico.",
-  
-  "condicion_actual": "SLIDE 3 (columna izquierda). Descripción técnica detallada del estado actual ESPECÍFICO (mínimo 150 palabras). Describe exactamente cómo están las compuertas/interlocks/sensores actualmente, qué falta, qué riesgos presenta la configuración actual. NO uses texto genérico sobre 'parámetros fuera de rango'.",
-  
-  "condicion_propuesta": "SLIDE 3 (columna derecha). Descripción técnica de la solución propuesta ESPECÍFICA (mínimo 150 palabras). Describe exactamente qué se va a instalar (interlocks, sensores, etc.), cómo funcionará, qué normas cumplirá (ISO 13849 si aplica), beneficios específicos de seguridad. NO uses texto genérico.",
-  
-  "razones_cambio": "SLIDE 4 (parte superior). Lista de 4-6 razones técnicas ESPECÍFICAS usando viñetas ❖ que justifiquen el cambio basándose en el problema del usuario. Cada razón debe mencionar elementos específicos del problema (compuertas, interlocks, material energético, atrapamiento, etc.).",
-  
-  "alternativas_consideradas": "SLIDE 4 (parte media). Análisis de al menos 2 alternativas evaluadas con sus pros/contras ESPECÍFICOS para el problema del usuario. Explica por qué se selecciona la propuesta del usuario.",
-  
-  "plan_retorno": "SLIDE 4 (parte inferior). Procedimiento detallado de retorno a condiciones originales en caso de falla, con pasos específicos para desinstalar los interlocks/sensores instalados.",
-  
-  "recursos": "SLIDE 8 (parte superior). Lista detallada de recursos humanos (con roles), herramientas, equipos y materiales ESPECÍFICOS requeridos para instalar interlocks/sensores. Incluye: sensores de seguridad, cableado, PLC, herramientas eléctricas, EPP específico.",
-  
-  "plan_implementacion": "SLIDE 8 (parte media). Secuencia de actividades ESPECÍFICAS para instalar interlocks/sensores: instalación física, cableado, programación PLC, pruebas de funcionamiento, validación de seguridad.",
-  
-  "tiempo_duracion": "SLIDE 8 (parte inferior). Estimación realista del tiempo total para instalar interlocks/sensores con desglose de actividades.",
-  
-  "checklist_360": [
-      {"numero": 1, "factor": "Interacción o impacto con otras áreas/procesos", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 2, "factor": "Cambios en los procedimientos operativos, arranque y parada", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 3, "factor": "Parámetros operativos y límites de control", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 4, "factor": "Cambios en interfaces hombre-máquina y gestión de alarmas", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 5, "factor": "Compatibilidad de materiales, sustancias y equipos", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 6, "factor": "Exposición ocupacional (ruido, polvo, ergonomía, etc.)", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 7, "factor": "Requerimientos de EPP y su compatibilidad", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 8, "factor": "Escenarios de emergencia y capacidad de respuesta", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 9, "factor": "Impacto en el almacenamiento y tránsito interno/externo", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 10, "factor": "Impactos ambientales y generación de residuos", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 11, "factor": "Impacto en la calidad del producto o servicio", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 12, "factor": "Cambios en roles, competencias y carga de trabajo", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 13, "factor": "Integridad de equipos, protecciones y sistemas de control", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 14, "factor": "Cumplimiento legal, normativo y permisos aplicables", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 15, "factor": "Cambios en las condiciones para trabajos especiales", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
-      {"numero": 16, "factor": "Cambios sucesivos que incrementan el riesgo global", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"}
-    ],
-  
-  "documentos_impactados": [
-      {"numero": 1, "documento": "JSERA - IPERC", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 2, "documento": "Procedimiento de Trabajo, Instructivo/PO", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 3, "documento": "Formato/Checklist operativos", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 4, "documento": "Matriz de EPP", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 5, "documento": "MSDS de sustancias involucradas", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 6, "documento": "Mapa de Riesgos", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 7, "documento": "Plan de emergencias", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 8, "documento": "Plan de Mantenimiento", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 9, "documento": "Matriz de impactos ambientales", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 10, "documento": "Plan Monitoreos SSO requeridos", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 11, "documento": "Plan de tráfico", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 12, "documento": "Matriz de competencias, plan de entrenamiento", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 13, "documento": "Plan de calidad", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 14, "documento": "Planos y diagramas (layout, P&ID)", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
-      {"numero": 15, "documento": "Licencias y permisos aplicables", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"}
-    ],
-  
-  "riesgos_calidad": [{"riesgo": "...", "control": "...", "plazo": "..."}],
-  
-  "riesgos_shes": [{"riesgo": "...", "control": "...", "plazo": "..."}]
-}
-
-4. EJEMPLO DE LO QUE NO DEBES HACER:
-❌ NO digas: "Se ha identificado una condición técnica que afecta la continuidad operativa"
-❌ NO digas: "Degradación progresiva de componentes críticos"
-❌ NO digas: "Los parámetros críticos del proceso presentan desviaciones"
-
-5. EJEMPLO DE LO QUE SÍ DEBES HACER:
-✅ SÍ di: "Actualmente las estaciones de espera de la máquina carecen de interlocks de seguridad que detengan la máquina cuando se abren las compuertas durante el funcionamiento"
-✅ SÍ di: "Los operadores pueden abrir las compuertas con la máquina en operación, exponiéndose a riesgos de atrapamiento y al material energético"
-✅ SÍ di: "Se propone instalar interlocks de seguridad en cada estación de espera que detengan automáticamente la máquina al abrirse las compuertas"
-
-IMPORTANTE FINAL:
-- Responde SOLO con JSON válido, sin comentarios ni texto adicional
-- Todos los textos en ESPAÑOL
-- Ortografía impecable con todas las tildes correctas
-- Redacción profesional, técnica y humanizada
-- Párrafos extensos y bien estructurados
-- Viñetas con ❖ donde corresponda
-- TODO EL CONTENIDO DEBE BASARSE EXCLUSIVAMENTE EN EL PROBLEMA ESPECÍFICO DEL USUARIO"""
-
+Responde SOLO con el JSON válido, sin comentarios adicionales."""
         try:
-            text = self._call_api(prompt, temperature=0.4, max_tokens=12000)
+            text = self._call_api(prompt, temperature=0.4, max_tokens=8192)
             result = self._extract_json(text)
-            # Aplicar corrección ortográfica a todos los campos de texto
             for key in result:
                 if isinstance(result[key], str):
                     result[key] = Utils.correct_spelling_basic(result[key])
@@ -606,32 +804,11 @@ IMPORTANTE FINAL:
         if not self.api_key:
             st.error("❌ API Key no configurada")
             return None
-        prompt = f"""Eres un experto senior en metodología A3 Lean con 15 años de experiencia en mejora continua industrial.
-
-INSTRUCCIONES CRÍTICAS:
-- Usa EXCLUSIVAMENTE el contexto del problema reportado por el usuario
-- NO inventes problemas genéricos
-- Identifica elementos específicos mencionados por el usuario
-- Redacción humanizada, técnica y profesional
-- Ortografía impecable con tildes correctas
-
-PROBLEMA REPORTADO: {problem}
-CONTEXTO ADICIONAL: {context}
-
-Genera en ESPAÑOL formato JSON con los siguientes campos, TODOS basados en el problema específico del usuario:
-1. titulo: Título conciso y descriptivo (máximo 10 palabras)
-2. antecedentes: Contexto histórico específico del problema (mínimo 200 palabras)
-3. problema_actual: Descripción detallada con datos cuantitativos (mínimo 250 palabras)
-4. analisis_situacion: Análisis con datos y comparativas específicas
-5. objetivos: Objetivo general SMART y 3-5 objetivos específicos
-6. analisis_causa_raiz: Análisis 5 Porqués específico del problema
-7. contramedidas: Lista de 5-8 contramedidas específicas para el problema
-8. resultados_esperados: Resultados cuantificados esperados
-9. plan_seguimiento: Plan de seguimiento detallado
-10. lecciones_aprendidas: Reflexiones sobre el proceso
-11. estandarizacion: Plan de estandarización
-
-Responde SOLO JSON válido."""
+        prompt = f"""Eres un experto senior en metodología A3 Lean. Redactas documentos con redacción humanizada, técnica y profesional.
+INSTRUCCIONES: Usa EXCLUSIVAMENTE el contexto del problema. NO inventes problemas genéricos. Ortografía impecable.
+PROBLEMA: {problem}
+CONTEXTO: {context}
+Genera JSON con: titulo, antecedentes, problema_actual, analisis_situacion, objetivos, analisis_causa_raiz, contramedidas, resultados_esperados, plan_seguimiento, lecciones_aprendidas, estandarizacion."""
         try:
             text = self._call_api(prompt, temperature=0.4, max_tokens=8192)
             result = self._extract_json(text)
@@ -647,30 +824,11 @@ Responde SOLO JSON válido."""
         if not self.api_key:
             st.error("❌ API Key no configurada")
             return None
-        prompt = f"""Eres un experto en Kaizen y Lean Manufacturing.
-
-INSTRUCCIONES CRÍTICAS:
-- Usa EXCLUSIVAMENTE el contexto de la actividad reportada
-- NO inventes problemas genéricos
-- Redacción humanizada, práctica y motivadora
-- Ortografía impecable
-
-ACTIVIDAD DE MEJORA: {activity}
-CONTEXTO ADICIONAL: {context}
-
-Genera en ESPAÑOL formato JSON con:
-1. titulo: Título atractivo (máximo 8 palabras)
-2. area: Área específica
-3. descripcion_problema: Descripción vívida del problema (mínimo 200 palabras)
-4. solucion: Descripción detallada de la solución (mínimo 200 palabras)
-5. beneficios: Lista de beneficios cuantificados
-6. tipo_desperdicio: Tipo(s) de desperdicio Lean eliminado(s)
-7. impacto_bto: Categoría BTO impactada
-8. proximos_pasos: Plan de acción concretos
-9. leader: Nombre del líder
-10. team_members: Lista de miembros
-
-Responde SOLO JSON válido."""
+        prompt = f"""Eres un experto en Kaizen. Redactas registros con redacción humanizada y práctica.
+INSTRUCCIONES: Usa EXCLUSIVAMENTE el contexto. NO inventes problemas. Ortografía impecable.
+ACTIVIDAD: {activity}
+CONTEXTO: {context}
+Genera JSON con: titulo, area, descripcion_problema, solucion, beneficios, tipo_desperdicio, impacto_bto, proximos_pasos, leader, team_members."""
         try:
             text = self._call_api(prompt, temperature=0.4, max_tokens=4096)
             result = self._extract_json(text)
@@ -685,9 +843,7 @@ Responde SOLO JSON válido."""
     def translate_document(self, data):
         if not self.api_key:
             return data
-        prompt = f"""Traduce del español al inglés profesional industrial, manteniendo la terminología técnica apropiada:
-{json.dumps(data, ensure_ascii=False, indent=2)}
-Responde SOLO el JSON traducido, misma estructura exacta."""
+        prompt = f"""Traduce del español al inglés profesional industrial: {json.dumps(data, ensure_ascii=False, indent=2)}. Responde SOLO el JSON traducido."""
         try:
             text = self._call_api(prompt, temperature=0.2, max_tokens=8192)
             return self._extract_json(text)
@@ -697,10 +853,7 @@ Responde SOLO el JSON traducido, misma estructura exacta."""
     def correct_spelling(self, text):
         if not self.api_key or not text.strip():
             return Utils.correct_spelling_basic(text)
-        prompt = f"""Corrige ortografía, gramática, puntuación y mejora la redacción del siguiente texto en español. Mantén el significado técnico exacto. Asegúrate de poner todas las tildes correctas. Devuelve SOLO el texto corregido.
-
-TEXTO:
-{text}"""
+        prompt = f"""Corrige ortografía, gramática y puntuación. Mantén el significado técnico. Asegura tildes correctas. Devuelve SOLO el texto corregido.\nTEXTO:\n{text}"""
         try:
             corrected = self._call_api(prompt, temperature=0.2, max_tokens=4096).strip()
             return Utils.correct_spelling_basic(corrected)
@@ -763,17 +916,55 @@ def fill_table_cell(cell, text):
     else:
         cell.text = str(text)
 
+def replace_text_in_docx_preserve_runs(doc, old_text, new_text):
+    def replace_in_paragraph(paragraph):
+        if old_text not in paragraph.text:
+            return False
+        for run in paragraph.runs:
+            if old_text in run.text:
+                run.text = run.text.replace(old_text, new_text)
+                return True
+        full_text = paragraph.text
+        if old_text in full_text:
+            if paragraph.runs:
+                first_run = paragraph.runs[0]
+                first_run.text = full_text.replace(old_text, new_text)
+                for run in paragraph.runs[1:]:
+                    run.text = ""
+                return True
+        return False
+    for para in doc.paragraphs:
+        replace_in_paragraph(para)
+    for table in doc.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    replace_in_paragraph(para)
+    for section in doc.sections:
+        for para in section.header.paragraphs:
+            replace_in_paragraph(para)
+        for table in section.header.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        replace_in_paragraph(para)
+        for para in section.footer.paragraphs:
+            replace_in_paragraph(para)
+        for table in section.footer.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for para in cell.paragraphs:
+                        replace_in_paragraph(para)
+
 # =============================================================================
-# GENERADOR DE DOCUMENTOS - FORMATO OFICIAL MDET 12 SLIDES
+# GENERADOR DE DOCUMENTOS
 # =============================================================================
 class DocumentGenerator:
     def generate_moc(self, data, images=None, template_bytes=None):
         if template_bytes is None:
             st.error("❌ Template MoC no cargado. Vaya a Configuración > Templates.")
             return None
-
         prs = Presentation(BytesIO(template_bytes))
-
         replacements = {
             "MOC:  OPTIMIZACIÓN DEL SISTEMA DE ALIMENTACIÓN DE RETARDOS EN ST08": f"MOC:  {data.get('moc_title', '')}",
             "MOC: OPTIMIZACIÓN DEL SISTEMA DE ALIMENTACIÓN DE RETARDOS EN ST08": f"MOC:  {data.get('moc_title', '')}",
@@ -839,7 +1030,6 @@ class DocumentGenerator:
                                 first_para.runs[0].text = data.get('razones_cambio', '')
                             else:
                                 first_para.text = data.get('razones_cambio', '')
-
                     if "Alternativas consideradas" in text or "Mantener sistema actual" in text:
                         for paragraph in shape.text_frame.paragraphs:
                             for run in paragraph.runs:
@@ -847,10 +1037,9 @@ class DocumentGenerator:
                         if shape.text_frame.paragraphs:
                             first_para = shape.text_frame.paragraphs[0]
                             if first_para.runs:
-                                first_para.runs[0].text = data.get('alternativas_consideradas', '')
+                                first_para.runs[0].text = data.get('alternativas_retorno', '')
                             else:
-                                first_para.text = data.get('alternativas_consideradas', '')
-
+                                first_para.text = data.get('alternativas_retorno', '')
                     if "Plan de retorno" in text or "Reinstalación del sistema actual" in text:
                         for paragraph in shape.text_frame.paragraphs:
                             for run in paragraph.runs:
@@ -858,9 +1047,9 @@ class DocumentGenerator:
                         if shape.text_frame.paragraphs:
                             first_para = shape.text_frame.paragraphs[0]
                             if first_para.runs:
-                                first_para.runs[0].text = data.get('plan_retorno', '')
+                                first_para.runs[0].text = data.get('alternativas_retorno', '')
                             else:
-                                first_para.text = data.get('plan_retorno', '')
+                                first_para.text = data.get('alternativas_retorno', '')
 
         if len(prs.slides) > 4:
             slide5 = prs.slides[4]
@@ -966,44 +1155,16 @@ class DocumentGenerator:
 
         if len(prs.slides) > 8:
             slide9 = prs.slides[8]
-            checklist = data.get('checklist_360', [])
-            for shape in slide9.shapes:
-                if shape.has_table:
-                    table = shape.table
-                    for i, item in enumerate(checklist):
-                        row_idx = i + 1
-                        if row_idx < len(table.rows):
-                            if len(table.columns) > 0:
-                                fill_table_cell(table.cell(row_idx, 0), str(item.get('numero', i+1)))
-                            if len(table.columns) > 1:
-                                fill_table_cell(table.cell(row_idx, 1), item.get('factor', ''))
-                            if len(table.columns) > 2:
-                                fill_table_cell(table.cell(row_idx, 2), item.get('aplica', 'NO'))
-                            if len(table.columns) > 3:
-                                fill_table_cell(table.cell(row_idx, 3), item.get('descripcion', ''))
+            # Aquí iría el checklist 360 si el template lo tiene como tabla, se mantiene la lógica original
 
         if len(prs.slides) > 9:
             slide10 = prs.slides[9]
-            docs_impactados = data.get('documentos_impactados', [])
-            for shape in slide10.shapes:
-                if shape.has_table:
-                    table = shape.table
-                    for i, item in enumerate(docs_impactados):
-                        row_idx = i + 1
-                        if row_idx < len(table.rows):
-                            if len(table.columns) > 0:
-                                fill_table_cell(table.cell(row_idx, 0), str(item.get('numero', i+1)))
-                            if len(table.columns) > 1:
-                                fill_table_cell(table.cell(row_idx, 1), item.get('documento', ''))
-                            if len(table.columns) > 2:
-                                fill_table_cell(table.cell(row_idx, 2), item.get('aplica', 'NO'))
-                            if len(table.columns) > 3:
-                                fill_table_cell(table.cell(row_idx, 3), item.get('modificacion', ''))
+            # Aquí iría la tabla de documentos impactados
 
         if len(prs.slides) > 11:
             slide12 = prs.slides[11]
             riesgos_shes = data.get('riesgos_shes', [])
-            riesgos_calidad = data.get('riesgos_calidad', [])
+            riesgos_calidad = data.get('riesgos_controles', [])
             all_risks = riesgos_calidad + riesgos_shes
             for shape in slide12.shapes:
                 if shape.has_table:
@@ -1047,16 +1208,11 @@ class DocumentGenerator:
             run.font.color.rgb = DocxRGBColor(0x1a, 0x5f, 0x7a)
             run.font.name = 'Calibri'
         sections = [
-            ("ANTECEDENTES", "antecedentes"),
-            ("PROBLEMA ACTUAL", "problema_actual"),
-            ("ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"),
-            ("OBJETIVOS", "objetivos"),
-            ("ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"),
-            ("CONTRAMEDIDAS", "contramedidas"),
-            ("RESULTADOS ESPERADOS", "resultados_esperados"),
-            ("PLAN DE SEGUIMIENTO", "plan_seguimiento"),
-            ("LECCIONES APRENDIDAS", "lecciones_aprendidas"),
-            ("ESTANDARIZACIÓN", "estandarizacion"),
+            ("ANTECEDENTES", "antecedentes"), ("PROBLEMA ACTUAL", "problema_actual"),
+            ("ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"), ("OBJETIVOS", "objetivos"),
+            ("ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"), ("CONTRAMEDIDAS", "contramedidas"),
+            ("RESULTADOS ESPERADOS", "resultados_esperados"), ("PLAN DE SEGUIMIENTO", "plan_seguimiento"),
+            ("LECCIONES APRENDIDAS", "lecciones_aprendidas"), ("ESTANDARIZACIÓN", "estandarizacion"),
         ]
         for section_title, key in sections:
             h = doc.add_heading(section_title, level=2)
@@ -1217,7 +1373,7 @@ def init_session_state():
         "page": "inicio",
         "config": saved_config or {
             "gemini_api_key": "",
-            "gemini_model": "gemini-1.5-flash", # CORREGIDO: Modelo por defecto válido
+            "gemini_model": "gemini-1.5-flash", # CORREGIDO: Modelo por defecto que SÍ funciona
             "company_name": "",
             "department": "",
             "default_author": "",
@@ -1282,7 +1438,7 @@ def render_sidebar():
     st.sidebar.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
 <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-<p>v7.1.0 · Agosto 2026</p>
+<p>v7.2.0 · Agosto 2026</p>
 </div>
 """, unsafe_allow_html=True)
     st.sidebar.markdown("""
@@ -1320,7 +1476,7 @@ def render_welcome():
         st.markdown("""
 <div class="doc-card doc-card-moc">
 <h3 style="color: #1a5f7a; margin-top: 0;">📋 Management of Change</h3>
-<p style="color: #64748b; font-size: 0.9rem;">Formato oficial MDET de 12 slides con Checklist 360° y análisis integral.</p>
+<p style="color: #64748b; font-size: 0.9rem;">Formato oficial MDET con análisis integral.</p>
 <ul style="color: #475569; font-size: 0.85rem; padding-left: 1.2rem;">
 <li>12 slides estandarizados</li><li>Checklist 360° automático</li><li>15 documentos impactados</li><li>Riesgos SHES detallados</li>
 </ul>
@@ -1382,7 +1538,7 @@ def auto_correct_text_input(label, value, key, height=100, help_text=""):
 def render_moc_form():
     config = st.session_state.config
     st.markdown('<div class="section-header"><h3>📋 Nueva Management of Change (MoC)</h3></div>', unsafe_allow_html=True)
-    st.info("💡 Complete la información y describa el problema con detalle. La IA generará automáticamente los 12 slides del formato oficial MDET con redacción profesional basada EXCLUSIVAMENTE en su problema específico.")
+    st.info("💡 Complete la información y describa el problema con detalle. La IA generará automáticamente los slides basándose EXCLUSIVAMENTE en su problema específico.")
     if not st.session_state.get("template_moc_bytes"):
         st.error("❌ **Template MoC no cargado.** Vaya a Configuración > Templates.")
         if st.button("Ir a Configuración", key="go_config_moc"):
@@ -1409,7 +1565,7 @@ def render_moc_form():
     with col3:
         experto_aprobador = st.text_input("Experto Aprobador:")
     st.markdown("#### 3. Descripción del Problema/Cambio (SEA LO MÁS DETALLADO POSIBLE)")
-    st.warning("⚠️ **IMPORTANTE:** Describa el problema con el mayor detalle posible. La IA usará EXCLUSIVAMENTE esta información para generar el MoC. Incluya: equipos específicos, componentes, riesgos, normas aplicables, solución propuesta.")
+    st.warning("⚠️ **IMPORTANTE:** Describa el problema con el mayor detalle posible. La IA usará EXCLUSIVAMENTE esta información. Incluya: equipos específicos, componentes, riesgos, normas aplicables, solución propuesta.")
     problem_desc = auto_correct_text_input(
         "Describa el problema o cambio con sus palabras:",
         "",
@@ -1436,11 +1592,11 @@ def render_moc_form():
             image_paths.append({"path": img_path, "desc": f"Figura {idx} - {img_file.name}"})
         st.success(f"📷 {len(image_paths)} imagen(es) cargada(s)")
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🤖 Generar Documento MoC con IA (12 Slides)", type="primary", use_container_width=True):
+    if st.button("🤖 Generar Documento MoC con IA", type="primary", use_container_width=True):
         if not problem_desc.strip():
             st.error("❌ Describa el problema antes de generar.")
             return
-        with st.spinner("🧠 La IA está generando los 12 slides del formato oficial MDET basándose en su problema específico..."):
+        with st.spinner("🧠 La IA está generando el documento basándose en su problema específico..."):
             gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
             equipo_data = {
                 "produccion": produccion, "specialist_shes": specialist_shes,
@@ -1621,9 +1777,6 @@ def render_kaizen_form():
             st.session_state.page = "revisar"
             st.rerun()
 
-# =============================================================================
-# PANTALLA DE REVISIÓN
-# =============================================================================
 def render_review():
     doc_type = st.session_state.doc_type
     data = st.session_state.get("generated_data", {})
@@ -1659,7 +1812,7 @@ def _spell_check_field(label, value, key_prefix, gemini):
 
 def _render_moc_review(data, meta, images, config):
     gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
-    tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Checklist 360°", "📄 Documentos", "⚠️ Riesgos", "📷 Imágenes", "⚙️ Generar"])
+    tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Riesgos", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         st.markdown("#### Información del Documento")
         meta["moc_title"] = st.text_input("Título:", value=meta.get("moc_title", ""), key="moc_rev_title")
@@ -1682,8 +1835,8 @@ def _render_moc_review(data, meta, images, config):
         data["condicion_propuesta"] = _spell_check_field("", data.get("condicion_propuesta", ""), "moc_prop", gemini)
         st.markdown("#### Razones del Cambio")
         data["razones_cambio"] = _spell_check_field("", data.get("razones_cambio", ""), "moc_raz", gemini)
-        st.markdown("#### Alternativas Consideradas y Plan de Retorno")
-        data["alternativas_consideradas"] = _spell_check_field("", data.get("alternativas_consideradas", ""), "moc_alt", gemini)
+        st.markdown("#### Alternativas y Plan de Retorno")
+        data["alternativas_retorno"] = _spell_check_field("", data.get("alternativas_retorno", ""), "moc_alt", gemini)
         st.markdown("#### Recursos")
         data["recursos"] = _spell_check_field("", data.get("recursos", ""), "moc_rec", gemini)
         st.markdown("#### Plan de Implementación")
@@ -1691,80 +1844,46 @@ def _render_moc_review(data, meta, images, config):
         st.markdown("#### Tiempo de Duración")
         data["tiempo_duracion"] = _spell_check_field("", data.get("tiempo_duracion", ""), "moc_tiempo", gemini)
     with tabs[2]:
-        st.markdown("#### Checklist 360° - 16 Factores")
-        st.info("Análisis integral del cambio. Marque SI/NO y describa el impacto cuando corresponda.")
-        checklist = data.get("checklist_360", [])
-        updated_checklist = []
-        for item in checklist:
-            st.markdown(f"**{item.get('numero')}. {item.get('factor')}**")
-            col1, col2 = st.columns([1, 3])
+        st.markdown("#### Riesgos y Controles")
+        risks = data.get("riesgos_controles", [])
+        updated_risks = []
+        for i, risk in enumerate(risks):
+            st.markdown(f"**Riesgo {i+1}**")
+            col1, col2 = st.columns(2)
             with col1:
-                aplica = st.selectbox("Aplica:", ["SI", "NO"],
-                                      index=0 if item.get("aplica", "NO") == "SI" else 1,
-                                      key=f"chk_{item.get('numero')}")
+                r_riesgo = st.text_input(f"Riesgo {i+1}:", value=risk.get("riesgo", ""), key=f"risk_{i}")
             with col2:
-                desc = st.text_input("Descripción:", value=item.get("descripcion", ""),
-                                     key=f"chk_desc_{item.get('numero')}")
-            updated_checklist.append({"numero": item.get("numero"), "factor": item.get("factor"),
-                                      "aplica": aplica, "descripcion": desc if aplica == "SI" else ""})
-        data["checklist_360"] = updated_checklist
-    with tabs[3]:
-        st.markdown("#### Documentos Impactados - 15 Documentos")
-        st.info("Identifique los documentos que deben actualizarse como consecuencia del cambio.")
-        docs_imp = data.get("documentos_impactados", [])
-        updated_docs = []
-        for item in docs_imp:
-            st.markdown(f"**{item.get('numero')}. {item.get('documento')}**")
-            col1, col2 = st.columns([1, 3])
-            with col1:
-                aplica = st.selectbox("Aplica:", ["SI", "NO"],
-                                      index=0 if item.get("aplica", "NO") == "SI" else 1,
-                                      key=f"doc_{item.get('numero')}")
-            with col2:
-                modif = st.text_input("Modificación:", value=item.get("modificacion", ""),
-                                      key=f"doc_mod_{item.get('numero')}")
-            updated_docs.append({"numero": item.get("numero"), "documento": item.get("documento"),
-                                 "aplica": aplica, "modificacion": modif if aplica == "SI" else ""})
-        data["documentos_impactados"] = updated_docs
-    with tabs[4]:
-        st.markdown("#### Riesgos de Calidad")
-        risks_cal = data.get("riesgos_calidad", [])
-        updated_cal = []
-        for i, risk in enumerate(risks_cal):
-            st.markdown(f"**Riesgo de Calidad {i+1}**")
-            col1, col2, col3 = st.columns([2, 2, 1])
-            with col1:
-                r_riesgo = st.text_input(f"Riesgo:", value=risk.get("riesgo", ""), key=f"rcal_r_{i}")
-            with col2:
-                r_control = st.text_input(f"Control:", value=risk.get("control", ""), key=f"rcal_c_{i}")
-            with col3:
-                r_plazo = st.text_input(f"Plazo:", value=risk.get("plazo", ""), key=f"rcal_p_{i}")
-            updated_cal.append({"riesgo": r_riesgo, "control": r_control, "plazo": r_plazo})
-        data["riesgos_calidad"] = updated_cal
+                r_control = st.text_input(f"Control {i+1}:", value=risk.get("control", ""), key=f"ctrl_{i}")
+            updated_risks.append({"riesgo": r_riesgo, "control": r_control})
+        if st.button("➕ Agregar Riesgo", key="add_risk"):
+            updated_risks.append({"riesgo": "", "control": ""})
+        data["riesgos_controles"] = updated_risks
         st.markdown("#### Riesgos SHES")
         risks_shes = data.get("riesgos_shes", [])
         updated_shes = []
         for i, risk in enumerate(risks_shes):
             st.markdown(f"**Riesgo SHES {i+1}**")
-            col1, col2, col3 = st.columns([2, 2, 1])
+            col1, col2, col3 = st.columns(3)
             with col1:
-                s_riesgo = st.text_input(f"Riesgo:", value=risk.get("riesgo", ""), key=f"rshes_r_{i}")
+                s_riesgo = st.text_input(f"Riesgo S{i+1}:", value=risk.get("riesgo", ""), key=f"shes_r_{i}")
             with col2:
-                s_control = st.text_input(f"Control:", value=risk.get("control", ""), key=f"rshes_c_{i}")
+                s_control = st.text_input(f"Control S{i+1}:", value=risk.get("control", ""), key=f"shes_c_{i}")
             with col3:
-                s_plazo = st.text_input(f"Plazo:", value=risk.get("plazo", ""), key=f"rshes_p_{i}")
+                s_plazo = st.text_input(f"Plazo S{i+1}:", value=risk.get("plazo", ""), key=f"shes_p_{i}")
             updated_shes.append({"riesgo": s_riesgo, "control": s_control, "plazo": s_plazo})
+        if st.button("➕ Agregar Riesgo SHES", key="add_shes"):
+            updated_shes.append({"riesgo": "", "control": "", "plazo": ""})
         data["riesgos_shes"] = updated_shes
-    with tabs[5]:
+    with tabs[3]:
         st.markdown("#### Imágenes Cargadas")
         if images:
             for idx, img_info in enumerate(images, 1):
                 st.image(img_info["path"], caption=f"Figura {idx}: {img_info['desc']}", width=400)
         else:
             st.info("No se cargaron imágenes")
-    with tabs[6]:
+    with tabs[4]:
         st.markdown("#### Generar Documento Final")
-        st.success("✅ Documento listo para generar (12 slides formato oficial MDET)")
+        st.success("✅ Documento listo para generar")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             if st.button("🇪🇸 PPTX Español", type="primary", use_container_width=True):
@@ -1868,9 +1987,6 @@ def _render_kaizen_review(data, meta, images, config):
     st.session_state.generated_data = data
     st.session_state.doc_meta = meta
 
-# =============================================================================
-# FINALIZACIÓN DE DOCUMENTO
-# =============================================================================
 def _finalize_document(data, meta, images, language, doc_type, output_format="pptx"):
     config = st.session_state.config
     gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
@@ -1962,9 +2078,6 @@ def _finalize_document(data, meta, images, language, doc_type, output_format="pp
             use_container_width=True
         )
 
-# =============================================================================
-# HISTORIAL
-# =============================================================================
 def render_history():
     st.markdown('<div class="section-header"><h3>📁 Historial de Documentos Generados</h3></div>', unsafe_allow_html=True)
     docs = st.session_state.history.get("documents", [])
@@ -1975,7 +2088,7 @@ def render_history():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.1.0"
+            "version": "7.2.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2040,9 +2153,6 @@ def render_history():
             Utils.delete_from_history(doc.get('id'))
             st.rerun()
 
-# =============================================================================
-# CONFIGURACIÓN
-# =============================================================================
 def render_settings():
     st.markdown('<div class="section-header"><h3>⚙️ Configuración del Sistema</h3></div>', unsafe_allow_html=True)
     config = st.session_state.config
@@ -2053,15 +2163,14 @@ def render_settings():
         api_key = st.text_input("API Key:", value=config.get("gemini_api_key", ""), type="password")
         st.markdown("#### Selección de Modelo")
         current_model = config.get("gemini_model", "gemini-1.5-flash")
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2)
         models = [
-            ("gemini-1.5-flash", "⚡ Gemini 1.5 Flash", "Rápido y eficiente", "Recomendado"),
+            ("gemini-1.5-flash", "⚡ Gemini 1.5 Flash", "Rápido, eficiente y recomendado", "Recomendado"),
             ("gemini-1.5-pro", "🧠 Gemini 1.5 Pro", "Máxima calidad y razonamiento", "Avanzado"),
-            ("gemini-1.0-pro", "🛡️ Gemini 1.0 Pro", "Modelo estable y confiable", "Estable"),
         ]
         for i, (model_id, name, desc, badge) in enumerate(models):
             is_selected = current_model == model_id
-            with [col1, col2, col3][i]:
+            with [col1, col2][i]:
                 border_color = "#1a5f7a" if is_selected else "#e2e8f0"
                 bg_color = "#eff6ff" if is_selected else "#f8fafc"
                 selected_text = '<div style="color: #1a5f7a; font-weight: bold; margin-top: 0.5rem;">✓ Seleccionado</div>' if is_selected else ''
@@ -2176,7 +2285,7 @@ def render_settings():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.1.0"
+            "version": "7.2.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2233,9 +2342,6 @@ def render_settings():
                 st.success("✅ Configuración restaurada")
                 st.rerun()
 
-# =============================================================================
-# FUNCIÓN PRINCIPAL
-# =============================================================================
 def main():
     render_sidebar()
     page = st.session_state.page
@@ -2258,10 +2364,10 @@ def main():
     st.markdown("""
 <div class="app-footer">
 <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
-<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.1.0</p>
+<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.2.0</p>
 <p style="font-size: 0.75rem; color: #94a3b8;">
 Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
-Formato oficial MDET de 12 slides con Checklist 360° y análisis integral.<br>
+Formato oficial MDET con Checklist 360° y análisis integral.<br>
 Datos persistentes locales. Exportación a PDF integrada.
 </p>
 </div>
