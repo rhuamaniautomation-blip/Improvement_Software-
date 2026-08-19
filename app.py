@@ -3,11 +3,11 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 7.5.0 - Diagnóstico API y Contexto Estricto
+Version 8.0.0 - Modelos API Actualizados (Gemini 2.5) y Contexto Específico
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 7.5.0
+Version: 8.0.0
 Fecha: Agosto 2026
 ================================================================================
 """
@@ -126,9 +126,6 @@ html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif !impor
     background: white; border: 1px solid #e2e8f0;
     border-radius: 10px; padding: 1rem; margin: 0.5rem 0;
 }
-.field-card:hover {
-    border-color: #1a5f7a; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
 .gemini-badge {
     display: inline-block; background: #e0e7ff; color: #4338ca;
     padding: 0.25rem 0.75rem; border-radius: 20px;
@@ -137,10 +134,6 @@ html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif !impor
 .history-item {
     background: white; border: 1px solid #e2e8f0;
     border-radius: 10px; padding: 1rem; margin: 0.5rem 0;
-    transition: all 0.2s;
-}
-.history-item:hover {
-    border-color: #1a5f7a; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 .app-footer {
     text-align: center; padding: 2rem; margin-top: 3rem;
@@ -184,7 +177,7 @@ class LocalStorage:
                     return json.load(f)
         except Exception as e:
             st.warning(f"Error cargando configuración: {e}")
-            return None
+        return None
 
     @staticmethod
     def save_history(history):
@@ -204,7 +197,7 @@ class LocalStorage:
                     return json.load(f)
         except Exception as e:
             st.warning(f"Error cargando historial: {e}")
-            return {"documents": []}
+        return {"documents": []}
 
     @staticmethod
     def save_template_bytes(template_name, file_bytes):
@@ -226,7 +219,7 @@ class LocalStorage:
                     return f.read()
         except Exception as e:
             st.warning(f"Error cargando template {template_name}: {e}")
-            return None
+        return None
 
 # =============================================================================
 # UTILIDADES
@@ -289,9 +282,9 @@ class Utils:
             return text
         corrections = {
             "tecnico": "técnico", "Tecnico": "Técnico", "TECNICO": "TÉCNICO",
-            "tecnica": "técnica", "Tecnica": "Técnica", "TECNICA": "TÉCNICA",
-            "tecnologia": "tecnología", "Tecnologia": "Tecnología", "TECNOLOGIA": "TECNOLOGÍA",
-            "produccion": "producción", "Produccion": "Producción", "PRODUCCION": "PRODUCCIÓN",
+            "tecnica": "técnica", "Tecnica": "Técnica",
+            "tecnologia": "tecnología", "Tecnologia": "Tecnología",
+            "produccion": "producción", "Produccion": "Producción",
             "implementacion": "implementación", "Implementacion": "Implementación",
             "evaluacion": "evaluación", "Evaluacion": "Evaluación",
             "operacion": "operación", "Operacion": "Operación",
@@ -299,7 +292,6 @@ class Utils:
             "modificacion": "modificación", "Modificacion": "Modificación",
             "verificacion": "verificación", "Verificacion": "Verificación",
             "capacitacion": "capacitación", "Capacitacion": "Capacitación",
-            "socializacion": "socialización", "Socializacion": "Socialización",
             "documentacion": "documentación", "Documentacion": "Documentación",
             "estandarizacion": "estandarización", "Estandarizacion": "Estandarización",
             "optimizacion": "optimización", "Optimizacion": "Optimización",
@@ -332,494 +324,84 @@ class Utils:
             "conexion": "conexión", "Conexion": "Conexión",
             "direccion": "dirección", "Direccion": "Dirección",
             "seleccion": "selección", "Seleccion": "Selección",
-            "proyeccion": "proyección", "Proyeccion": "Proyección",
-            "restriccion": "restricción", "Restriccion": "Restricción",
             "distribucion": "distribución", "Distribucion": "Distribución",
             "construccion": "construcción", "Construccion": "Construcción",
-            "destruccion": "destrucción", "Destruccion": "Destrucción",
             "instruccion": "instrucción", "Instruccion": "Instrucción",
-            "conduccion": "conducción", "Conduccion": "Conducción",
-            "introduccion": "introducción", "Introduccion": "Introducción",
             "reduccion": "reducción", "Reduccion": "Reducción",
-            "reproduccion": "reproducción", "Reproduccion": "Reproducción",
             "traduccion": "traducción", "Traduccion": "Traducción",
-            "deduccion": "deducción", "Deduccion": "Deducción",
-            "induccion": "inducción", "Induccion": "Inducción",
-            "seduccion": "seducción", "Seduccion": "Seducción",
-            "maquina": "máquina", "Maquina": "Máquina", "MAQUINA": "MÁQUINA",
+            "maquina": "máquina", "Maquina": "Máquina",
             "maquinas": "máquinas", "Maquinas": "Máquinas",
             "podria": "podría", "Podria": "Podría",
-            "podrian": "podrían", "Podrian": "Podrían",
             "habria": "habría", "Habria": "Habría",
             "seria": "sería", "Seria": "Sería",
             "tendria": "tendría", "Tendria": "Tendría",
             "haria": "haría", "Haria": "Haría",
             "daria": "daría", "Daria": "Daría",
             "estaria": "estaría", "Estaria": "Estaría",
-            "tendrian": "tendrían", "Tendrian": "Tendrían",
-            "habrian": "habrían", "Habrian": "Habrían",
-            "serian": "serían", "Serian": "Serían",
-            "harian": "harían", "Harian": "Harían",
-            "darian": "darían", "Darian": "Darían",
-            "estarian": "estarían", "Estarian": "Estarían",
             "deberia": "debería", "Deberia": "Debería",
-            "deberian": "deberían", "Deberian": "Deberían",
-            "mas": "más", "Mas": "Más", "MAS": "MÁS",
+            "mas": "más", "Mas": "Más",
             "aun": "aún", "Aun": "Aún",
-            "solo": "solo",
             "tambien": "también", "Tambien": "También",
             "asi": "así", "Asi": "Así",
             "aqui": "aquí", "Aqui": "Aquí",
             "alli": "allí", "Alli": "Allí",
             "alla": "allá", "Alla": "Allá",
             "despues": "después", "Despues": "Después",
-            "antes": "antes",
             "ademas": "además", "Ademas": "Además",
-            "aunque": "aunque",
-            "mientras": "mientras",
-            "durante": "durante",
             "segun": "según", "Segun": "Según",
-            "numero": "número", "Numero": "Número", "NUMERO": "NÚMERO",
-            "maximo": "máximo", "Maximo": "Máximo", "MAXIMO": "MÁXIMO",
-            "minimo": "mínimo", "Minimo": "Mínimo", "MINIMO": "MÍNIMO",
-            "optimo": "óptimo", "Optimo": "Óptimo", "OPTIMO": "ÓPTIMO",
-            "ultimo": "último", "Ultimo": "Último", "ULTIMO": "ÚLTIMO",
-            "periodo": "período", "Periodo": "Período", "PERIODO": "PERÍODO",
-            "epoca": "época", "Epoca": "Época", "EPOCA": "ÉPOCA",
-            "decada": "década", "Decada": "Década", "DECADA": "DÉCADA",
-            "area": "área", "Area": "Área", "AREA": "ÁREA",
-            "dia": "día", "Dia": "Día", "DIA": "DÍA",
-            "manana": "mañana", "Manana": "Mañana", "MANANA": "MAÑANA",
-            "proximo": "próximo", "Proximo": "Próximo", "PROXIMO": "PRÓXIMO",
-            "analisis": "análisis", "Analisis": "Análisis", "ANALISIS": "ANÁLISIS",
-            "sintesis": "síntesis", "Sintesis": "Síntesis", "SINTESIS": "SÍNTESIS",
-            "crisis": "crisis",
-            "tesis": "tesis",
-            "hipotesis": "hipótesis", "Hipotesis": "Hipótesis", "HIPOTESIS": "HIPÓTESIS",
-            "parentesis": "paréntesis", "Parentesis": "Paréntesis", "PARENTESIS": "PARÉNTESIS",
-            "sinopsis": "sinopsis",
-            "axis": "axis",
-            "praxis": "praxis",
-            "metodo": "método", "Metodo": "Método", "METODO": "MÉTODO",
-            "parametro": "parámetro", "Parametro": "Parámetro", "PARAMETRO": "PARÁMETRO",
-            "parametros": "parámetros", "Parametros": "Parámetros", "PARAMETROS": "PARÁMETROS",
+            "numero": "número", "Numero": "Número",
+            "maximo": "máximo", "Maximo": "Máximo",
+            "minimo": "mínimo", "Minimo": "Mínimo",
+            "optimo": "óptimo", "Optimo": "Óptimo",
+            "ultimo": "último", "Ultimo": "Último",
+            "periodo": "período", "Periodo": "Período",
+            "epoca": "época", "Epoca": "Época",
+            "decada": "década", "Decada": "Década",
+            "area": "área", "Area": "Área",
+            "dia": "día", "Dia": "Día",
+            "manana": "mañana", "Manana": "Mañana",
+            "proximo": "próximo", "Proximo": "Próximo",
+            "analisis": "análisis", "Analisis": "Análisis",
+            "sintesis": "síntesis", "Sintesis": "Síntesis",
+            "hipotesis": "hipótesis", "Hipotesis": "Hipótesis",
+            "metodo": "método", "Metodo": "Método",
+            "parametro": "parámetro", "Parametro": "Parámetro",
+            "parametros": "parámetros", "Parametros": "Parámetros",
             "caracteristica": "característica", "Caracteristica": "Característica",
             "caracteristicas": "características", "Caracteristicas": "Características",
             "especifico": "específico", "Especifico": "Específico",
             "especifica": "específica", "Especifica": "Específica",
             "generico": "genérico", "Generico": "Genérico",
-            "generica": "genérica", "Generica": "Genérica",
-            "atomico": "atómico", "Atomico": "Atómico",
-            "atomica": "atómica", "Atomica": "Atómica",
-            "ionico": "iónico", "Ionico": "Iónico",
-            "ionica": "iónica", "Ionico": "Iónica",
             "electronico": "electrónico", "Electronico": "Electrónico",
-            "electronica": "electrónica", "Electronica": "Electrónica",
             "electrico": "eléctrico", "Electrico": "Eléctrico",
-            "electrica": "eléctrica", "Electrica": "Eléctrica",
             "hidraulico": "hidráulico", "Hidraulico": "Hidráulico",
-            "hidraulica": "hidráulica", "Hidraulica": "Hidráulica",
             "neumatico": "neumático", "Neumatico": "Neumático",
-            "neumatica": "neumática", "Neumatica": "Neumática",
             "termico": "térmico", "Termico": "Térmico",
-            "termica": "térmica", "Termica": "Térmica",
             "optico": "óptico", "Optico": "Óptico",
-            "optica": "óptica", "Optica": "Óptica",
-            "acustico": "acústico", "Acustico": "Acústico",
-            "acustica": "acústica", "Acustica": "Acústica",
-            "magnetico": "magnético", "Magnetico": "Magnético",
-            "magnetica": "magnética", "Magnetica": "Magnética",
             "quimico": "químico", "Quimico": "Químico",
-            "quimica": "química", "Quimica": "Química",
             "fisico": "físico", "Fisico": "Físico",
-            "fisica": "física", "Fisica": "Física",
             "biologico": "biológico", "Biologico": "Biológico",
-            "biologica": "biológica", "Biologica": "Biológica",
-            "geologico": "geológico", "Geologico": "Geológico",
-            "geologica": "geológica", "Geologica": "Geológica",
-            "ecologico": "ecológico", "Ecologico": "Ecológico",
-            "ecologica": "ecológica", "Ecologica": "Ecológica",
-            "psicologico": "psicológico", "Psicologico": "Psicológico",
-            "psicologica": "psicológica", "Psicologica": "Psicológica",
-            "sociologico": "sociológico", "Sociologico": "Sociológico",
-            "sociologica": "sociológica", "Sociologica": "Sociológica",
-            "antropologico": "antropológico", "Antropologico": "Antropológico",
-            "antropologica": "antropológica", "Antropologica": "Antropológica",
-            "arqueologico": "arqueológico", "Arqueologico": "Arqueológico",
-            "arqueologica": "arqueológica", "Arqueologica": "Arqueológica",
-            "filosofico": "filosófico", "Filosofico": "Filosófico",
-            "filosofica": "filosófica", "Filosofica": "Filosófica",
-            "historico": "histórico", "Historico": "Histórico",
-            "historica": "histórica", "Historica": "Histórica",
-            "economico": "económico", "Economico": "Económico",
-            "economica": "económica", "Economica": "Económica",
-            "politico": "político", "Politico": "Político",
-            "politica": "política", "Politica": "Política",
-            "juridico": "jurídico", "Juridico": "Jurídico",
-            "juridica": "jurídica", "Juridica": "Jurídica",
-            "artistico": "artístico", "Artistico": "Artístico",
-            "artistica": "artística", "Artistica": "Artística",
-            "literario": "literario",
-            "literaria": "literaria",
-            "musical": "musical",
-            "plastico": "plástico", "Plastico": "Plástico",
-            "plastica": "plástica", "Plastica": "Plástica",
-            "grafico": "gráfico", "Grafico": "Gráfico",
-            "grafica": "gráfica", "Grafica": "Gráfica",
-            "geografico": "geográfico", "Geografico": "Geográfico",
-            "geografica": "geográfica", "Geografica": "Geográfica",
-            "topografico": "topográfico", "Topografico": "Topográfico",
-            "topografica": "topográfica", "Topografica": "Topográfica",
-            "cartografico": "cartográfico", "Cartografico": "Cartográfico",
-            "cartografica": "cartográfica", "Cartografica": "Cartográfica",
-            "fotografico": "fotográfico", "Fotografico": "Fotográfico",
-            "fotografica": "fotográfica", "Fotografica": "Fotográfica",
-            "radiografico": "radiográfico", "Radiografico": "Radiográfico",
-            "radiografica": "radiográfica", "Radiografica": "Radiográfica",
-            "cinematografico": "cinematográfico", "Cinematografico": "Cinematográfico",
-            "cinematografica": "cinematográfica", "Cinematografica": "Cinematográfica",
-            "autobiografico": "autobiográfico", "Autobiografico": "Autobiográfico",
-            "autobiografica": "autobiográfica", "Autobiografica": "Autobiográfica",
-            "bibliografico": "bibliográfico", "Bibliografico": "Bibliográfico",
-            "bibliografica": "bibliográfica", "Bibliografica": "Bibliográfica",
-            "discografico": "discográfico", "Discografico": "Discográfico",
-            "discografica": "discográfica", "Discografica": "Discográfica",
-            "lexicografico": "lexicográfico", "Lexicografico": "Lexicográfico",
-            "lexicografica": "lexicográfica", "Lexicografica": "Lexicográfica",
-            "ortografico": "ortográfico", "Ortografico": "Ortográfico",
-            "ortografica": "ortográfica", "Ortografica": "Ortográfica",
-            "estenografico": "estenográfico", "Estenografico": "Estenográfico",
-            "estenografica": "estenográfica", "Estenografica": "Estenográfica",
-            "estilografico": "estilográfico", "Estilografico": "Estilográfico",
-            "estilografica": "estilográfica", "Estilografica": "Estilográfica",
-            "monografico": "monográfico", "Monografico": "Monográfico",
-            "monografica": "monográfica", "Monografica": "Monográfica",
-            "poligrafo": "polígrafo", "Poligrafo": "Polígrafo",
-            "poligrafa": "polígrafa", "Poligrafa": "Polígrafa",
-            "paragrafo": "párrafo", "Paragrafo": "Párrafo",
-            "paragrafos": "párrafos", "Paragrafos": "Párrafos",
-            "telegrafo": "telégrafo", "Telegrafo": "Telégrafo",
-            "telegrafos": "telégrafos", "Telegrafos": "Telégrafos",
-            "telegrama": "telegrama",
-            "programa": "programa",
-            "programas": "programas",
-            "programatico": "programático", "Programatico": "Programático",
-            "programatica": "programática", "Programatica": "Programática",
-            "programador": "programador",
-            "programadora": "programadora",
-            "programacion": "programación", "Programacion": "Programación",
-            "programable": "programable",
-            "reprogramable": "reprogramable",
-            "desprogramar": "desprogramar",
-            "reprogramar": "reprogramar",
-            "compilador": "compilador",
-            "compiladora": "compiladora",
-            "compilacion": "compilación", "Compilacion": "Compilación",
-            "interpretador": "interpretador",
-            "interpretadora": "interpretadora",
-            "interpretacion": "interpretación", "Interpretacion": "Interpretación",
-            "traductor": "traductor",
-            "traductora": "traductora",
-            "traduccion": "traducción", "Traduccion": "Traducción",
-            "traducible": "traducible",
-            "intraducible": "intraducible",
-            "version": "versión", "Version": "Versión", "VERSION": "VERSIÓN",
-            "reversion": "reversión", "Reversion": "Reversión",
+            "version": "versión", "Version": "Versión",
             "conversion": "conversión", "Conversion": "Conversión",
-            "inversion": "inversión", "Inversion": "Inversión",
-            "diversion": "diversión", "Diversion": "Diversión",
-            "aversion": "aversión", "Aversion": "Aversión",
-            "perversion": "perversión", "Perversion": "Perversión",
-            "subversion": "subversión", "Subversion": "Subversión",
-            "introversion": "introversión", "Introversion": "Introversión",
-            "extroversion": "extroversión", "Extroversion": "Extroversión",
-            "retroversion": "retroversión", "Retroversion": "Retroversión",
-            "controversion": "controversión", "Controversion": "Controversión",
-            "adversion": "adversión", "Adversion": "Adversión",
+            "descripcion": "descripción", "Descripcion": "Descripción",
+            "solucion": "solución", "Solucion": "Solución",
+            "situacion": "situación", "Situacion": "Situación",
+            "presentacion": "presentación", "Presentacion": "Presentación",
+            "revision": "revisión", "Revision": "Revisión",
+            "habilitacion": "habilitación", "Habilitacion": "Habilitación",
+            "limites": "límites", "Limites": "Límites",
+            "limite": "límite", "Limite": "Límite",
+            "linea": "línea", "Linea": "Línea",
+            "lineas": "líneas", "Lineas": "Líneas",
+            "unico": "único", "Unico": "Único",
+            "unica": "única", "Unica": "Única",
+            "facil": "fácil", "Facil": "Fácil",
+            "dificil": "difícil", "Dificil": "Difícil",
+            "rapido": "rápido", "Rapido": "Rápido",
+            "rapida": "rápida", "Rapida": "Rápida",
             "trabagar": "trabajar",
             "podra": "podrá",
-            "configura": "configura",
-            "maxima": "máxima",
-            "limite": "límite",
-            "Habilitacion": "Habilitación",
-            "habilitacion": "habilitación",
-            "Velocidad": "Velocidad",
-            "Prensa": "Prensa",
-            "Casquillos": "Casquillos",
-            "comentan": "comentan",
-            "operadores": "operadores",
-            "regular": "regular",
-            "velocidad": "velocidad",
-            "panel": "panel",
-            "tiene": "tiene",
-            "seguridad": "seguridad",
-            "incrementando": "incrementando",
-            "puede": "puede",
-            "llegar": "llegar",
-            "frecuencia": "frecuencia",
-            "motor": "motor",
-            "equipo": "equipo",
             "esta": "está",
-            "peligroso": "peligroso",
-            "funcione": "funcione",
-            "romper": "romper",
-            "algunas": "algunas",
-            "piezas": "piezas",
-            "normalmente": "normalmente",
-            "debe": "debe",
-            "trabajar": "trabajar",
-            "variador": "variador",
-            "forma": "forma",
-            "girar": "girar",
-            "descripcion": "descripción",
-            "solucion": "solución",
-            "implementada": "implementada",
-            "beneficios": "beneficios",
-            "proximos": "próximos",
-            "pasos": "pasos",
-            "desperdicio": "desperdicio",
-            "impacto": "impacto",
-            "bto": "BTO",
-            "safe": "Safe",
-            "sustainable": "Sustainable",
-            "people": "People",
-            "culture": "Culture",
-            "network": "Network",
-            "optimisation": "Optimisation",
-            "supply": "Supply",
-            "chain": "Chain",
-            "manufacturing": "Manufacturing",
-            "excellence": "Excellence",
-            "motion": "Motion",
-            "skills": "Skills",
-            "inventory": "Inventory",
-            "transportation": "Transportation",
-            "over production": "Over Production",
-            "over processing": "Over Processing",
-            "waiting": "Waiting",
-            "defects": "Defects",
-            "opportunity": "Opportunity",
-            "improvement": "Improvement",
-            "benefit": "Benefit",
-            "leader": "Leader",
-            "team": "Team",
-            "members": "Members",
-            "plant": "Plant",
-            "date": "Date",
-            "name": "Name",
-            "simple": "Simple",
-            "kaizen": "Kaizen",
-            "moc": "MoC",
-            "mejora": "Mejora",
-            "a3": "A3",
-            "management": "Management",
-            "change": "Change",
-            "naturaleza": "naturaleza",
-            "originador": "originador",
-            "produccion": "producción",
-            "specialist": "Specialist",
-            "shes": "SHES",
-            "mantenimiento": "mantenimiento",
-            "revisores": "revisores",
-            "enablon": "Enablon",
-            "revisor": "revisor",
-            "aprobador": "aprobador",
-            "final": "final",
-            "experto": "experto",
-            "revision": "revisión",
-            "especialistas": "especialistas",
-            "expertos": "expertos",
-            "problema": "problema",
-            "condicion": "condición",
-            "actual": "actual",
-            "propuesta": "propuesta",
-            "razones": "razones",
-            "cambio": "cambio",
-            "alternativas": "alternativas",
-            "consideradas": "consideradas",
-            "plan": "plan",
-            "retorno": "retorno",
-            "recursos": "recursos",
-            "disponibles": "disponibles",
-            "implementacion": "implementación",
-            "tiempo": "tiempo",
-            "dura": "dura",
-            "resultado": "resultado",
-            "evaluacion": "evaluación",
-            "estudio": "estudio",
-            "riesgos": "riesgos",
-            "identificado": "identificado",
-            "controles": "controles",
-            "recomendados": "recomendados",
-            "medidas": "medidas",
-            "control": "control",
-            "propuestos": "propuestos",
-            "plazo": "plazo",
-            "fin": "fin",
-            "presentacion": "presentación",
-            "autor": "autor",
-            "miembros": "miembros",
-            "equipo": "equipo",
-            "antecedentes": "antecedentes",
-            "situacion": "situación",
-            "objetivos": "objetivos",
-            "causa": "causa",
-            "raiz": "raíz",
-            "contramedidas": "contramedidas",
-            "resultados": "resultados",
-            "esperados": "esperados",
-            "seguimiento": "seguimiento",
-            "lecciones": "lecciones",
-            "aprendidas": "aprendidas",
-            "estandarizacion": "estandarización",
-            "exelente": "excelente", "Exelente": "Excelente",
-            "exelencia": "excelencia", "Exelencia": "Excelencia",
-            "deficiente": "deficiente",
-            "suficiente": "suficiente",
-            "insuficiente": "insuficiente",
-            "necesario": "necesario",
-            "innecesario": "innecesario",
-            "obligatorio": "obligatorio",
-            "voluntario": "voluntario",
-            "opcional": "opcional",
-            "requerido": "requerido",
-            "requerimiento": "requerimiento",
-            "requisito": "requisito",
-            "especificacion": "especificación",
-            "especifico": "específico",
-            "generico": "genérico",
-            "particular": "particular",
-            "general": "general",
-            "especial": "especial",
-            "especifica": "específica",
-            "generica": "genérica",
-            "atomico": "atómico",
-            "atomica": "atómica",
-            "ionico": "iónico",
-            "ionica": "iónica",
-            "electronico": "electrónico",
-            "electronica": "electrónica",
-            "electrico": "eléctrico",
-            "electrica": "eléctrica",
-            "hidraulico": "hidráulico",
-            "hidraulica": "hidráulica",
-            "neumatico": "neumático",
-            "neumatica": "neumática",
-            "termico": "térmico",
-            "termica": "térmica",
-            "optico": "óptico",
-            "optica": "óptica",
-            "acustico": "acústico",
-            "acustica": "acústica",
-            "magnetico": "magnético",
-            "magnetica": "magnética",
-            "quimico": "químico",
-            "quimica": "química",
-            "fisico": "físico",
-            "fisica": "física",
-            "biologico": "biológico",
-            "biologica": "biológica",
-            "geologico": "geológico",
-            "geologica": "geológica",
-            "ecologico": "ecológico",
-            "ecologica": "ecológica",
-            "psicologico": "psicológico",
-            "psicologica": "psicológica",
-            "sociologico": "sociológico",
-            "sociologica": "sociológica",
-            "antropologico": "antropológico",
-            "antropologica": "antropológica",
-            "arqueologico": "arqueológico",
-            "arqueologica": "arqueológica",
-            "filosofico": "filosófico",
-            "filosofica": "filosófica",
-            "historico": "histórico",
-            "historica": "histórica",
-            "economico": "económico",
-            "economica": "económica",
-            "politico": "político",
-            "politica": "política",
-            "juridico": "jurídico",
-            "juridica": "jurídica",
-            "artistico": "artístico",
-            "artistica": "artística",
-            "literario": "literario",
-            "literaria": "literaria",
-            "musical": "musical",
-            "plastico": "plástico",
-            "plastica": "plástica",
-            "grafico": "gráfico",
-            "grafica": "gráfica",
-            "geografico": "geográfico",
-            "geografica": "geográfica",
-            "topografico": "topográfico",
-            "topografica": "topográfica",
-            "cartografico": "cartográfico",
-            "cartografica": "cartográfica",
-            "fotografico": "fotográfico",
-            "fotografica": "fotográfica",
-            "radiografico": "radiográfico",
-            "radiografica": "radiográfica",
-            "cinematografico": "cinematográfico",
-            "cinematografica": "cinematográfica",
-            "autobiografico": "autobiográfico",
-            "autobiografica": "autobiográfica",
-            "bibliografico": "bibliográfico",
-            "bibliografica": "bibliográfica",
-            "discografico": "discográfico",
-            "discografica": "discográfica",
-            "lexicografico": "lexicográfico",
-            "lexicografica": "lexicográfica",
-            "ortografico": "ortográfico",
-            "ortografica": "ortográfica",
-            "estenografico": "estenográfico",
-            "estenografica": "estenográfica",
-            "estilografico": "estilográfico",
-            "estilografica": "estilográfica",
-            "monografico": "monográfico",
-            "monografica": "monográfica",
-            "poligrafo": "polígrafo",
-            "poligrafa": "polígrafa",
-            "paragrafo": "párrafo",
-            "paragrafos": "párrafos",
-            "telegrafo": "telégrafo",
-            "telegrafos": "telégrafos",
-            "telegrama": "telegrama",
-            "programa": "programa",
-            "programas": "programas",
-            "programatico": "programático",
-            "programatica": "programática",
-            "programador": "programador",
-            "programadora": "programadora",
-            "programacion": "programación",
-            "programable": "programable",
-            "reprogramable": "reprogramable",
-            "desprogramar": "desprogramar",
-            "reprogramar": "reprogramar",
-            "compilador": "compilador",
-            "compiladora": "compiladora",
-            "compilacion": "compilación",
-            "interpretador": "interpretador",
-            "interpretadora": "interpretadora",
-            "interpretacion": "interpretación",
-            "traductor": "traductor",
-            "traductora": "traductora",
-            "traduccion": "traducción",
-            "traducible": "traducible",
-            "intraducible": "intraducible",
-            "version": "versión",
-            "reversion": "reversión",
-            "conversion": "conversión",
-            "inversion": "inversión",
-            "diversion": "diversión",
-            "aversion": "aversión",
-            "perversion": "perversión",
-            "subversion": "subversión",
-            "introversion": "introversión",
-            "extroversion": "extroversión",
-            "retroversion": "retroversión",
-            "controversion": "controversión",
-            "adversion": "adversión",
         }
         result = text
         for wrong, correct in corrections.items():
@@ -829,15 +411,18 @@ class Utils:
         return result
 
 # =============================================================================
-# SERVICIO GEMINI API - CON DIAGNÓSTICO MEJORADO
+# SERVICIO GEMINI API - MODELOS ACTUALIZADOS (GEMINI 2.5)
 # =============================================================================
 class GeminiService:
+    # CORRECCIÓN CRÍTICA: Los modelos gemini-1.5-flash y gemini-1.0-pro YA NO EXISTEN en v1beta.
+    # Los modelos actuales disponibles son gemini-2.5-flash, gemini-2.5-pro y gemini-2.0-flash.
     MODELS = {
-        "gemini-1.5-pro": {"name": "Gemini 1.5 Pro", "desc": "Máxima calidad y razonamiento"},
-        "gemini-1.5-flash": {"name": "Gemini 1.5 Flash", "desc": "Rápido y eficiente"},
+        "gemini-2.5-flash": {"name": "Gemini 2.5 Flash", "desc": "Rápido, eficiente y recomendado"},
+        "gemini-2.5-pro": {"name": "Gemini 2.5 Pro", "desc": "Máxima calidad y razonamiento"},
+        "gemini-2.0-flash": {"name": "Gemini 2.0 Flash", "desc": "Alternativa estable"},
     }
 
-    def __init__(self, api_key="", model="gemini-1.5-pro"):
+    def __init__(self, api_key="", model="gemini-2.5-flash"):
         self.api_key = api_key
         self.model = model
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -860,9 +445,9 @@ class GeminiService:
             return ""
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
-                raise Exception("Error 404: La 'Generative Language API' NO está habilitada en tu proyecto de Google Cloud, o el nombre del modelo es incorrecto. Ve a Google Cloud Console > APIs y Servicios > Biblioteca > busca 'Generative Language API' y habilítala.")
+                raise Exception(f"Error 404: El modelo '{self.model}' no está disponible. Verifica que la 'Generative Language API' esté habilitada en tu proyecto de Google Cloud y que la API Key sea válida.")
             elif e.response.status_code == 403:
-                raise Exception("Error 403: Acceso denegado. La API Key puede estar restringida (por IP o Referer) o no tener permisos de uso.")
+                raise Exception("Error 403: Acceso denegado. Verifica que la API Key sea válida y no tenga restricciones.")
             else:
                 raise Exception(f"Error HTTP {e.response.status_code}: {e.response.text}")
 
@@ -874,27 +459,27 @@ class GeminiService:
                 return json.loads(json_match.group(1))
             except json.JSONDecodeError:
                 pass
-        
         json_match = re.search(r'\{.*\}', text, re.DOTALL)
         if json_match:
             try:
                 return json.loads(json_match.group())
             except json.JSONDecodeError:
                 pass
-                
         return {"generated_text": text, "error": "No se pudo extraer JSON válido"}
 
     def generate_moc(self, problem, context="", equipo=""):
+        """Genera MoC con formato oficial MDET de 12 slides - CONTEXTO ESPECÍFICO"""
         if not self.api_key:
             st.error("❌ API Key no configurada. Configure en Configuración > API Gemini")
             return None
-        
-        prompt = f"""Eres un ingeniero senior de seguridad industrial con 20 años de experiencia, especializado en Management of Change (MoC) bajo normas ISO 45001, ISO 9001 e ISO 13849.
+
+        # PROMPT BLINDADO: Obliga a usar EXCLUSIVAMENTE el contexto del usuario
+        prompt = f"""Eres un ingeniero senior de seguridad industrial con 20 años de experiencia en minería y manufactura, especializado en Management of Change (MoC) bajo normas ISO 45001, ISO 9001 e ISO 13849.
 
 REGLAS CRÍTICAS OBLIGATORIAS (LEER DETENIDAMENTE):
 1. CONTEXTO EXCLUSIVO: Toda la redacción debe basarse ÚNICA Y EXCLUSIVAMENTE en el problema reportado por el usuario a continuación.
 2. PROHIBICIÓN DE TEXTO GENÉRICO: Está TERMINANTEMENTE PROHIBIDO usar frases genéricas como "degradación progresiva de componentes", "parámetros fuera de rango", "desviaciones del proceso" o "condición técnica que afecta la continuidad" a menos que el usuario las haya escrito explícitamente.
-3. EXTRACCIÓN DE ENTIDADES: Debes identificar y usar los elementos específicos del usuario: equipos (estaciones de espera, máquina), componentes (interlocks, compuertas, sensores de seguridad, PLC), riesgos (atrapamiento, material energético) y normas (ISO 13849).
+3. EXTRACCIÓN DE ENTIDADES: Debes identificar y usar los elementos específicos del usuario: equipos, componentes (interlocks, compuertas, sensores, PLC), riesgos (atrapamiento, material energético) y normas (ISO 13849).
 4. REDACCIÓN HUMANIZADA Y TÉCNICA: Escribe como un ingeniero senior. Usa voz activa, conectores lógicos y párrafos bien estructurados.
 5. ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras.
 
@@ -910,21 +495,57 @@ EQUIPO INVOLUCRADO:
 Genera en ESPAÑOL formato JSON con esta estructura EXACTA:
 {{
   "moc_title": "Título técnico conciso (máx. 12 palabras, basado en el problema del usuario)",
-  "descripcion_problema": "Descripción técnica detallada del problema reportado. Menciona EXPLÍCITAMENTE las estaciones de espera, la falta de interlocks, el riesgo de atrapamiento, el material energético y la necesidad de cumplir con ISO 13849. Mínimo 250 palabras.",
-  "condicion_actual": "Descripción técnica exhaustiva del estado actual. Explica EXPLÍCITAMENTE que las compuertas pueden abrirse con la máquina en funcionamiento, la falta de sensores en puntos de acceso expuestos y la ausencia de enclavamiento de seguridad en el PLC.",
-  "condicion_propuesta": "Descripción detallada de la solución propuesta. Explica EXPLÍCITAMENTE la instalación de interlocks en cada estación de espera, la detención automática de la máquina al abrirse las compuertas, la habilitación previa desde el panel de control y la integración al sistema de enclavamiento del PLC.",
-  "razones_cambio": "Lista de 4-6 razones técnicas usando viñetas '❖' que justifiquen el cambio basándose en el problema del usuario (ej: prevención de atrapamiento, cumplimiento ISO 13849, protección del material energético).",
-  "alternativas_retorno": "Análisis de 2 alternativas evaluadas con pros/contras específicos para este problema. Incluye un plan de retorno detallado para desinstalar los interlocks y restaurar la operación manual segura si falla la implementación.",
-  "recursos": "Listado exhaustivo de recursos humanos, materiales (sensores de seguridad, cableado, módulos de seguridad para PLC, interlocks), técnicos y EPP específico requeridos.",
-  "plan_implementacion": "Plan detallado por fases para instalar interlocks: instalación física, cableado, programación del PLC para el enclavamiento, pruebas de funcionamiento, validación de seguridad.",
-  "tiempo_duracion": "Estimación detallada del tiempo total para instalar interlocks con desglose por fase.",
-  "riesgos_controles": [{{"riesgo": "Riesgo específico de calidad/técnico relacionado con la integración del PLC", "control": "Medida de control específica"}}],
-  "riesgos_shes": [{{"riesgo": "Riesgo SHES específico (ej: atrapamiento por compuertas, energía residual)", "control": "Plan de acción específico", "plazo": "Plazo"}}]
+  "descripcion_problema": "Descripción técnica detallada del problema. Mínimo 250 palabras. Menciona EXPLÍCITAMENTE los elementos del problema del usuario.",
+  "condicion_actual": "Descripción técnica exhaustiva del estado actual. Mínimo 150 palabras.",
+  "condicion_propuesta": "Descripción detallada de la solución propuesta. Mínimo 150 palabras.",
+  "razones_cambio": "Lista de 4-6 razones técnicas usando viñetas '❖' que justifiquen el cambio.",
+  "alternativas_consideradas": "Análisis de 2 alternativas evaluadas con pros/contras específicos.",
+  "plan_retorno": "Procedimiento detallado de retorno a condiciones originales.",
+  "recursos": "Listado exhaustivo de recursos humanos, materiales, técnicos y EPP.",
+  "plan_implementacion": "Plan detallado por fases con actividades específicas.",
+  "tiempo_duracion": "Estimación detallada del tiempo total con desglose por fase.",
+  "checklist_360": [
+    {{"numero": 1, "factor": "Interacción o impacto con otras áreas/procesos", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 2, "factor": "Cambios en los procedimientos operativos, arranque y parada", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 3, "factor": "Parámetros operativos y límites de control", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 4, "factor": "Cambios en interfaces hombre-máquina y gestión de alarmas", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 5, "factor": "Compatibilidad de materiales, sustancias y equipos", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 6, "factor": "Exposición ocupacional (ruido, polvo, ergonomía, etc.)", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 7, "factor": "Requerimientos de EPP y su compatibilidad", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 8, "factor": "Escenarios de emergencia y capacidad de respuesta", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 9, "factor": "Impacto en el almacenamiento y tránsito interno/externo", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 10, "factor": "Impactos ambientales y generación de residuos", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 11, "factor": "Impacto en la calidad del producto o servicio", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 12, "factor": "Cambios en roles, competencias y carga de trabajo", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 13, "factor": "Integridad de equipos, protecciones y sistemas de control", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 14, "factor": "Cumplimiento legal, normativo y permisos aplicables", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 15, "factor": "Cambios en las condiciones para trabajos especiales", "aplica": "SI/NO", "descripcion": "..."}},
+    {{"numero": 16, "factor": "Cambios sucesivos que incrementan el riesgo global", "aplica": "SI/NO", "descripcion": "..."}}
+  ],
+  "documentos_impactados": [
+    {{"numero": 1, "documento": "JSERA - IPERC", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 2, "documento": "Procedimiento de Trabajo, Instructivo/PO", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 3, "documento": "Formato/Checklist operativos", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 4, "documento": "Matriz de EPP", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 5, "documento": "MSDS de sustancias involucradas", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 6, "documento": "Mapa de Riesgos", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 7, "documento": "Plan de emergencias", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 8, "documento": "Plan de Mantenimiento", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 9, "documento": "Matriz de impactos ambientales", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 10, "documento": "Plan Monitoreos SSO requeridos", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 11, "documento": "Plan de tráfico", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 12, "documento": "Matriz de competencias, plan de entrenamiento", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 13, "documento": "Plan de calidad", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 14, "documento": "Planos y diagramas (layout, P&ID)", "aplica": "SI/NO", "modificacion": "..."}},
+    {{"numero": 15, "documento": "Licencias y permisos aplicables", "aplica": "SI/NO", "modificacion": "..."}}
+  ],
+  "riesgos_calidad": [{{"riesgo": "...", "control": "...", "plazo": "..."}}],
+  "riesgos_shes": [{{"riesgo": "...", "control": "...", "plazo": "..."}}]
 }}
 
-Responde SOLO con el JSON válido, sin comentarios adicionales."""
+Responde SOLO con JSON válido, sin comentarios adicionales."""
         try:
-            text = self._call_api(prompt, temperature=0.4, max_tokens=8192)
+            text = self._call_api(prompt, temperature=0.4, max_tokens=12000)
             result = self._extract_json(text)
             for key in result:
                 if isinstance(result[key], str):
@@ -944,8 +565,7 @@ Responde SOLO con el JSON válido, sin comentarios adicionales."""
         if not self.api_key:
             st.error("❌ API Key no configurada")
             return None
-        prompt = f"""Eres un experto senior en metodología A3 Lean. Redactas documentos con redacción humanizada, técnica y profesional.
-INSTRUCCIONES: Usa EXCLUSIVAMENTE el contexto del problema. NO inventes problemas genéricos. Ortografía impecable.
+        prompt = f"""Eres un experto senior en metodología A3 Lean. Usa EXCLUSIVAMENTE el contexto del problema. NO inventes problemas genéricos. Ortografía impecable.
 PROBLEMA: {problem}
 CONTEXTO: {context}
 Genera JSON con: titulo, antecedentes, problema_actual, analisis_situacion, objetivos, analisis_causa_raiz, contramedidas, resultados_esperados, plan_seguimiento, lecciones_aprendidas, estandarizacion."""
@@ -964,8 +584,7 @@ Genera JSON con: titulo, antecedentes, problema_actual, analisis_situacion, obje
         if not self.api_key:
             st.error("❌ API Key no configurada")
             return None
-        prompt = f"""Eres un experto en Kaizen. Redactas registros con redacción humanizada y práctica.
-INSTRUCCIONES: Usa EXCLUSIVAMENTE el contexto. NO inventes problemas. Ortografía impecable.
+        prompt = f"""Eres un experto en Kaizen. Usa EXCLUSIVAMENTE el contexto. NO inventes problemas. Ortografía impecable.
 ACTIVIDAD: {activity}
 CONTEXTO: {context}
 Genera JSON con: titulo, area, descripcion_problema, solucion, beneficios, tipo_desperdicio, impacto_bto, proximos_pasos, leader, team_members."""
@@ -1097,7 +716,7 @@ def replace_text_in_docx_preserve_runs(doc, old_text, new_text):
                         replace_in_paragraph(para)
 
 # =============================================================================
-# GENERADOR DE DOCUMENTOS
+# GENERADOR DE DOCUMENTOS - FORMATO OFICIAL MDET 12 SLIDES
 # =============================================================================
 class DocumentGenerator:
     def generate_moc(self, data, images=None, template_bytes=None):
@@ -1177,9 +796,9 @@ class DocumentGenerator:
                         if shape.text_frame.paragraphs:
                             first_para = shape.text_frame.paragraphs[0]
                             if first_para.runs:
-                                first_para.runs[0].text = data.get('alternativas_retorno', '')
+                                first_para.runs[0].text = data.get('alternativas_consideradas', '')
                             else:
-                                first_para.text = data.get('alternativas_retorno', '')
+                                first_para.text = data.get('alternativas_consideradas', '')
                     if "Plan de retorno" in text or "Reinstalación del sistema actual" in text:
                         for paragraph in shape.text_frame.paragraphs:
                             for run in paragraph.runs:
@@ -1187,9 +806,9 @@ class DocumentGenerator:
                         if shape.text_frame.paragraphs:
                             first_para = shape.text_frame.paragraphs[0]
                             if first_para.runs:
-                                first_para.runs[0].text = data.get('alternativas_retorno', '')
+                                first_para.runs[0].text = data.get('plan_retorno', '')
                             else:
-                                first_para.text = data.get('alternativas_retorno', '')
+                                first_para.text = data.get('plan_retorno', '')
 
         if len(prs.slides) > 4:
             slide5 = prs.slides[4]
@@ -1295,16 +914,44 @@ class DocumentGenerator:
 
         if len(prs.slides) > 8:
             slide9 = prs.slides[8]
-            # Aquí iría el checklist 360 si el template lo tiene como tabla
+            checklist = data.get('checklist_360', [])
+            for shape in slide9.shapes:
+                if shape.has_table:
+                    table = shape.table
+                    for i, item in enumerate(checklist):
+                        row_idx = i + 1
+                        if row_idx < len(table.rows):
+                            if len(table.columns) > 0:
+                                fill_table_cell(table.cell(row_idx, 0), str(item.get('numero', i+1)))
+                            if len(table.columns) > 1:
+                                fill_table_cell(table.cell(row_idx, 1), item.get('factor', ''))
+                            if len(table.columns) > 2:
+                                fill_table_cell(table.cell(row_idx, 2), item.get('aplica', 'NO'))
+                            if len(table.columns) > 3:
+                                fill_table_cell(table.cell(row_idx, 3), item.get('descripcion', ''))
 
         if len(prs.slides) > 9:
             slide10 = prs.slides[9]
-            # Aquí iría la tabla de documentos impactados
+            docs_impactados = data.get('documentos_impactados', [])
+            for shape in slide10.shapes:
+                if shape.has_table:
+                    table = shape.table
+                    for i, item in enumerate(docs_impactados):
+                        row_idx = i + 1
+                        if row_idx < len(table.rows):
+                            if len(table.columns) > 0:
+                                fill_table_cell(table.cell(row_idx, 0), str(item.get('numero', i+1)))
+                            if len(table.columns) > 1:
+                                fill_table_cell(table.cell(row_idx, 1), item.get('documento', ''))
+                            if len(table.columns) > 2:
+                                fill_table_cell(table.cell(row_idx, 2), item.get('aplica', 'NO'))
+                            if len(table.columns) > 3:
+                                fill_table_cell(table.cell(row_idx, 3), item.get('modificacion', ''))
 
         if len(prs.slides) > 11:
             slide12 = prs.slides[11]
             riesgos_shes = data.get('riesgos_shes', [])
-            riesgos_calidad = data.get('riesgos_controles', [])
+            riesgos_calidad = data.get('riesgos_calidad', [])
             all_risks = riesgos_calidad + riesgos_shes
             for shape in slide12.shapes:
                 if shape.has_table:
@@ -1348,11 +995,16 @@ class DocumentGenerator:
             run.font.color.rgb = DocxRGBColor(0x1a, 0x5f, 0x7a)
             run.font.name = 'Calibri'
         sections = [
-            ("ANTECEDENTES", "antecedentes"), ("PROBLEMA ACTUAL", "problema_actual"),
-            ("ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"), ("OBJETIVOS", "objetivos"),
-            ("ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"), ("CONTRAMEDIDAS", "contramedidas"),
-            ("RESULTADOS ESPERADOS", "resultados_esperados"), ("PLAN DE SEGUIMIENTO", "plan_seguimiento"),
-            ("LECCIONES APRENDIDAS", "lecciones_aprendidas"), ("ESTANDARIZACIÓN", "estandarizacion"),
+            ("ANTECEDENTES", "antecedentes"),
+            ("PROBLEMA ACTUAL", "problema_actual"),
+            ("ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"),
+            ("OBJETIVOS", "objetivos"),
+            ("ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"),
+            ("CONTRAMEDIDAS", "contramedidas"),
+            ("RESULTADOS ESPERADOS", "resultados_esperados"),
+            ("PLAN DE SEGUIMIENTO", "plan_seguimiento"),
+            ("LECCIONES APRENDIDAS", "lecciones_aprendidas"),
+            ("ESTANDARIZACIÓN", "estandarizacion"),
         ]
         for section_title, key in sections:
             h = doc.add_heading(section_title, level=2)
@@ -1474,7 +1126,7 @@ class PDFExporter:
                         return f.read()
         except Exception as e:
             st.warning(f"Conversión LibreOffice falló: {e}")
-            return None
+        return None
 
     @staticmethod
     def docx_to_pdf_libreoffice(docx_bytes, output_filename):
@@ -1501,7 +1153,7 @@ class PDFExporter:
                         return f.read()
         except Exception as e:
             st.warning(f"Conversión LibreOffice falló: {e}")
-            return None
+        return None
 
     @staticmethod
     def generate_pdf_from_data(data, doc_type, meta, images=None):
@@ -1545,7 +1197,7 @@ class PDFExporter:
                     ("Condición Actual", "condicion_actual"),
                     ("Condición Propuesta", "condicion_propuesta"),
                     ("Razones del Cambio", "razones_cambio"),
-                    ("Alternativas y Plan de Retorno", "alternativas_retorno"),
+                    ("Alternativas y Plan de Retorno", "alternativas_consideradas"),
                     ("Recursos", "recursos"),
                     ("Plan de Implementación", "plan_implementacion"),
                     ("Tiempo de Duración", "tiempo_duracion"),
@@ -1597,7 +1249,7 @@ def init_session_state():
         "page": "inicio",
         "config": saved_config or {
             "gemini_api_key": "",
-            "gemini_model": "gemini-1.5-pro",
+            "gemini_model": "gemini-2.5-flash",  # CORREGIDO: Modelo actualizado
             "company_name": "",
             "department": "",
             "default_author": "",
@@ -1658,11 +1310,11 @@ def render_sidebar():
             st.session_state.page = page_key
             st.rerun()
     st.sidebar.markdown("<hr style='border-color: #334155; margin: 1rem 0;'>", unsafe_allow_html=True)
-    model_name = GeminiService.MODELS.get(config.get("gemini_model", "gemini-1.5-pro"), {}).get("name", "Gemini 1.5 Pro")
+    model_name = GeminiService.MODELS.get(config.get("gemini_model", "gemini-2.5-flash"), {}).get("name", "Gemini 2.5 Flash")
     st.sidebar.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
 <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-<p>v7.5.0 · Agosto 2026</p>
+<p>v8.0.0 · Agosto 2026</p>
 </div>
 """, unsafe_allow_html=True)
     st.sidebar.markdown("""
@@ -1700,7 +1352,7 @@ def render_welcome():
         st.markdown("""
 <div class="doc-card doc-card-moc">
 <h3 style="color: #1a5f7a; margin-top: 0;">📋 Management of Change</h3>
-<p style="color: #64748b; font-size: 0.9rem;">Formato oficial MDET con análisis integral.</p>
+<p style="color: #64748b; font-size: 0.9rem;">Formato oficial MDET de 12 slides con Checklist 360° y análisis integral.</p>
 <ul style="color: #475569; font-size: 0.85rem; padding-left: 1.2rem;">
 <li>12 slides estandarizados</li><li>Checklist 360° automático</li><li>15 documentos impactados</li><li>Riesgos SHES detallados</li>
 </ul>
@@ -1762,7 +1414,7 @@ def auto_correct_text_input(label, value, key, height=100, help_text=""):
 def render_moc_form():
     config = st.session_state.config
     st.markdown('<div class="section-header"><h3>📋 Nueva Management of Change (MoC)</h3></div>', unsafe_allow_html=True)
-    st.info("💡 Complete la información y describa el problema con detalle. La IA generará automáticamente los slides basándose EXCLUSIVAMENTE en su problema específico.")
+    st.info("💡 Complete la información y describa el problema con detalle. La IA generará automáticamente los 12 slides del formato oficial MDET basándose EXCLUSIVAMENTE en su problema específico.")
     if not st.session_state.get("template_moc_bytes"):
         st.error("❌ **Template MoC no cargado.** Vaya a Configuración > Templates.")
         if st.button("Ir a Configuración", key="go_config_moc"):
@@ -1816,12 +1468,12 @@ def render_moc_form():
             image_paths.append({"path": img_path, "desc": f"Figura {idx} - {img_file.name}"})
         st.success(f"📷 {len(image_paths)} imagen(es) cargada(s)")
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🤖 Generar Documento MoC con IA", type="primary", use_container_width=True):
+    if st.button("🤖 Generar Documento MoC con IA (12 Slides)", type="primary", use_container_width=True):
         if not problem_desc.strip():
             st.error("❌ Describa el problema antes de generar.")
             return
-        with st.spinner("🧠 La IA está generando el documento basándose en su problema específico..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+        with st.spinner("🧠 La IA está generando los 12 slides del formato oficial MDET basándose en su problema específico..."):
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
             equipo_data = {
                 "produccion": produccion, "specialist_shes": specialist_shes,
                 "mantenimiento": mantenimiento, "revisores": revisores,
@@ -1891,7 +1543,7 @@ def render_a3_form():
             st.error("❌ Describa el problema antes de generar.")
             return
         with st.spinner("🧠 Generando documento A3 con análisis detallado..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
             result = gemini.generate_a3(problem_desc, context)
             if result is None:
                 st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
@@ -1981,7 +1633,7 @@ def render_kaizen_form():
             st.error("❌ Describa la actividad antes de generar.")
             return
         with st.spinner("🧠 Generando documento Kaizen..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
             result = gemini.generate_kaizen(activity_desc, context)
             if result is None:
                 st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
@@ -2035,8 +1687,8 @@ def _spell_check_field(label, value, key_prefix, gemini):
     return text
 
 def _render_moc_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
-    tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Riesgos", "📷 Imágenes", "⚙️ Generar"])
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
+    tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Checklist 360°", "📄 Documentos", "⚠️ Riesgos", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         st.markdown("#### Información del Documento")
         meta["moc_title"] = st.text_input("Título:", value=meta.get("moc_title", ""), key="moc_rev_title")
@@ -2059,8 +1711,8 @@ def _render_moc_review(data, meta, images, config):
         data["condicion_propuesta"] = _spell_check_field("", data.get("condicion_propuesta", ""), "moc_prop", gemini)
         st.markdown("#### Razones del Cambio")
         data["razones_cambio"] = _spell_check_field("", data.get("razones_cambio", ""), "moc_raz", gemini)
-        st.markdown("#### Alternativas y Plan de Retorno")
-        data["alternativas_retorno"] = _spell_check_field("", data.get("alternativas_retorno", ""), "moc_alt", gemini)
+        st.markdown("#### Alternativas Consideradas y Plan de Retorno")
+        data["alternativas_consideradas"] = _spell_check_field("", data.get("alternativas_consideradas", ""), "moc_alt", gemini)
         st.markdown("#### Recursos")
         data["recursos"] = _spell_check_field("", data.get("recursos", ""), "moc_rec", gemini)
         st.markdown("#### Plan de Implementación")
@@ -2068,46 +1720,80 @@ def _render_moc_review(data, meta, images, config):
         st.markdown("#### Tiempo de Duración")
         data["tiempo_duracion"] = _spell_check_field("", data.get("tiempo_duracion", ""), "moc_tiempo", gemini)
     with tabs[2]:
-        st.markdown("#### Riesgos y Controles")
-        risks = data.get("riesgos_controles", [])
-        updated_risks = []
-        for i, risk in enumerate(risks):
-            st.markdown(f"**Riesgo {i+1}**")
-            col1, col2 = st.columns(2)
+        st.markdown("#### Checklist 360° - 16 Factores")
+        st.info("Análisis integral del cambio. Marque SI/NO y describa el impacto cuando corresponda.")
+        checklist = data.get("checklist_360", [])
+        updated_checklist = []
+        for item in checklist:
+            st.markdown(f"**{item.get('numero')}. {item.get('factor')}**")
+            col1, col2 = st.columns([1, 3])
             with col1:
-                r_riesgo = st.text_input(f"Riesgo {i+1}:", value=risk.get("riesgo", ""), key=f"risk_{i}")
+                aplica = st.selectbox("Aplica:", ["SI", "NO"],
+                                      index=0 if item.get("aplica", "NO") == "SI" else 1,
+                                      key=f"chk_{item.get('numero')}")
             with col2:
-                r_control = st.text_input(f"Control {i+1}:", value=risk.get("control", ""), key=f"ctrl_{i}")
-            updated_risks.append({"riesgo": r_riesgo, "control": r_control})
-        if st.button("➕ Agregar Riesgo", key="add_risk"):
-            updated_risks.append({"riesgo": "", "control": ""})
-        data["riesgos_controles"] = updated_risks
+                desc = st.text_input("Descripción:", value=item.get("descripcion", ""),
+                                     key=f"chk_desc_{item.get('numero')}")
+            updated_checklist.append({"numero": item.get("numero"), "factor": item.get("factor"),
+                                      "aplica": aplica, "descripcion": desc if aplica == "SI" else ""})
+        data["checklist_360"] = updated_checklist
+    with tabs[3]:
+        st.markdown("#### Documentos Impactados - 15 Documentos")
+        st.info("Identifique los documentos que deben actualizarse como consecuencia del cambio.")
+        docs_imp = data.get("documentos_impactados", [])
+        updated_docs = []
+        for item in docs_imp:
+            st.markdown(f"**{item.get('numero')}. {item.get('documento')}**")
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                aplica = st.selectbox("Aplica:", ["SI", "NO"],
+                                      index=0 if item.get("aplica", "NO") == "SI" else 1,
+                                      key=f"doc_{item.get('numero')}")
+            with col2:
+                modif = st.text_input("Modificación:", value=item.get("modificacion", ""),
+                                      key=f"doc_mod_{item.get('numero')}")
+            updated_docs.append({"numero": item.get("numero"), "documento": item.get("documento"),
+                                 "aplica": aplica, "modificacion": modif if aplica == "SI" else ""})
+        data["documentos_impactados"] = updated_docs
+    with tabs[4]:
+        st.markdown("#### Riesgos de Calidad")
+        risks_cal = data.get("riesgos_calidad", [])
+        updated_cal = []
+        for i, risk in enumerate(risks_cal):
+            st.markdown(f"**Riesgo de Calidad {i+1}**")
+            col1, col2, col3 = st.columns([2, 2, 1])
+            with col1:
+                r_riesgo = st.text_input(f"Riesgo:", value=risk.get("riesgo", ""), key=f"rcal_r_{i}")
+            with col2:
+                r_control = st.text_input(f"Control:", value=risk.get("control", ""), key=f"rcal_c_{i}")
+            with col3:
+                r_plazo = st.text_input(f"Plazo:", value=risk.get("plazo", ""), key=f"rcal_p_{i}")
+            updated_cal.append({"riesgo": r_riesgo, "control": r_control, "plazo": r_plazo})
+        data["riesgos_calidad"] = updated_cal
         st.markdown("#### Riesgos SHES")
         risks_shes = data.get("riesgos_shes", [])
         updated_shes = []
         for i, risk in enumerate(risks_shes):
             st.markdown(f"**Riesgo SHES {i+1}**")
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3 = st.columns([2, 2, 1])
             with col1:
-                s_riesgo = st.text_input(f"Riesgo S{i+1}:", value=risk.get("riesgo", ""), key=f"shes_r_{i}")
+                s_riesgo = st.text_input(f"Riesgo:", value=risk.get("riesgo", ""), key=f"rshes_r_{i}")
             with col2:
-                s_control = st.text_input(f"Control S{i+1}:", value=risk.get("control", ""), key=f"shes_c_{i}")
+                s_control = st.text_input(f"Control:", value=risk.get("control", ""), key=f"rshes_c_{i}")
             with col3:
-                s_plazo = st.text_input(f"Plazo S{i+1}:", value=risk.get("plazo", ""), key=f"shes_p_{i}")
+                s_plazo = st.text_input(f"Plazo:", value=risk.get("plazo", ""), key=f"rshes_p_{i}")
             updated_shes.append({"riesgo": s_riesgo, "control": s_control, "plazo": s_plazo})
-        if st.button("➕ Agregar Riesgo SHES", key="add_shes"):
-            updated_shes.append({"riesgo": "", "control": "", "plazo": ""})
         data["riesgos_shes"] = updated_shes
-    with tabs[3]:
+    with tabs[5]:
         st.markdown("#### Imágenes Cargadas")
         if images:
             for idx, img_info in enumerate(images, 1):
                 st.image(img_info["path"], caption=f"Figura {idx}: {img_info['desc']}", width=400)
         else:
             st.info("No se cargaron imágenes")
-    with tabs[4]:
+    with tabs[6]:
         st.markdown("#### Generar Documento Final")
-        st.success("✅ Documento listo para generar")
+        st.success("✅ Documento listo para generar (12 slides formato oficial MDET)")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             if st.button("🇪🇸 PPTX Español", type="primary", use_container_width=True):
@@ -2126,7 +1812,7 @@ def _render_moc_review(data, meta, images, config):
     st.session_state.doc_meta = meta
 
 def _render_a3_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""), key="a3_rev_title")
@@ -2167,7 +1853,7 @@ def _render_a3_review(data, meta, images, config):
     st.session_state.doc_meta = meta
 
 def _render_kaizen_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título (Name):", value=meta.get("titulo", ""), key="kzn_rev_title")
@@ -2213,7 +1899,7 @@ def _render_kaizen_review(data, meta, images, config):
 
 def _finalize_document(data, meta, images, language, doc_type, output_format="pptx"):
     config = st.session_state.config
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-2.5-flash"))
     with st.spinner(f"📄 Generando documento..."):
         final_data = {**meta, **data}
         if language == "en" and doc_type == "moc":
@@ -2231,10 +1917,16 @@ def _finalize_document(data, meta, images, language, doc_type, output_format="pp
                         ext = "pdf"
                         mime = "application/pdf"
                     else:
-                        st.warning("No se pudo generar PDF. Descargando PPTX.")
-                        buffer = pptx_buffer
-                        ext = "pptx"
-                        mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
+                        if pdf_bytes:
+                            buffer = BytesIO(pdf_bytes)
+                            ext = "pdf"
+                            mime = "application/pdf"
+                        else:
+                            st.warning("No se pudo generar PDF. Descargando PPTX.")
+                            buffer = pptx_buffer
+                            ext = "pptx"
+                            mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 else:
                     return
             else:
@@ -2251,10 +1943,16 @@ def _finalize_document(data, meta, images, language, doc_type, output_format="pp
                         ext = "pdf"
                         mime = "application/pdf"
                     else:
-                        st.warning("No se pudo generar PDF. Descargando DOCX.")
-                        buffer = docx_buffer
-                        ext = "docx"
-                        mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
+                        if pdf_bytes:
+                            buffer = BytesIO(pdf_bytes)
+                            ext = "pdf"
+                            mime = "application/pdf"
+                        else:
+                            st.warning("No se pudo generar PDF. Descargando DOCX.")
+                            buffer = docx_buffer
+                            ext = "docx"
+                            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 else:
                     return
             else:
@@ -2271,10 +1969,16 @@ def _finalize_document(data, meta, images, language, doc_type, output_format="pp
                         ext = "pdf"
                         mime = "application/pdf"
                     else:
-                        st.warning("No se pudo generar PDF. Descargando PPTX.")
-                        buffer = pptx_buffer
-                        ext = "pptx"
-                        mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
+                        if pdf_bytes:
+                            buffer = BytesIO(pdf_bytes)
+                            ext = "pdf"
+                            mime = "application/pdf"
+                        else:
+                            st.warning("No se pudo generar PDF. Descargando PPTX.")
+                            buffer = pptx_buffer
+                            ext = "pptx"
+                            mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 else:
                     return
             else:
@@ -2312,7 +2016,7 @@ def render_history():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.5.0"
+            "version": "8.0.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2386,25 +2090,25 @@ def render_settings():
         st.info("💡 Obtenga su API Key gratuita en [Google AI Studio](https://aistudio.google.com/)")
         api_key = st.text_input("API Key:", value=config.get("gemini_api_key", ""), type="password")
         
-        # NUEVO: Botón de diagnóstico de API
+        # BOTÓN DE DIAGNÓSTICO
         if st.button("🔌 Probar Conexión API", type="secondary", use_container_width=True):
             if not api_key:
                 st.error("⚠️ Ingrese una API Key primero.")
             else:
-                with st.spinner("Probando conexión con Google Gemini..."):
+                with st.spinner("Probando conexión con Gemini 2.5 Flash..."):
                     try:
                         import requests
-                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
                         payload = {"contents": [{"parts": [{"text": "Responde solo con la palabra 'OK'"}]}]}
-                        resp = requests.post(url, json=payload, timeout=10)
+                        resp = requests.post(url, json=payload, timeout=15)
                         if resp.status_code == 200:
-                            st.success("✅ ¡Conexión exitosa! Tu API Key es válida y la API está habilitada.")
+                            st.success("✅ ¡Conexión exitosa! Tu API Key es válida y los modelos Gemini 2.5 están disponibles.")
                         elif resp.status_code == 404:
                             st.error("❌ Error 404: La 'Generative Language API' NO está habilitada en tu proyecto.")
                             st.info("👉 **Solución:** Ve a [Google Cloud Console](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com), selecciona tu proyecto y haz clic en **HABILITAR**.")
                             st.code(resp.text, language="json")
                         elif resp.status_code == 403:
-                            st.error("❌ Error 403: Acceso denegado. Tu API Key puede tener restricciones de IP/Referer o no tener permisos.")
+                            st.error("❌ Error 403: Acceso denegado. Tu API Key puede tener restricciones.")
                             st.code(resp.text, language="json")
                         else:
                             st.error(f"❌ Error {resp.status_code}: {resp.text}")
@@ -2412,15 +2116,16 @@ def render_settings():
                         st.error(f"❌ Error de conexión: {e}")
         
         st.markdown("#### Selección de Modelo")
-        current_model = config.get("gemini_model", "gemini-1.5-pro")
-        col1, col2 = st.columns(2)
+        current_model = config.get("gemini_model", "gemini-2.5-flash")
+        col1, col2, col3 = st.columns(3)
         models = [
-            ("gemini-1.5-pro", "🧠 Gemini 1.5 Pro", "Máxima calidad y razonamiento", "Recomendado"),
-            ("gemini-1.5-flash", "⚡ Gemini 1.5 Flash", "Rápido y eficiente", "Estándar"),
+            ("gemini-2.5-flash", "⚡ Gemini 2.5 Flash", "Rápido, eficiente y recomendado", "Recomendado"),
+            ("gemini-2.5-pro", "🧠 Gemini 2.5 Pro", "Máxima calidad y razonamiento", "Avanzado"),
+            ("gemini-2.0-flash", "🔥 Gemini 2.0 Flash", "Alternativa estable", "Estable"),
         ]
         for i, (model_id, name, desc, badge) in enumerate(models):
             is_selected = current_model == model_id
-            with [col1, col2][i]:
+            with [col1, col2, col3][i]:
                 border_color = "#1a5f7a" if is_selected else "#e2e8f0"
                 bg_color = "#eff6ff" if is_selected else "#f8fafc"
                 selected_text = '<div style="color: #1a5f7a; font-weight: bold; margin-top: 0.5rem;">✓ Seleccionado</div>' if is_selected else ''
@@ -2535,7 +2240,7 @@ def render_settings():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.5.0"
+            "version": "8.0.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2574,7 +2279,7 @@ def render_settings():
             if st.button("🗑️ Borrar Configuración", type="secondary", use_container_width=True):
                 st.session_state.config = {
                     "gemini_api_key": "",
-                    "gemini_model": "gemini-1.5-pro",
+                    "gemini_model": "gemini-2.5-flash",
                     "company_name": "",
                     "department": "",
                     "default_author": "",
@@ -2614,10 +2319,10 @@ def main():
     st.markdown("""
 <div class="app-footer">
 <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
-<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.5.0</p>
+<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v8.0.0</p>
 <p style="font-size: 0.75rem; color: #94a3b8;">
 Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
-Formato oficial MDET con Checklist 360° y análisis integral.<br>
+Formato oficial MDET de 12 slides con Checklist 360° y análisis integral.<br>
 Datos persistentes locales. Exportación a PDF integrada.
 </p>
 </div>
