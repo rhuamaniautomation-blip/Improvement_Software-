@@ -3,11 +3,11 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 6.0.0 - Formato Oficial MDET con 12 Slides Estandarizados
+Version 7.0.0 - Contexto Específico y Redacción Humanizada
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 6.0.0
+Version: 7.0.0
 Fecha: Agosto 2026
 ================================================================================
 """
@@ -399,15 +399,6 @@ class Utils:
             "dificil": "difícil", "Dificil": "Difícil",
             "rapido": "rápido", "Rapido": "Rápido",
             "rapida": "rápida", "Rapida": "Rápida",
-            "lento": "lento",
-            "lenta": "lenta",
-            "ademas": "además", "Ademas": "Además",
-            "tambien": "también", "Tambien": "También",
-            "esta": "está",
-            "este": "éste",
-            "esta": "está",
-            "trabagar": "trabajar",
-            "podra": "podrá",
         }
         result = text
         for wrong, correct in corrections.items():
@@ -417,7 +408,7 @@ class Utils:
         return result
 
 # =============================================================================
-# SERVICIO GEMINI API - PROMPTS MEJORADOS
+# SERVICIO GEMINI API - PROMPTS MEJORADOS CON CONTEXTO ESPECÍFICO
 # =============================================================================
 class GeminiService:
     MODELS = {
@@ -461,85 +452,137 @@ class GeminiService:
         return {"generated_text": text}
 
     def generate_moc(self, problem, context="", equipo=""):
-        """Genera MoC con formato oficial MDET de 12 slides"""
+        """Genera MoC con formato oficial MDET de 12 slides - CONTEXTO ESPECÍFICO"""
         if not self.api_key:
-            return self._generate_local_moc(problem, context, equipo)
+            st.error("❌ API Key no configurada. Configure en Configuración > API Gemini")
+            return None
 
-        prompt = f"""Eres un ingeniero senior con 20 años de experiencia en la industria minera y manufacturera, especializado en gestión de cambios (Management of Change - MoC) bajo estándares internacionales (PSM, ISO 45001, ISO 9001). Redactas documentos técnicos impecables, con lenguaje profesional, humanizado y natural.
+        prompt = f"""Eres un ingeniero senior de seguridad industrial con 20 años de experiencia en la industria minera y manufacturera, especializado en gestión de cambios (Management of Change - MoC) bajo estándares internacionales (PSM, ISO 45001, ISO 9001, ISO 13849).
 
-CONTEXTO DEL USUARIO:
-PROBLEMA/CAMBIO REPORTADO: {problem}
-INFORMACIÓN ADICIONAL: {context}
-EQUIPO INVOLUCRADO: {equipo}
+INSTRUCCIONES CRÍTICAS - LEE CON ATENCIÓN:
 
-INSTRUCCIONES CRÍTICAS DE REDACCIÓN:
-1. REDACCIÓN HUMANIZADA: Escribe como lo haría un ingeniero senior experimentado. Evita frases robóticas como "se identificó", "se determinó". Usa voz activa y construcciones naturales.
-2. PÁRRAFOS DETALLADOS: Cada sección debe tener párrafos completos de 4-6 oraciones bien conectadas con conectores lógicos (por lo tanto, en consecuencia, asimismo, adicionalmente, cabe destacar).
-3. VIÑETAS TÉCNICAS: Cuando listes elementos, usa viñetas con "❖" al inicio de cada una, manteniendo coherencia gramatical.
-4. DATOS CUANTITATIVOS: Incluye valores numéricos realistas (dimensiones, tiempos, porcentajes, temperaturas, presiones) cuando aplique.
-5. REFERENCIAS NORMATIVAS: Cita normas, procedimientos internos y mejores prácticas de la industria.
-6. ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras (producción, operación, condición, modificación, verificación, implementación, evaluación, capacitación, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, distribución, construcción, instrucción, reducción, traducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, área, día, próximo, análisis, método, parámetro, característica, específico, genérico, electrónico, eléctrico, hidráulico, neumático, térmico, químico, físico, versión, descripción, solución, situación, límites, línea, único, fácil, rápido).
-7. SIN ERRORES: Revisa mentalmente cada palabra antes de escribirla.
+1. CONTEXTO ESPECÍFICO DEL USUARIO:
+El usuario ha reportado el siguiente problema/cambio específico:
+""" + problem + """
 
-GENERAR JSON CON LA SIGUIENTE ESTRUCTURA EXACTA (12 SECCIONES PARA 12 SLIDES):
+Información adicional proporcionada:
+""" + context + """
 
-1. "moc_title": Título técnico conciso del cambio (máximo 12 palabras, estilo "OPTIMIZACIÓN DEL SISTEMA DE...")
-2. "descripcion_problema": SLIDE 5. Párrafo técnico extenso (mínimo 250 palabras) describiendo el problema con causas técnicas, mecanismo de falla, consecuencias operativas y riesgos. Usar viñetas con "❖" para listar impactos numerados.
-3. "condicion_actual": SLIDE 3 (columna izquierda). Descripción técnica detallada del estado actual (mínimo 150 palabras), incluyendo especificaciones técnicas, dimensiones, parámetros operativos y limitaciones documentadas.
-4. "condicion_propuesta": SLIDE 3 (columna derecha). Descripción técnica de la solución propuesta (mínimo 150 palabras), con especificaciones de la modificación, beneficios esperados y método de gestión operativa.
-5. "razones_cambio": SLIDE 4 (parte superior). Lista de 4-6 razones técnicas usando viñetas "❖" que justifiquen el cambio desde perspectivas de seguridad, productividad, calidad y cumplimiento normativo.
-6. "alternativas_consideradas": SLIDE 4 (parte media). Análisis de al menos 2 alternativas evaluadas con sus pros/contras, explicando por qué se selecciona la propuesta.
-7. "plan_retorno": SLIDE 4 (parte inferior). Procedimiento detallado de retorno a condiciones originales en caso de falla, con pasos específicos.
-8. "recursos": SLIDE 8 (parte superior). Lista detallada de recursos humanos (con roles), herramientas, equipos y materiales requeridos usando viñetas.
-9. "plan_implementacion": SLIDE 8 (parte media). Secuencia de actividades de implementación con pasos numerados o viñetas, incluyendo pruebas y validaciones.
-10. "tiempo_duracion": SLIDE 8 (parte inferior). Estimación realista del tiempo total con desglose de actividades y consideraciones de ventanas de mantenimiento.
-11. "checklist_360": Array de 16 objetos con esta estructura exacta:
+Equipo involucrado: """ + equipo + """
+
+2. REQUISITOS OBLIGATORIOS DE REDACCIÓN:
+
+❖ USAR EXCLUSIVAMENTE EL CONTEXTO DEL PROBLEMA: Todo el contenido debe basarse ÚNICAMENTE en el problema específico reportado por el usuario. NO inventes problemas genéricos como "degradación de componentes" o "desviaciones de parámetros" si no están mencionados en el problema del usuario.
+
+❖ IDENTIFICAR ELEMENTOS CLAVE: Extrae del texto del usuario:
+   - Equipos/máquinas específicas mencionadas
+   - Componentes específicos (compuertas, interlocks, sensores, etc.)
+   - Riesgos específicos (atrapamiento, exposición a material energético, etc.)
+   - Normas aplicables (ISO 13849, etc.)
+   - Soluciones propuestas por el usuario
+
+❖ REDACCIÓN HUMANIZADA Y TÉCNICA:
+   - Escribe como lo haría un ingeniero senior experimentado
+   - Usa voz activa y construcciones naturales
+   - Evita frases robóticas como "se identificó", "se determinó"
+   - Párrafos completos de 4-6 oraciones bien conectadas
+   - Conectores lógicos: por lo tanto, en consecuencia, asimismo, adicionalmente
+
+❖ VIÑETAS TÉCNICAS: Cuando listes elementos, usa viñetas con "❖" al inicio
+
+❖ DATOS CUANTITATIVOS: Incluye valores numéricos realistas cuando aplique (dimensiones, tiempos, porcentajes, temperaturas, presiones)
+
+❖ REFERENCIAS NORMATIVAS: Cita normas específicas mencionadas por el usuario (ISO 13849, PSM, etc.)
+
+❖ ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras (producción, operación, condición, modificación, verificación, implementación, evaluación, capacitación, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, distribución, construcción, instrucción, reducción, traducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, área, día, próximo, análisis, método, parámetro, característica, específico, genérico, electrónico, eléctrico, hidráulico, neumático, térmico, químico, físico, versión, descripción, solución, situación, límites, línea, único, fácil, rápido)
+
+3. ESTRUCTURA JSON A GENERAR (12 SECCIONES PARA 12 SLIDES):
+
+Genera un JSON con esta estructura EXACTA:
+
+{
+  "moc_title": "Título técnico conciso del cambio (máximo 12 palabras, basado en el problema del usuario)",
+  
+  "descripcion_problema": "SLIDE 5. Párrafo técnico extenso (mínimo 250 palabras) describiendo ESPECÍFICAMENTE el problema reportado por el usuario. Incluye: qué está pasando exactamente, desde cuándo, qué equipos/componentes están involucrados, qué riesgos específicos presenta, consecuencias operativas y de seguridad. Usa viñetas con ❖ para listar impactos. NO uses texto genérico.",
+  
+  "condicion_actual": "SLIDE 3 (columna izquierda). Descripción técnica detallada del estado actual ESPECÍFICO (mínimo 150 palabras). Describe exactamente cómo están las compuertas/interlocks/sensores actualmente, qué falta, qué riesgos presenta la configuración actual. NO uses texto genérico sobre 'parámetros fuera de rango'.",
+  
+  "condicion_propuesta": "SLIDE 3 (columna derecha). Descripción técnica de la solución propuesta ESPECÍFICA (mínimo 150 palabras). Describe exactamente qué se va a instalar (interlocks, sensores, etc.), cómo funcionará, qué normas cumplirá (ISO 13849 si aplica), beneficios específicos de seguridad. NO uses texto genérico.",
+  
+  "razones_cambio": "SLIDE 4 (parte superior). Lista de 4-6 razones técnicas ESPECÍFICAS usando viñetas ❖ que justifiquen el cambio basándose en el problema del usuario. Cada razón debe mencionar elementos específicos del problema (compuertas, interlocks, material energético, atrapamiento, etc.).",
+  
+  "alternativas_consideradas": "SLIDE 4 (parte media). Análisis de al menos 2 alternativas evaluadas con sus pros/contras ESPECÍFICOS para el problema del usuario. Explica por qué se selecciona la propuesta del usuario.",
+  
+  "plan_retorno": "SLIDE 4 (parte inferior). Procedimiento detallado de retorno a condiciones originales en caso de falla, con pasos específicos para desinstalar los interlocks/sensores instalados.",
+  
+  "recursos": "SLIDE 8 (parte superior). Lista detallada de recursos humanos (con roles), herramientas, equipos y materiales ESPECÍFICOS requeridos para instalar interlocks/sensores. Incluye: sensores de seguridad, cableado, PLC, herramientas eléctricas, EPP específico.",
+  
+  "plan_implementacion": "SLIDE 8 (parte media). Secuencia de actividades ESPECÍFICAS para instalar interlocks/sensores: instalación física, cableado, programación PLC, pruebas de funcionamiento, validación de seguridad.",
+  
+  "tiempo_duracion": "SLIDE 8 (parte inferior). Estimación realista del tiempo total para instalar interlocks/sensores con desglose de actividades.",
+  
+  "checklist_360": "Array de 16 objetos con esta estructura exacta (mantén los factores estándar pero adapta las descripciones al problema específico):
     [
-      {{"numero": 1, "factor": "Interacción o impacto con otras áreas/procesos", "aplica": "SI/NO", "descripcion": "Descripción del impacto o dejar vacío si NO"}},
-      {{"numero": 2, "factor": "Cambios en los procedimientos operativos, arranque y parada", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 3, "factor": "Parámetros operativos y límites de control", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 4, "factor": "Cambios en interfaces hombre-máquina y gestión de alarmas", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 5, "factor": "Compatibilidad de materiales, sustancias y equipos", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 6, "factor": "Exposición ocupacional (ruido, polvo, ergonomía, etc.)", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 7, "factor": "Requerimientos de EPP y su compatibilidad", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 8, "factor": "Escenarios de emergencia y capacidad de respuesta", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 9, "factor": "Impacto en el almacenamiento y tránsito interno/externo", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 10, "factor": "Impactos ambientales y generación de residuos", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 11, "factor": "Impacto en la calidad del producto o servicio", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 12, "factor": "Cambios en roles, competencias y carga de trabajo", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 13, "factor": "Integridad de equipos, protecciones y sistemas de control", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 14, "factor": "Cumplimiento legal, normativo y permisos aplicables", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 15, "factor": "Cambios en las condiciones para trabajos especiales", "aplica": "SI/NO", "descripcion": "..."}},
-      {{"numero": 16, "factor": "Cambios sucesivos que incrementan el riesgo global", "aplica": "SI/NO", "descripcion": "..."}}
-    ]
-12. "documentos_impactados": Array de 15 objetos con esta estructura exacta:
+      {\"numero\": 1, \"factor\": \"Interacción o impacto con otras áreas/procesos\", \"aplica\": \"SI/NO\", \"descripcion\": \"Descripción específica o vacío si NO\"},
+      {\"numero\": 2, \"factor\": \"Cambios en los procedimientos operativos, arranque y parada\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 3, \"factor\": \"Parámetros operativos y límites de control\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 4, \"factor\": \"Cambios en interfaces hombre-máquina y gestión de alarmas\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 5, \"factor\": \"Compatibilidad de materiales, sustancias y equipos\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 6, \"factor\": \"Exposición ocupacional (ruido, polvo, ergonomía, etc.)\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 7, \"factor\": \"Requerimientos de EPP y su compatibilidad\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 8, \"factor\": \"Escenarios de emergencia y capacidad de respuesta\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 9, \"factor\": \"Impacto en el almacenamiento y tránsito interno/externo\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 10, \"factor\": \"Impactos ambientales y generación de residuos\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 11, \"factor\": \"Impacto en la calidad del producto o servicio\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 12, \"factor\": \"Cambios en roles, competencias y carga de trabajo\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 13, \"factor\": \"Integridad de equipos, protecciones y sistemas de control\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 14, \"factor\": \"Cumplimiento legal, normativo y permisos aplicables\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 15, \"factor\": \"Cambios en las condiciones para trabajos especiales\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
+      {\"numero\": 16, \"factor\": \"Cambios sucesivos que incrementan el riesgo global\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"}
+    ]",
+  
+  "documentos_impactados": "Array de 15 objetos con esta estructura exacta (mantén los documentos estándar pero adapta las modificaciones al problema específico):
     [
-      {{"numero": 1, "documento": "JSERA - IPERC", "aplica": "SI/NO", "modificacion": "Describir modificación o vacío si NO"}},
-      {{"numero": 2, "documento": "Procedimiento de Trabajo, Instructivo/PO", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 3, "documento": "Formato/Checklist operativos", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 4, "documento": "Matriz de EPP", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 5, "documento": "MSDS de sustancias involucradas", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 6, "documento": "Mapa de Riesgos", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 7, "documento": "Plan de emergencias", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 8, "documento": "Plan de Mantenimiento", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 9, "documento": "Matriz de impactos ambientales", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 10, "documento": "Plan Monitoreos SSO requeridos", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 11, "documento": "Plan de tráfico", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 12, "documento": "Matriz de competencias, plan de entrenamiento", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 13, "documento": "Plan de calidad", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 14, "documento": "Planos y diagramas (layout, P&ID)", "aplica": "SI/NO", "modificacion": "..."}},
-      {{"numero": 15, "documento": "Licencias y permisos aplicables", "aplica": "SI/NO", "modificacion": "..."}}
-    ]
-13. "riesgos_calidad": Array de 3-5 objetos {{"riesgo": "...", "control": "...", "plazo": "..."}}
-14. "riesgos_shes": Array de 3-5 objetos {{"riesgo": "...", "control": "...", "plazo": "..."}}
+      {\"numero\": 1, \"documento\": \"JSERA - IPERC\", \"aplica\": \"SI/NO\", \"modificacion\": \"Describir modificación específica o vacío si NO\"},
+      {\"numero\": 2, \"documento\": \"Procedimiento de Trabajo, Instructivo/PO\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 3, \"documento\": \"Formato/Checklist operativos\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 4, \"documento\": \"Matriz de EPP\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 5, \"documento\": \"MSDS de sustancias involucradas\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 6, \"documento\": \"Mapa de Riesgos\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 7, \"documento\": \"Plan de emergencias\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 8, \"documento\": \"Plan de Mantenimiento\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 9, \"documento\": \"Matriz de impactos ambientales\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 10, \"documento\": \"Plan Monitoreos SSO requeridos\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 11, \"documento\": \"Plan de tráfico\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 12, \"documento\": \"Matriz de competencias, plan de entrenamiento\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 13, \"documento\": \"Plan de calidad\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 14, \"documento\": \"Planos y diagramas (layout, P&ID)\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
+      {\"numero\": 15, \"documento\": \"Licencias y permisos aplicables\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"}
+    ]",
+  
+  "riesgos_calidad": "Array de 3-5 objetos {\"riesgo\": \"...\", \"control\": \"...\", \"plazo\": \"...\"} específicos para el problema del usuario",
+  
+  "riesgos_shes": "Array de 3-5 objetos {\"riesgo\": \"...\", \"control\": \"...\", \"plazo\": \"...\"} específicos para el problema del usuario (enfócate en riesgos de seguridad como atrapamiento, exposición a material energético, etc.)"
+}
 
-IMPORTANTE:
-- Responde SOLO con JSON válido, sin comentarios ni texto adicional.
-- Todos los textos en ESPAÑOL.
-- Ortografía impecable con todas las tildes correctas.
-- Redacción profesional, técnica y humanizada.
-- Párrafos extensos y bien estructurados.
-- Viñetas con "❖" donde corresponda."""
+4. EJEMPLO DE LO QUE NO DEBES HACER:
+❌ NO digas: "Se ha identificado una condición técnica que afecta la continuidad operativa"
+❌ NO digas: "Degradación progresiva de componentes críticos"
+❌ NO digas: "Los parámetros críticos del proceso presentan desviaciones"
+
+5. EJEMPLO DE LO QUE SÍ DEBES HACER:
+✅ SÍ di: "Actualmente las estaciones de espera de la máquina carecen de interlocks de seguridad que detengan la máquina cuando se abren las compuertas durante el funcionamiento"
+✅ SÍ di: "Los operadores pueden abrir las compuertas con la máquina en operación, exponiéndose a riesgos de atrapamiento y al material energético"
+✅ SÍ di: "Se propone instalar interlocks de seguridad en cada estación de espera que detengan automáticamente la máquina al abrirse las compuertas"
+
+IMPORTANTE FINAL:
+- Responde SOLO con JSON válido, sin comentarios ni texto adicional
+- Todos los textos en ESPAÑOL
+- Ortografía impecable con todas las tildes correctas
+- Redacción profesional, técnica y humanizada
+- Párrafos extensos y bien estructurados
+- Viñetas con ❖ donde corresponda
+- TODO EL CONTENIDO DEBE BASARSE EXCLUSIVAMENTE EN EL PROBLEMA ESPECÍFICO DEL USUARIO"""
 
         try:
             text = self._call_api(prompt, temperature=0.4, max_tokens=12000)
@@ -556,33 +599,33 @@ IMPORTANTE:
                                     item[k] = Utils.correct_spelling_basic(item[k])
             return result
         except Exception as e:
-            st.error(f"Error API: {e}. Usando generación local.")
-            return self._generate_local_moc(problem, context, equipo)
+            st.error(f"Error API: {e}")
+            return None
 
     def generate_a3(self, problem, context=""):
         if not self.api_key:
-            return self._generate_local_a3(problem, context)
-        prompt = f"""Eres un experto senior en metodología A3 Lean con 15 años de experiencia en mejora continua industrial. Redactas documentos A3 con redacción humanizada, técnica y profesional.
+            st.error("❌ API Key no configurada")
+            return None
+        prompt = f"""Eres un experto senior en metodología A3 Lean con 15 años de experiencia en mejora continua industrial.
 
-INSTRUCCIONES DE REDACCIÓN:
-- Usa lenguaje profesional, directo y técnico como lo haría un Black Belt en Lean Six Sigma.
-- Evita frases genéricas. Sé específico con datos, métricas y análisis cuantitativos.
-- Incluye referencias a herramientas Lean (5S, SMED, TPM, VSM, etc.) cuando aplique.
-- La redacción debe ser fluida, con párrafos bien estructurados y conectores lógicos.
-- Incluye datos hipotéticos pero realistas cuando el usuario no proporcione números específicos.
-- CORRIGE TODAS LAS FALTAS DE ORTOGRAFÍA: tildes en producción, operación, condición, modificación, verificación, capacitación, documentación, estandarización, optimización, identificación, clasificación, análisis, método, parámetro, característica, específico, genérico, electrónico, eléctrico, hidráulico, neumático, térmico, químico, físico, versión, descripción, solución, situación, límites, línea, único, fácil, rápido.
+INSTRUCCIONES CRÍTICAS:
+- Usa EXCLUSIVAMENTE el contexto del problema reportado por el usuario
+- NO inventes problemas genéricos
+- Identifica elementos específicos mencionados por el usuario
+- Redacción humanizada, técnica y profesional
+- Ortografía impecable con tildes correctas
 
 PROBLEMA REPORTADO: {problem}
 CONTEXTO ADICIONAL: {context}
 
-Genera en ESPAÑOL formato JSON con los siguientes campos:
+Genera en ESPAÑOL formato JSON con los siguientes campos, TODOS basados en el problema específico del usuario:
 1. titulo: Título conciso y descriptivo (máximo 10 palabras)
-2. antecedentes: Contexto histórico del problema (mínimo 200 palabras)
+2. antecedentes: Contexto histórico específico del problema (mínimo 200 palabras)
 3. problema_actual: Descripción detallada con datos cuantitativos (mínimo 250 palabras)
-4. analisis_situacion: Análisis con datos y comparativas
+4. analisis_situacion: Análisis con datos y comparativas específicas
 5. objetivos: Objetivo general SMART y 3-5 objetivos específicos
-6. analisis_causa_raiz: Análisis 5 Porqués y diagrama de Ishikawa conceptual
-7. contramedidas: Lista de 5-8 contramedidas priorizadas
+6. analisis_causa_raiz: Análisis 5 Porqués específico del problema
+7. contramedidas: Lista de 5-8 contramedidas específicas para el problema
 8. resultados_esperados: Resultados cuantificados esperados
 9. plan_seguimiento: Plan de seguimiento detallado
 10. lecciones_aprendidas: Reflexiones sobre el proceso
@@ -596,21 +639,21 @@ Responde SOLO JSON válido."""
                 if isinstance(result[key], str):
                     result[key] = Utils.correct_spelling_basic(result[key])
             return result
-        except:
-            return self._generate_local_a3(problem, context)
+        except Exception as e:
+            st.error(f"Error API: {e}")
+            return None
 
     def generate_kaizen(self, activity, context=""):
         if not self.api_key:
-            return self._generate_local_kaizen(activity, context)
-        prompt = f"""Eres un experto en Kaizen y Lean Manufacturing. Redactas registros Kaizen con redacción humanizada, práctica y motivadora.
+            st.error("❌ API Key no configurada")
+            return None
+        prompt = f"""Eres un experto en Kaizen y Lean Manufacturing.
 
-INSTRUCCIONES:
-- Lenguaje práctico, directo y motivador
-- Datos cuantitativos específicos: tiempos antes/después, porcentajes
-- Descripción visual detallada del antes y después
-- Redacción natural, frases cortas y claras
-- Impacto humano: beneficios al operario, equipo y organización
-- ORTOGRAFÍA IMPECABLE: tildes correctas en producción, operación, condición, modificación, verificación, análisis, método, parámetro, máquina, podría, habría, sería, más, también, así, después, además, según, número, máximo, mínimo, área, día, próximo, descripción, solución, situación, límites.
+INSTRUCCIONES CRÍTICAS:
+- Usa EXCLUSIVAMENTE el contexto de la actividad reportada
+- NO inventes problemas genéricos
+- Redacción humanizada, práctica y motivadora
+- Ortografía impecable
 
 ACTIVIDAD DE MEJORA: {activity}
 CONTEXTO ADICIONAL: {context}
@@ -635,8 +678,9 @@ Responde SOLO JSON válido."""
                 if isinstance(result[key], str):
                     result[key] = Utils.correct_spelling_basic(result[key])
             return result
-        except:
-            return self._generate_local_kaizen(activity, context)
+        except Exception as e:
+            st.error(f"Error API: {e}")
+            return None
 
     def translate_document(self, data):
         if not self.api_key:
@@ -653,7 +697,7 @@ Responde SOLO el JSON traducido, misma estructura exacta."""
     def correct_spelling(self, text):
         if not self.api_key or not text.strip():
             return Utils.correct_spelling_basic(text)
-        prompt = f"""Corrige ortografía, gramática, puntuación y mejora la redacción del siguiente texto en español. Mantén el significado técnico exacto. Mejora la fluidez y naturalidad. Asegúrate de poner todas las tildes correctas. Devuelve SOLO el texto corregido.
+        prompt = f"""Corrige ortografía, gramática, puntuación y mejora la redacción del siguiente texto en español. Mantén el significado técnico exacto. Asegúrate de poner todas las tildes correctas. Devuelve SOLO el texto corregido.
 
 TEXTO:
 {text}"""
@@ -662,97 +706,6 @@ TEXTO:
             return Utils.correct_spelling_basic(corrected)
         except:
             return Utils.correct_spelling_basic(text)
-
-    def _generate_local_moc(self, problem, context, equipo):
-        """Generación local mejorada con formato MDET de 12 slides"""
-        return {
-            "moc_title": f"OPTIMIZACIÓN DEL SISTEMA - {problem[:60].upper()}",
-            "descripcion_problema": f"Durante las operaciones rutinarias en el área de producción se ha identificado una condición técnica que afecta directamente la continuidad operativa y la confiabilidad del proceso productivo. El problema reportado consiste en: {problem}. Esta situación ha sido documentada mediante inspecciones de campo y análisis de datos operativos, revelando un patrón de recurrencia que compromete los indicadores clave de desempeño del área.\n\nLa condición actual presenta las siguientes características técnicas:\n❖ Operación fuera de los parámetros óptimos establecidos en los procedimientos operativos estándar.\n❖ Degradación progresiva de componentes críticos que afecta la disponibilidad del equipo.\n❖ Incremento en la frecuencia de intervenciones correctivas no programadas.\n❖ Exposición potencial del personal operativo a condiciones subóptimas de trabajo.\n\nEl impacto operacional se manifiesta en:\n1. Reducción de la disponibilidad mecánica del equipo crítico.\n2. Incremento de los costos de mantenimiento correctivo.\n3. Riesgo de paradas no programadas que afectan la programación productiva.\n4. Posible afectación a la calidad del producto final.\n\nDe no implementarse una solución técnica estructurada, se proyecta una deterioración progresiva de las condiciones operativas, con el consecuente incremento en los riesgos de seguridad y la disminución de la productividad global del área.",
-            "condicion_actual": f"El sistema opera actualmente bajo las siguientes condiciones técnicas documentadas: {context if context else 'Configuración original de diseño con limitaciones operativas identificadas durante la operación rutinaria.'}\n\nLos parámetros críticos del proceso presentan desviaciones respecto a los valores nominales de diseño, lo cual ha sido validado mediante mediciones instrumentadas y análisis de tendencias históricas. Los componentes principales muestran signos de desgaste acelerado debido a las condiciones operativas actuales, generando la necesidad de intervenciones correctivas frecuentes que impactan la disponibilidad del equipo.\n\nLas limitaciones técnicas identificadas incluyen restricciones en la capacidad de procesamiento, incompatibilidad con nuevos requerimientos operativos y vulnerabilidad ante variaciones en las condiciones de alimentación del proceso.",
-            "condicion_propuesta": f"Se propone la implementación de una modificación técnica estructurada que optimice el rendimiento operativo del sistema, mejorando significativamente las condiciones de seguridad y alineando las operaciones con los estándares corporativos y regulatorios vigentes.\n\nLa propuesta contempla:\n❖ Ingeniería detallada de la modificación con validación técnica por especialistas.\n❖ Fabricación e implementación de componentes con especificaciones mejoradas.\n❖ Actualización de los procedimientos operativos y de mantenimiento.\n❖ Capacitación del personal involucrado en los nuevos procedimientos.\n❖ Establecimiento de un plan de monitoreo post-implementación.\n\nEsta modificación se gestionará operativamente como un cambio controlado bajo el proceso de Management of Change (MoC), asegurando la trazabilidad completa del proceso y el cumplimiento de todos los requisitos normativos aplicables.",
-            "razones_cambio": "❖ ELIMINACIÓN DE PARADAS NO PROGRAMADAS: La condición actual genera fallas recurrentes que obligan a intervenciones correctivas no planificadas, afectando la continuidad productiva y los compromisos de entrega al cliente.\n❖ ADAPTACIÓN A REQUERIMIENTOS OPERATIVOS ACTUALES: El sistema debe evolucionar para atender las demandas operativas actuales que exceden las capacidades del diseño original.\n❖ REDUCCIÓN DE INTERVENCIONES CORRECTIVAS: La modificación disminuirá significativamente la frecuencia de mantenimientos correctivos, optimizando el uso de recursos de mantenimiento.\n❖ MEJORA EN LA DISPONIBILIDAD DE EQUIPO (OEE): Se proyecta un incremento en el Overall Equipment Effectiveness mediante la eliminación de las causas raíz de las fallas recurrentes.\n❖ FORTALECIMIENTO DE LA SEGURIDAD OPERACIONAL: La modificación reduce los riesgos asociados a las intervenciones frecuentes y a la operación en condiciones subóptimas.\n❖ CUMPLIMIENTO NORMATIVO: El cambio asegura el alineamiento con los estándares corporativos y las mejores prácticas de la industria.",
-            "alternativas_consideradas": "ALTERNATIVAS EVALUADAS:\n\n❖ ALTERNATIVA 1 - MANTENER SISTEMA ACTUAL (DESCARTADA): Esta opción implica continuar con intervenciones correctivas frecuentes, generando costos operativos crecientes, disminución de la disponibilidad del equipo y exposición prolongada a condiciones operativas subóptimas. El análisis costo-beneficio muestra que esta alternativa es insostenible a mediano plazo.\n\n❖ ALTERNATIVA 2 - REEMPLAZO TOTAL DEL SISTEMA (DESCARTADA): Aunque ofrece la solución más completa, el costo de inversión y el tiempo de implementación exceden los recursos disponibles en el período presupuestario actual. Adicionalmente, requeriría paradas prolongadas que afectarían significativamente la programación productiva.\n\n❖ ALTERNATIVA 3 - MODIFICACIÓN CONTROLADA (SELECCIONADA): Representa la mejor relación costo-beneficio, abordando las causas raíz identificadas con un alcance definido, tiempos de implementación razonables y un retorno de inversión favorable dentro del primer año de operación.\n\nPLAN DE RETORNO:\nEn caso de que la modificación no produzca los resultados esperados, se ejecutará el siguiente procedimiento:\n❖ Restauración inmediata de la configuración original del equipo.\n❖ Activación del protocolo de contingencia establecido.\n❖ Notificación oportuna a supervisión directa y áreas de apoyo.\n❖ Documentación detallada de lecciones aprendidas.\n❖ Análisis de causa raíz de la falla para prevenir recurrencias.",
-            "plan_retorno": "PLAN DE RETORNO A CONDICIONES ORIGINALES:\n\nEn caso de presentarse complicaciones durante o después de la implementación que comprometan la operación segura del equipo, se ejecutará el siguiente procedimiento de retorno:\n\n❖ PASO 1: Detener la operación del equipo siguiendo el procedimiento de parada segura establecido.\n❖ PASO 2: Aislar energéticamente el equipo aplicando el procedimiento LOTO (Lock Out - Tag Out).\n❖ PASO 3: Desmontar los componentes modificados y almacenarlos de forma identificada para análisis posterior.\n❖ PASO 4: Reinstalar la configuración original utilizando los componentes de respaldo disponibles.\n❖ PASO 5: Realizar verificaciones pre-operativas según checklist establecido.\n❖ PASO 6: Ejecutar pruebas funcionales con carga reducida antes de retornar a operación normal.\n❖ PASO 7: Notificar a todas las áreas involucradas sobre la activación del plan de retorno.\n❖ PASO 8: Documentar el evento y convocar reunión de análisis con el equipo multidisciplinario.\n\nEl tiempo estimado de retorno a condiciones originales es de 2 horas, considerando la disponibilidad de componentes de respaldo y personal calificado.",
-            "recursos": "RECURSOS HUMANOS:\n❖ Supervisor de área operativa (supervisión continua durante la implementación).\n❖ Técnico especialista de mantenimiento mecánico (2 personas, tiempo completo).\n❖ Especialista SHES (verificación de controles y permisos).\n❖ Operador de área certificado (apoyo operativo y pruebas).\n❖ Ingeniero de procesos (validación técnica y ajustes de parámetros).\n\nRECURSOS MATERIALES:\n❖ Herramientas especializadas certificadas y calibradas.\n❖ Repuestos de calidad certificada con trazabilidad documentada.\n❖ EPP completo: casco de seguridad, gafas de protección, guantes anticorte, botas dieléctricas, protección auditiva.\n❖ Materiales de señalización, demarcación y etiquetado del área de trabajo.\n❖ Materiales de limpieza y preparación de área.\n❖ Kit de contención de derrames (si aplica).\n\nRECURSOS TÉCNICOS:\n❖ Documentación técnica actualizada del equipo (manuales, diagramas, especificaciones).\n❖ Procedimientos operativos estándar (SOP) vigentes.\n❖ Permisos de trabajo según tipo de actividad (trabajo en caliente, espacio confinado, trabajo en altura, etc.).\n❖ Checklist de verificación pre y post implementación.\n❖ Equipos de prueba y medición calibrados.",
-            "plan_implementacion": "FASE 1: PREPARACIÓN Y PLANIFICACIÓN\n❖ Reunión de coordinación multidisciplinaria con producción, mantenimiento y SHES.\n❖ Verificación exhaustiva de disponibilidad de todos los recursos materiales y humanos.\n❖ Preparación del área de trabajo: limpieza profunda, señalización de perímetro, aplicación de LOTO.\n❖ Briefing de seguridad con todo el equipo involucrado, revisión de riesgos y controles.\n❖ Verificación final de permisos de trabajo y autorizaciones requeridas.\n\nFASE 2: EJECUCIÓN DE MODIFICACIONES\n❖ Desmontaje controlado de los componentes existentes.\n❖ Implementación progresiva de las modificaciones técnicas según plan detallado.\n❖ Verificación dimensional y de alineamiento durante la instalación.\n❖ Registro fotográfico detallado del antes, durante y después de cada modificación.\n❖ Verificación intermedia SHES al finalizar cada etapa crítica.\n\nFASE 3: VALIDACIÓN Y PRUEBAS\n❖ Pruebas funcionales iniciales sin carga para verificar el correcto ensamblaje.\n❖ Pruebas funcionales bajo condiciones normales de operación.\n❖ Verificación de todos los parámetros críticos contra especificaciones de diseño.\n❖ Validación conjunta por supervisor de área, producción y especialista técnico.\n❖ Pruebas de estrés y verificación de límites operativos.\n\nFASE 4: CIERRE Y ESTANDARIZACIÓN\n❖ Actualización completa de toda la documentación técnica y operativa.\n❖ Capacitación formal al personal operativo sobre nuevos procedimientos.\n❖ Socialización de lecciones aprendidas con todas las áreas involucradas.\n❖ Cierre formal del MoC con firmas de aprobación de todas las partes.\n❖ Archivo del documento completo en el sistema de gestión documental.",
-            "tiempo_duracion": "ESTIMACIÓN TOTAL DEL CAMBIO: 8 días hábiles distribuidos en 4 fases bien definidas.\n\nDESGLOSE POR FASE:\n❖ Fase 1 (Preparación y Planificación): 2 días hábiles.\n❖ Fase 2 (Ejecución de Modificaciones): 3 días hábiles.\n❖ Fase 3 (Validación y Pruebas): 2 días hábiles.\n❖ Fase 4 (Cierre y Estandarización): 1 día hábil.\n\nCONSIDERACIONES ESPECIALES:\n❖ La ejecución física de la modificación (desmontaje, montaje y alineación) se estima en 1.5 horas, aprovechando una ventana programada de mantenimiento o cambio de lote productivo.\n❖ Se ha incluido un margen de contingencia del 20% para imprevistos.\n❖ Las ventanas de mantenimiento serán coordinadas con producción con al menos 48 horas de anticipación.\n❖ La duración total puede ajustarse según condiciones operativas, disponibilidad de recursos y resultados de las verificaciones intermedias.\n❖ Se establecerán puntos de control diarios para monitorear el avance contra el cronograma establecido.",
-            "checklist_360": [
-                {"numero": 1, "factor": "Interacción o impacto con otras áreas/procesos", "aplica": "NO", "descripcion": ""},
-                {"numero": 2, "factor": "Cambios en los procedimientos operativos, arranque y parada", "aplica": "SI", "descripcion": "Se actualizarán los procedimientos operativos estándar (SOP) para reflejar la nueva configuración del equipo, incluyendo nuevas secuencias de arranque, operación normal y parada segura. Se establecerán nuevos puntos de control operativo."},
-                {"numero": 3, "factor": "Parámetros operativos y límites de control", "aplica": "SI", "descripcion": "Se redefinirán los parámetros operativos críticos y sus límites de control conforme a las nuevas especificaciones técnicas del sistema modificado. Se establecerán nuevas variables de monitoreo."},
-                {"numero": 4, "factor": "Cambios en interfaces hombre-máquina y gestión de alarmas", "aplica": "NO", "descripcion": ""},
-                {"numero": 5, "factor": "Compatibilidad de materiales, sustancias y equipos", "aplica": "SI", "descripcion": "Se verificará la compatibilidad de los nuevos componentes con los materiales existentes, asegurando la interoperabilidad del sistema modificado con el resto de equipos del proceso."},
-                {"numero": 6, "factor": "Exposición ocupacional (ruido, polvo, ergonomía, etc.)", "aplica": "NO", "descripcion": ""},
-                {"numero": 7, "factor": "Requerimientos de EPP y su compatibilidad", "aplica": "NO", "descripcion": ""},
-                {"numero": 8, "factor": "Escenarios de emergencia y capacidad de respuesta", "aplica": "NO", "descripcion": ""},
-                {"numero": 9, "factor": "Impacto en el almacenamiento y tránsito interno/externo", "aplica": "NO", "descripcion": ""},
-                {"numero": 10, "factor": "Impactos ambientales y generación de residuos", "aplica": "NO", "descripcion": ""},
-                {"numero": 11, "factor": "Impacto en la calidad del producto o servicio", "aplica": "SI", "descripcion": "La modificación mejorará la consistencia del proceso, reduciendo la variabilidad y mejorando los indicadores de calidad del producto final. Se establecerán nuevos controles de calidad."},
-                {"numero": 12, "factor": "Cambios en roles, competencias y carga de trabajo", "aplica": "SI", "descripcion": "Se requerirá capacitación específica del personal operativo y de mantenimiento en los nuevos procedimientos. Se actualizará la matriz de competencias del área."},
-                {"numero": 13, "factor": "Integridad de equipos, protecciones y sistemas de control", "aplica": "SI", "descripcion": "Se verificará la integridad mecánica de los nuevos componentes y se establecerán nuevos puntos de inspección en el plan de mantenimiento preventivo."},
-                {"numero": 14, "factor": "Cumplimiento legal, normativo y permisos aplicables", "aplica": "NO", "descripcion": ""},
-                {"numero": 15, "factor": "Cambios en las condiciones para trabajos especiales", "aplica": "NO", "descripcion": ""},
-                {"numero": 16, "factor": "Cambios sucesivos que incrementan el riesgo global", "aplica": "NO", "descripcion": ""}
-            ],
-            "documentos_impactados": [
-                {"numero": 1, "documento": "JSERA - IPERC", "aplica": "NO", "modificacion": ""},
-                {"numero": 2, "documento": "Procedimiento de Trabajo, Instructivo/PO", "aplica": "SI", "modificacion": "Actualización del procedimiento operativo estándar (SOP) para reflejar la nueva configuración del equipo y los nuevos procedimientos de operación, arranque y parada."},
-                {"numero": 3, "documento": "Formato/Checklist operativos", "aplica": "SI", "modificacion": "Actualización del checklist pre-operacional para incluir las nuevas verificaciones específicas del sistema modificado."},
-                {"numero": 4, "documento": "Matriz de EPP", "aplica": "NO", "modificacion": ""},
-                {"numero": 5, "documento": "MSDS de sustancias involucradas", "aplica": "NO", "modificacion": ""},
-                {"numero": 6, "documento": "Mapa de Riesgos", "aplica": "NO", "modificacion": ""},
-                {"numero": 7, "documento": "Plan de emergencias", "aplica": "NO", "modificacion": ""},
-                {"numero": 8, "documento": "Plan de Mantenimiento", "aplica": "SI", "modificacion": "Actualización del plan de mantenimiento preventivo para incluir las nuevas tareas de inspección y mantenimiento de los componentes modificados."},
-                {"numero": 9, "documento": "Matriz de impactos ambientales", "aplica": "NO", "modificacion": ""},
-                {"numero": 10, "documento": "Plan Monitoreos SSO requeridos", "aplica": "NO", "modificacion": ""},
-                {"numero": 11, "documento": "Plan de tráfico", "aplica": "NO", "modificacion": ""},
-                {"numero": 12, "documento": "Matriz de competencias, plan de entrenamiento", "aplica": "SI", "modificacion": "Actualización de la matriz de competencias y diseño de plan de capacitación para el personal operativo y de mantenimiento en los nuevos procedimientos."},
-                {"numero": 13, "documento": "Plan de calidad", "aplica": "NO", "modificacion": ""},
-                {"numero": 14, "documento": "Planos y diagramas (layout, P&ID)", "aplica": "SI", "modificacion": "Actualización de los planos técnicos y diagramas del equipo para reflejar la nueva configuración del sistema modificado."},
-                {"numero": 15, "documento": "Licencias y permisos aplicables", "aplica": "NO", "modificacion": ""}
-            ],
-            "riesgos_calidad": [
-                {"riesgo": "Variabilidad en los parámetros operativos durante la puesta en marcha inicial del sistema modificado", "control": "Establecer protocolo de arranque gradual con monitoreo intensivo de parámetros críticos durante las primeras 72 horas de operación. Designar ingeniero de procesos para acompañamiento continuo.", "plazo": "Durante puesta en marcha"},
-                {"riesgo": "Desviaciones en las especificaciones de los componentes fabricados que afecten el desempeño del sistema", "control": "Implementar inspección dimensional 100% de los componentes críticos antes de su instalación. Contar con planos de verificación y equipos de medición calibrados.", "plazo": "Antes de instalación"},
-                {"riesgo": "Falta de estandarización en los nuevos procedimientos operativos que genere inconsistencias", "control": "Desarrollar procedimientos detallados con apoyo visual (fotografías, diagramas). Ejecutar capacitaciones prácticas con evaluación de competencias antes de autorizar la operación.", "plazo": "Antes de operación"},
-                {"riesgo": "Degradación prematura de componentes por condiciones operativas no contempladas en el diseño", "control": "Establecer programa de monitoreo de condición con inspecciones semanales durante el primer mes y mensuales posteriormente. Definir indicadores de desgaste y umbrales de acción.", "plazo": "Post-implementación continuo"}
-            ],
-            "riesgos_shes": [
-                {"riesgo": "Lesiones por manipulación manual de equipos y componentes durante el desmontaje e instalación", "control": "Capacitación específica en técnicas de levantamiento seguro. Uso obligatorio de EPP completo. Asignación de ayudantes para cargas superiores a 25 kg. Señalización del área de trabajo.", "plazo": "Antes del inicio de actividades"},
-                {"riesgo": "Exposición a energías peligrosas durante las actividades de modificación (eléctrica, mecánica, neumática, hidráulica)", "control": "Aplicación estricta del procedimiento LOTO (Lock Out - Tag Out) en todos los puntos de energía. Verificación de ausencia de energía antes de iniciar trabajos. Supervisión continua por personal autorizado.", "plazo": "Durante toda la ejecución"},
-                {"riesgo": "Generación de residuos sólidos, líquidos o peligrosos durante el proceso de modificación", "control": "Manejo seguro según procedimiento ambiental corporativo. Clasificación en origen de todos los residuos. Disposición en áreas autorizadas con registro de trazabilidad. Contenedores identificados y segregados.", "plazo": "Durante toda la ejecución"},
-                {"riesgo": "Caídas a distinto nivel o mismo nivel durante las actividades de instalación", "control": "Uso obligatorio de arnés de seguridad para trabajos sobre 1.80m. Verificación de condiciones de orden y limpieza. Instalación de líneas de vida cuando aplique. Iluminación adecuada del área de trabajo.", "plazo": "Durante trabajos en altura"}
-            ]
-        }
-
-    def _generate_local_a3(self, problem, context):
-        return {
-            "titulo": "Optimización del proceso: " + problem[:50],
-            "antecedentes": "Durante los últimos seis meses, el área operativa ha experimentado una degradación progresiva en sus indicadores clave de desempeño. Se han registrado incrementos en tiempos de ciclo, aumento en la tasa de defectos y una reducción en la productividad general del proceso.\n\nEl análisis preliminar de datos históricos revela una tendencia creciente que, si no se aborda de manera estructurada, comprometerá los objetivos anuales de la organización. La metodología A3 fue seleccionada como herramienta principal para el análisis estructurado de esta situación.",
-            "problema_actual": problem,
-            "analisis_situacion": "La situación actual presenta múltiples indicadores de desempeño con oportunidades significativas de mejora. Se requiere una recopilación sistemática y rigurosa de datos para establecer una línea base sólida que permita cuantificar el impacto de las contramedidas propuestas.",
-            "objetivos": "OBJETIVO GENERAL:\nOptimizar integralmente el proceso eliminando los desperdicios identificados y estableciendo un nuevo estándar de desempeño sostenible.\n\nOBJETIVOS ESPECÍFICOS (SMART):\n❖ Reducir el tiempo de ciclo en un 15% dentro de los próximos 3 meses.\n❖ Disminuir la tasa de defectos en un 20% durante el próximo trimestre.\n❖ Mejorar la productividad general del área en un 10% dentro de 6 meses.\n❖ Incrementar la satisfacción interna del cliente en un 25% según encuesta trimestral.\n❖ Reducir el costo operativo unitario en un 8% dentro del primer año.",
-            "analisis_causa_raiz": "ANÁLISIS DE LOS 5 PORQUÉS:\n1. ¿POR QUÉ ocurre el problema? → Porque el proceso opera con una configuración inadecuada que genera variabilidad excesiva.\n2. ¿POR QUÉ la configuración es inadecuada? → Porque no existe una estandarización formal de los parámetros operativos críticos.\n3. ¿POR QUÉ no hay estandarización? → Porque los procedimientos operativos estándar (SOP) no han sido actualizados en los últimos 18 meses.\n4. ¿POR QUÉ no están actualizados? → Porque no existe un sistema de gestión documental efectivo.\n5. ¿POR QUÉ no hay sistema? → Porque falta una política clara de gestión del conocimiento.\n\nCAUSA RAÍZ IDENTIFICADA:\nAusencia de un sistema integral de gestión, actualización y control de SOP.",
-            "contramedidas": "❖ ACTUALIZAR SOP DEL PROCESO: Revisar y actualizar todos los procedimientos operativos. Responsable: Ingeniero de Procesos. Plazo: 2 semanas.\n❖ IMPLEMENTAR CHECKLISTS DIARIOS: Diseñar y desplegar checklists de verificación diaria. Responsable: Supervisor de Área. Plazo: 1 semana.\n❖ CAPACITAR AL PERSONAL: Programar y ejecutar capacitaciones formales. Responsable: Especialista de Capacitación. Plazo: 3 semanas.\n❖ ESTABLECER KPIs VISUALES: Implementar tableros visuales con indicadores clave. Responsable: Líder de Mejora Continua. Plazo: 2 semanas.\n❖ PROGRAMAR AUDITORÍAS MENSUALES: Establecer auditorías formales mensuales. Responsable: Auditor Interno. Plazo: Inicio inmediato.",
-            "resultados_esperados": "❖ Reducción medible y sostenida de desperdicios identificados.\n❖ Mejora sostenida en calidad del producto y consistencia del proceso.\n❖ Estandarización efectiva que reduzca la variabilidad operativa en al menos 30%.\n❖ Reducción del tiempo de ciclo en 15% con impacto directo en capacidad productiva.\n❖ Retorno de inversión estimado del 180% dentro del primer año.\n❖ Reducción de costos operativos unitarios en 8%.",
-            "plan_seguimiento": "❖ SEMANA 1-2: Implementación de contramedidas iniciales. Monitoreo diario de cumplimiento.\n❖ SEMANA 3-4: Ejecución de capacitaciones. Evaluación de competencias.\n❖ MES 2: Primera auditoría formal. Evaluación de avance vs. objetivos iniciales.\n❖ MES 3: Evaluación integral vs. objetivos SMART establecidos.\n❖ MES 6: Revisión de sostenibilidad de mejoras.\n❖ TRIMESTRAL: Revisiones formales con gerencia.",
-            "lecciones_aprendidas": "La aplicación de la metodología A3 permitió visualizar de manera integral la complejidad del problema y las interconexiones entre sus múltiples causas. La participación activa y multidisciplinaria del equipo fue fundamental para identificar la causa raíz real.\n\nSe aprendió que los problemas aparentemente técnicos frecuentemente tienen raíces en sistemas de gestión deficientes. La inversión en capacitación y estandarización genera retornos significativos a mediano plazo.",
-            "estandarizacion": "Los procedimientos actualizados serán documentados formalmente con control de versiones, aprobados por gerencia de operaciones y calidad, socializados mediante capacitaciones estructuradas con evaluación de competencias, integrados al Sistema de Gestión de Calidad (SGC) existente y sujetos a revisión periódica anual como mínimo."
-        }
-
-    def _generate_local_kaizen(self, activity, context):
-        return {
-            "titulo": "Kaizen: " + activity[:50],
-            "area": "Área de Mantenimiento / Producción / Calidad",
-            "descripcion_problema": activity + "\n\nDurante las actividades diarias de gemba walk, el equipo identificó esta oportunidad de mejora que representa un desperdicio significativo en el proceso. La situación actual genera movimientos innecesarios, tiempos de espera o riesgos de calidad que impactan directamente en la productividad del área y en la satisfacción del personal.",
-            "solucion": "Se implementó una mejora estructurada orientada a eliminar el desperdicio identificado y optimizar el flujo del proceso, aplicando principios fundamentales de Lean Manufacturing y el pensamiento Kaizen de mejora continua.\n\nLa solución fue diseñada y ejecutada por el equipo de trabajo del área con apoyo del líder de mejora continua, utilizando materiales disponibles y aplicando el concepto de low cost, high impact.",
-            "beneficios": "❖ Reducción del tiempo de ejecución en aproximadamente 20-30%\n❖ Mejora significativa en calidad y consistencia del proceso\n❖ Mayor seguridad para el personal al eliminar movimientos riesgosos\n❖ Reducción de costos operativos derivados de la eliminación de desperdicios\n❖ Mejora en el ambiente de trabajo y orden del área\n❖ Fácil replicabilidad en otras áreas similares",
-            "tipo_desperdicio": "Motion / Waiting / Skills",
-            "impacto_bto": "Supply Chain and Manufacturing Excellence",
-            "proximos_pasos": "❖ Documentar formalmente la mejora con fotografías y datos de impacto\n❖ Socializar la mejora con otras áreas relacionadas\n❖ Replicar la mejora en procesos similares\n❖ Establecer monitoreo mensual para asegurar sostenibilidad\n❖ Reconocer formalmente al equipo participante\n❖ Integrar el nuevo estándar al SOP del área",
-            "leader": "",
-            "team_members": ""
-        }
 
 # =============================================================================
 # REEMPLAZO INTELIGENTE DE TEXTO EN POWERPOINT Y WORD
@@ -812,47 +765,6 @@ def fill_table_cell(cell, text):
             first_para.text = str(text)
     else:
         cell.text = str(text)
-
-def replace_text_in_docx_preserve_runs(doc, old_text, new_text):
-    """Reemplaza texto en documento Word preservando formato de runs"""
-    def replace_in_paragraph(paragraph):
-        if old_text not in paragraph.text:
-            return False
-        for run in paragraph.runs:
-            if old_text in run.text:
-                run.text = run.text.replace(old_text, new_text)
-                return True
-        full_text = paragraph.text
-        if old_text in full_text:
-            if paragraph.runs:
-                first_run = paragraph.runs[0]
-                first_run.text = full_text.replace(old_text, new_text)
-                for run in paragraph.runs[1:]:
-                    run.text = ""
-                return True
-        return False
-    for para in doc.paragraphs:
-        replace_in_paragraph(para)
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for para in cell.paragraphs:
-                    replace_in_paragraph(para)
-    for section in doc.sections:
-        for para in section.header.paragraphs:
-            replace_in_paragraph(para)
-        for table in section.header.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    for para in cell.paragraphs:
-                        replace_in_paragraph(para)
-        for para in section.footer.paragraphs:
-            replace_in_paragraph(para)
-        for table in section.footer.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    for para in cell.paragraphs:
-                        replace_in_paragraph(para)
 
 # =============================================================================
 # GENERADOR DE DOCUMENTOS - FORMATO OFICIAL MDET 12 SLIDES
@@ -1330,90 +1242,6 @@ class PDFExporter:
             st.warning(f"Conversión LibreOffice falló: {e}")
         return None
 
-    @staticmethod
-    def generate_pdf_from_data(data, doc_type, meta, images=None):
-        if not REPORTLAB_AVAILABLE:
-            return None
-        try:
-            buffer = BytesIO()
-            doc = SimpleDocTemplate(buffer, pagesize=A4,
-                                    rightMargin=72, leftMargin=72,
-                                    topMargin=72, bottomMargin=18)
-            styles = getSampleStyleSheet()
-            story = []
-            title_style = ParagraphStyle(
-                'CustomTitle', parent=styles['Heading1'],
-                fontSize=20, textColor=colors.HexColor('#1a5f7a'),
-                spaceAfter=30, alignment=TA_CENTER, fontName='Helvetica-Bold'
-            )
-            heading_style = ParagraphStyle(
-                'CustomHeading', parent=styles['Heading2'],
-                fontSize=14, textColor=colors.HexColor('#1a5f7a'),
-                spaceAfter=12, spaceBefore=12, fontName='Helvetica-Bold'
-            )
-            body_style = ParagraphStyle(
-                'CustomBody', parent=styles['BodyText'],
-                fontSize=10, leading=14, alignment=TA_JUSTIFY, fontName='Helvetica'
-            )
-            type_names = {"moc": "Management of Change (MoC)", "a3": "Mejora A3", "kaizen": "Simple Kaizen"}
-            doc_title = type_names.get(doc_type, "Documento")
-            story.append(Paragraph(f"<b>{doc_title}</b>", title_style))
-            story.append(Spacer(1, 20))
-            meta_text = ""
-            for key, value in meta.items():
-                if value and key not in ['id', 'timestamp']:
-                    meta_text += f"<b>{key.replace('_', ' ').title()}:</b> {value}<br/>"
-            if meta_text:
-                story.append(Paragraph(meta_text, body_style))
-            story.append(Spacer(1, 20))
-            if doc_type == "moc":
-                sections = [
-                    ("Descripción del Problema", "descripcion_problema"),
-                    ("Condición Actual", "condicion_actual"),
-                    ("Condición Propuesta", "condicion_propuesta"),
-                    ("Razones del Cambio", "razones_cambio"),
-                    ("Alternativas y Plan de Retorno", "alternativas_consideradas"),
-                    ("Recursos", "recursos"),
-                    ("Plan de Implementación", "plan_implementacion"),
-                    ("Tiempo de Duración", "tiempo_duracion"),
-                ]
-                for title, key in sections:
-                    story.append(Paragraph(f"<b>{title}</b>", heading_style))
-                    content = data.get(key, '').replace('\n', '<br/>')
-                    story.append(Paragraph(content, body_style))
-                    story.append(Spacer(1, 10))
-            elif doc_type == "a3":
-                sections = [
-                    ("Antecedentes", "antecedentes"), ("Problema Actual", "problema_actual"),
-                    ("Análisis de la Situación", "analisis_situacion"), ("Objetivos", "objetivos"),
-                    ("Análisis de Causa Raíz", "analisis_causa_raiz"), ("Contramedidas", "contramedidas"),
-                    ("Resultados Esperados", "resultados_esperados"), ("Plan de Seguimiento", "plan_seguimiento"),
-                    ("Lecciones Aprendidas", "lecciones_aprendidas"), ("Estandarización", "estandarizacion"),
-                ]
-                for title, key in sections:
-                    story.append(Paragraph(f"<b>{title}</b>", heading_style))
-                    content = data.get(key, '').replace('\n', '<br/>')
-                    story.append(Paragraph(content, body_style))
-                    story.append(Spacer(1, 10))
-            elif doc_type == "kaizen":
-                sections = [
-                    ("Descripción del Problema", "descripcion_problema"),
-                    ("Solución Implementada", "solucion"),
-                    ("Beneficios", "beneficios"),
-                    ("Próximos Pasos", "proximos_pasos"),
-                ]
-                for title, key in sections:
-                    story.append(Paragraph(f"<b>{title}</b>", heading_style))
-                    content = data.get(key, '').replace('\n', '<br/>')
-                    story.append(Paragraph(content, body_style))
-                    story.append(Spacer(1, 10))
-            doc.build(story)
-            buffer.seek(0)
-            return buffer.getvalue()
-        except Exception as e:
-            st.error(f"Error generando PDF con ReportLab: {e}")
-            return None
-
 # =============================================================================
 # INICIALIZACION DE SESSION STATE
 # =============================================================================
@@ -1489,7 +1317,7 @@ def render_sidebar():
     st.sidebar.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
 <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-<p>v6.0.0 · Agosto 2026</p>
+<p>v7.0.0 · Agosto 2026</p>
 </div>
 """, unsafe_allow_html=True)
     st.sidebar.markdown("""
@@ -1589,7 +1417,7 @@ def auto_correct_text_input(label, value, key, height=100, help_text=""):
 def render_moc_form():
     config = st.session_state.config
     st.markdown('<div class="section-header"><h3>📋 Nueva Management of Change (MoC)</h3></div>', unsafe_allow_html=True)
-    st.info("💡 Complete la información y describa el problema con detalle. La IA generará automáticamente los 12 slides del formato oficial MDET con redacción profesional, Checklist 360° y análisis integral.")
+    st.info("💡 Complete la información y describa el problema con detalle. La IA generará automáticamente los 12 slides del formato oficial MDET con redacción profesional basada EXCLUSIVAMENTE en su problema específico.")
     if not st.session_state.get("template_moc_bytes"):
         st.error("❌ **Template MoC no cargado.** Vaya a Configuración > Templates.")
         if st.button("Ir a Configuración", key="go_config_moc"):
@@ -1599,7 +1427,7 @@ def render_moc_form():
     st.markdown("#### 1. Información General")
     col1, col2 = st.columns(2)
     with col1:
-        moc_title = st.text_input("Título de la MoC:", placeholder="Ej: OPTIMIZACIÓN DEL SISTEMA DE ALIMENTACIÓN DE RETARDOS EN ST08")
+        moc_title = st.text_input("Título de la MoC:", placeholder="Ej: INSTALACIÓN DE INTERLOCKS DE SEGURIDAD EN ESTACIONES DE ESPERA")
         moc_number = st.text_input("Número:", value=Utils.generate_doc_number("moc"), disabled=True)
     with col2:
         naturaleza = st.selectbox("Naturaleza:", ["permanente", "temporal", "emergencia"])
@@ -1615,13 +1443,14 @@ def render_moc_form():
         revisores = st.text_input("Revisores Enablon:")
     with col3:
         experto_aprobador = st.text_input("Experto Aprobador:")
-    st.markdown("#### 3. Descripción del Problema/Cambio (Sea lo más detallado posible)")
+    st.markdown("#### 3. Descripción del Problema/Cambio (SEA LO MÁS DETALLADO POSIBLE)")
+    st.warning("⚠️ **IMPORTANTE:** Describa el problema con el mayor detalle posible. La IA usará EXCLUSIVAMENTE esta información para generar el MoC. Incluya: equipos específicos, componentes, riesgos, normas aplicables, solución propuesta.")
     problem_desc = auto_correct_text_input(
         "Describa el problema o cambio con sus palabras:",
         "",
         "moc_problem_desc",
-        height=250,
-        help_text="Cuanto más detalle proporcione, mejor será la generación. Incluya: qué está pasando, desde cuándo, impacto, equipos involucrados, riesgos observados, dimensiones, parámetros técnicos."
+        height=300,
+        help_text="Ejemplo: Actualmente las estaciones de espera no tienen interlocks de seguridad. Los operadores pueden abrir las compuertas con la máquina en funcionamiento, exponiéndose a riesgos de atrapamiento. Se propone instalar interlocks que detengan la máquina al abrir las compuertas, integrados al PLC según norma ISO 13849."
     )
     st.markdown("#### 4. Contexto Adicional (Opcional pero recomendado)")
     context = auto_correct_text_input(
@@ -1646,7 +1475,7 @@ def render_moc_form():
         if not problem_desc.strip():
             st.error("❌ Describa el problema antes de generar.")
             return
-        with st.spinner("🧠 La IA está generando los 12 slides del formato oficial MDET..."):
+        with st.spinner("🧠 La IA está generando los 12 slides del formato oficial MDET basándose en su problema específico..."):
             gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
             equipo_data = {
                 "produccion": produccion, "specialist_shes": specialist_shes,
@@ -1654,6 +1483,9 @@ def render_moc_form():
                 "experto_aprobador": experto_aprobador
             }
             result = gemini.generate_moc(problem_desc, context, json.dumps(equipo_data))
+            if result is None:
+                st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
+                return
             st.session_state.generated_data = result
             st.session_state.doc_meta = {
                 "moc_title": moc_title, "moc_number": moc_number, "naturaleza": naturaleza,
@@ -1667,7 +1499,7 @@ def render_moc_form():
 def render_a3_form():
     config = st.session_state.config
     st.markdown('<div class="section-header"><h3>📊 Nueva Mejora A3</h3></div>', unsafe_allow_html=True)
-    st.info("💡 Describa el problema con detalle y la IA generará el documento A3 completo.")
+    st.info("💡 Describa el problema con detalle y la IA generará el documento A3 completo basado en su problema específico.")
     if not st.session_state.get("template_a3_bytes"):
         st.error("❌ **Template A3 no cargado.** Vaya a Configuración > Templates.")
         if st.button("Ir a Configuración", key="go_config_a3"):
@@ -1716,6 +1548,9 @@ def render_a3_form():
         with st.spinner("🧠 Generando documento A3 con análisis detallado..."):
             gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
             result = gemini.generate_a3(problem_desc, context)
+            if result is None:
+                st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
+                return
             st.session_state.generated_data = result
             st.session_state.doc_meta = {"titulo": a3_title, "area": area, "autor": autor, "doc_number": doc_number, "fecha": fecha}
             st.session_state.doc_images = image_paths
@@ -1803,6 +1638,9 @@ def render_kaizen_form():
         with st.spinner("🧠 Generando documento Kaizen..."):
             gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
             result = gemini.generate_kaizen(activity_desc, context)
+            if result is None:
+                st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
+                return
             result["tipo_desperdicio"] = ", ".join(tipo_desp) if tipo_desp else result.get("tipo_desperdicio", "")
             result["impacto_bto"] = impacto_bto
             result["leader"] = leader
@@ -2088,16 +1926,10 @@ def _finalize_document(data, meta, images, language, doc_type, output_format="pp
                         ext = "pdf"
                         mime = "application/pdf"
                     else:
-                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
-                        if pdf_bytes:
-                            buffer = BytesIO(pdf_bytes)
-                            ext = "pdf"
-                            mime = "application/pdf"
-                        else:
-                            st.warning("No se pudo generar PDF. Descargando PPTX.")
-                            buffer = pptx_buffer
-                            ext = "pptx"
-                            mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        st.warning("No se pudo generar PDF. Descargando PPTX.")
+                        buffer = pptx_buffer
+                        ext = "pptx"
+                        mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 else:
                     return
             else:
@@ -2114,16 +1946,10 @@ def _finalize_document(data, meta, images, language, doc_type, output_format="pp
                         ext = "pdf"
                         mime = "application/pdf"
                     else:
-                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
-                        if pdf_bytes:
-                            buffer = BytesIO(pdf_bytes)
-                            ext = "pdf"
-                            mime = "application/pdf"
-                        else:
-                            st.warning("No se pudo generar PDF. Descargando DOCX.")
-                            buffer = docx_buffer
-                            ext = "docx"
-                            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        st.warning("No se pudo generar PDF. Descargando DOCX.")
+                        buffer = docx_buffer
+                        ext = "docx"
+                        mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 else:
                     return
             else:
@@ -2140,16 +1966,10 @@ def _finalize_document(data, meta, images, language, doc_type, output_format="pp
                         ext = "pdf"
                         mime = "application/pdf"
                     else:
-                        pdf_bytes = pdf_exporter.generate_pdf_from_data(final_data, doc_type, meta, images)
-                        if pdf_bytes:
-                            buffer = BytesIO(pdf_bytes)
-                            ext = "pdf"
-                            mime = "application/pdf"
-                        else:
-                            st.warning("No se pudo generar PDF. Descargando PPTX.")
-                            buffer = pptx_buffer
-                            ext = "pptx"
-                            mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                        st.warning("No se pudo generar PDF. Descargando PPTX.")
+                        buffer = pptx_buffer
+                        ext = "pptx"
+                        mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 else:
                     return
             else:
@@ -2190,7 +2010,7 @@ def render_history():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "6.0.0"
+            "version": "7.0.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2391,7 +2211,7 @@ def render_settings():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "6.0.0"
+            "version": "7.0.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2473,7 +2293,7 @@ def main():
     st.markdown("""
 <div class="app-footer">
 <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
-<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v6.0.0</p>
+<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.0.0</p>
 <p style="font-size: 0.75rem; color: #94a3b8;">
 Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
 Formato oficial MDET de 12 slides con Checklist 360° y análisis integral.<br>
