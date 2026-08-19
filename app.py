@@ -3,11 +3,11 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 7.0.0 - Contexto Específico y Redacción Humanizada
+Version 7.1.0 - Corrección de Modelos API y Contexto Específico
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 7.0.0
+Version: 7.1.0
 Fecha: Agosto 2026
 ================================================================================
 """
@@ -408,16 +408,18 @@ class Utils:
         return result
 
 # =============================================================================
-# SERVICIO GEMINI API - PROMPTS MEJORADOS CON CONTEXTO ESPECÍFICO
+# SERVICIO GEMINI API - MODELOS CORREGIDOS
 # =============================================================================
 class GeminiService:
+    # CORRECCIÓN: Se eliminó "gemini-1.5-flash-lite" porque no existe en la API pública y causaba error 404.
+    # Se usan los nombres oficiales y disponibles de Google.
     MODELS = {
-        "gemini-1.5-flash-lite": {"name": "3.1 Flash-Lite", "desc": "Respuestas rápidas"},
-        "gemini-1.5-flash": {"name": "3.5 Flash", "desc": "Ayuda completa"},
-        "gemini-1.5-pro": {"name": "3.1 Pro", "desc": "Máxima calidad"},
+        "gemini-1.5-flash": {"name": "Gemini 1.5 Flash", "desc": "Rápido y eficiente"},
+        "gemini-1.5-pro": {"name": "Gemini 1.5 Pro", "desc": "Máxima calidad y razonamiento"},
+        "gemini-1.0-pro": {"name": "Gemini 1.0 Pro", "desc": "Modelo estable y confiable"},
     }
 
-    def __init__(self, api_key="", model="gemini-1.5-pro"):
+    def __init__(self, api_key="", model="gemini-1.5-flash"):
         self.api_key = api_key
         self.model = model
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -521,48 +523,46 @@ Genera un JSON con esta estructura EXACTA:
   
   "tiempo_duracion": "SLIDE 8 (parte inferior). Estimación realista del tiempo total para instalar interlocks/sensores con desglose de actividades.",
   
-  "checklist_360": "Array de 16 objetos con esta estructura exacta (mantén los factores estándar pero adapta las descripciones al problema específico):
-    [
-      {\"numero\": 1, \"factor\": \"Interacción o impacto con otras áreas/procesos\", \"aplica\": \"SI/NO\", \"descripcion\": \"Descripción específica o vacío si NO\"},
-      {\"numero\": 2, \"factor\": \"Cambios en los procedimientos operativos, arranque y parada\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 3, \"factor\": \"Parámetros operativos y límites de control\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 4, \"factor\": \"Cambios en interfaces hombre-máquina y gestión de alarmas\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 5, \"factor\": \"Compatibilidad de materiales, sustancias y equipos\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 6, \"factor\": \"Exposición ocupacional (ruido, polvo, ergonomía, etc.)\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 7, \"factor\": \"Requerimientos de EPP y su compatibilidad\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 8, \"factor\": \"Escenarios de emergencia y capacidad de respuesta\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 9, \"factor\": \"Impacto en el almacenamiento y tránsito interno/externo\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 10, \"factor\": \"Impactos ambientales y generación de residuos\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 11, \"factor\": \"Impacto en la calidad del producto o servicio\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 12, \"factor\": \"Cambios en roles, competencias y carga de trabajo\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 13, \"factor\": \"Integridad de equipos, protecciones y sistemas de control\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 14, \"factor\": \"Cumplimiento legal, normativo y permisos aplicables\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 15, \"factor\": \"Cambios en las condiciones para trabajos especiales\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"},
-      {\"numero\": 16, \"factor\": \"Cambios sucesivos que incrementan el riesgo global\", \"aplica\": \"SI/NO\", \"descripcion\": \"...\"}
-    ]",
+  "checklist_360": [
+      {"numero": 1, "factor": "Interacción o impacto con otras áreas/procesos", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 2, "factor": "Cambios en los procedimientos operativos, arranque y parada", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 3, "factor": "Parámetros operativos y límites de control", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 4, "factor": "Cambios en interfaces hombre-máquina y gestión de alarmas", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 5, "factor": "Compatibilidad de materiales, sustancias y equipos", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 6, "factor": "Exposición ocupacional (ruido, polvo, ergonomía, etc.)", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 7, "factor": "Requerimientos de EPP y su compatibilidad", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 8, "factor": "Escenarios de emergencia y capacidad de respuesta", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 9, "factor": "Impacto en el almacenamiento y tránsito interno/externo", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 10, "factor": "Impactos ambientales y generación de residuos", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 11, "factor": "Impacto en la calidad del producto o servicio", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 12, "factor": "Cambios en roles, competencias y carga de trabajo", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 13, "factor": "Integridad de equipos, protecciones y sistemas de control", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 14, "factor": "Cumplimiento legal, normativo y permisos aplicables", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 15, "factor": "Cambios en las condiciones para trabajos especiales", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"},
+      {"numero": 16, "factor": "Cambios sucesivos que incrementan el riesgo global", "aplica": "SI/NO", "descripcion": "Descripción específica o vacío si NO"}
+    ],
   
-  "documentos_impactados": "Array de 15 objetos con esta estructura exacta (mantén los documentos estándar pero adapta las modificaciones al problema específico):
-    [
-      {\"numero\": 1, \"documento\": \"JSERA - IPERC\", \"aplica\": \"SI/NO\", \"modificacion\": \"Describir modificación específica o vacío si NO\"},
-      {\"numero\": 2, \"documento\": \"Procedimiento de Trabajo, Instructivo/PO\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 3, \"documento\": \"Formato/Checklist operativos\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 4, \"documento\": \"Matriz de EPP\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 5, \"documento\": \"MSDS de sustancias involucradas\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 6, \"documento\": \"Mapa de Riesgos\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 7, \"documento\": \"Plan de emergencias\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 8, \"documento\": \"Plan de Mantenimiento\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 9, \"documento\": \"Matriz de impactos ambientales\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 10, \"documento\": \"Plan Monitoreos SSO requeridos\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 11, \"documento\": \"Plan de tráfico\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 12, \"documento\": \"Matriz de competencias, plan de entrenamiento\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 13, \"documento\": \"Plan de calidad\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 14, \"documento\": \"Planos y diagramas (layout, P&ID)\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"},
-      {\"numero\": 15, \"documento\": \"Licencias y permisos aplicables\", \"aplica\": \"SI/NO\", \"modificacion\": \"...\"}
-    ]",
+  "documentos_impactados": [
+      {"numero": 1, "documento": "JSERA - IPERC", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 2, "documento": "Procedimiento de Trabajo, Instructivo/PO", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 3, "documento": "Formato/Checklist operativos", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 4, "documento": "Matriz de EPP", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 5, "documento": "MSDS de sustancias involucradas", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 6, "documento": "Mapa de Riesgos", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 7, "documento": "Plan de emergencias", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 8, "documento": "Plan de Mantenimiento", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 9, "documento": "Matriz de impactos ambientales", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 10, "documento": "Plan Monitoreos SSO requeridos", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 11, "documento": "Plan de tráfico", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 12, "documento": "Matriz de competencias, plan de entrenamiento", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 13, "documento": "Plan de calidad", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 14, "documento": "Planos y diagramas (layout, P&ID)", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"},
+      {"numero": 15, "documento": "Licencias y permisos aplicables", "aplica": "SI/NO", "modificacion": "Describir modificación específica o vacío si NO"}
+    ],
   
-  "riesgos_calidad": "Array de 3-5 objetos {\"riesgo\": \"...\", \"control\": \"...\", \"plazo\": \"...\"} específicos para el problema del usuario",
+  "riesgos_calidad": [{"riesgo": "...", "control": "...", "plazo": "..."}],
   
-  "riesgos_shes": "Array de 3-5 objetos {\"riesgo\": \"...\", \"control\": \"...\", \"plazo\": \"...\"} específicos para el problema del usuario (enfócate en riesgos de seguridad como atrapamiento, exposición a material energético, etc.)"
+  "riesgos_shes": [{"riesgo": "...", "control": "...", "plazo": "..."}]
 }
 
 4. EJEMPLO DE LO QUE NO DEBES HACER:
@@ -711,7 +711,6 @@ TEXTO:
 # REEMPLAZO INTELIGENTE DE TEXTO EN POWERPOINT Y WORD
 # =============================================================================
 def replace_text_in_shape(shape, old_text, new_text):
-    """Reemplaza texto en un shape preservando el formato de los runs"""
     if not shape.has_text_frame:
         return False
     text_frame = shape.text_frame
@@ -733,7 +732,6 @@ def replace_text_in_shape(shape, old_text, new_text):
     return False
 
 def replace_all_text_in_presentation(prs, replacements):
-    """Reemplaza múltiples textos en toda la presentación"""
     for slide in prs.slides:
         for shape in slide.shapes:
             if shape.has_text_frame:
@@ -755,7 +753,6 @@ def replace_all_text_in_presentation(prs, replacements):
                                         paragraph.text = paragraph.text.replace(old_text, new_text)
 
 def fill_table_cell(cell, text):
-    """Llena una celda de tabla preservando formato"""
     if cell.text_frame.paragraphs:
         first_para = cell.text_frame.paragraphs[0]
         if first_para.runs:
@@ -770,17 +767,13 @@ def fill_table_cell(cell, text):
 # GENERADOR DE DOCUMENTOS - FORMATO OFICIAL MDET 12 SLIDES
 # =============================================================================
 class DocumentGenerator:
-    """Genera documentos usando templates cargados en memoria"""
-
     def generate_moc(self, data, images=None, template_bytes=None):
-        """Genera MoC desde template en memoria - Formato oficial MDET 12 slides"""
         if template_bytes is None:
             st.error("❌ Template MoC no cargado. Vaya a Configuración > Templates.")
             return None
 
         prs = Presentation(BytesIO(template_bytes))
 
-        # Mapeo de reemplazos globales (portada y datos generales)
         replacements = {
             "MOC:  OPTIMIZACIÓN DEL SISTEMA DE ALIMENTACIÓN DE RETARDOS EN ST08": f"MOC:  {data.get('moc_title', '')}",
             "MOC: OPTIMIZACIÓN DEL SISTEMA DE ALIMENTACIÓN DE RETARDOS EN ST08": f"MOC:  {data.get('moc_title', '')}",
@@ -798,7 +791,6 @@ class DocumentGenerator:
         }
         replace_all_text_in_presentation(prs, replacements)
 
-        # SLIDE 2: Equipo que participó en la revisión
         if len(prs.slides) > 1:
             slide2 = prs.slides[1]
             equipo_replacements = {
@@ -821,7 +813,6 @@ class DocumentGenerator:
                         if new_text and old_text in shape.text_frame.text:
                             replace_text_in_shape(shape, old_text, new_text)
 
-        # SLIDE 3: Tabla Condición Actual / Condición Propuesta
         if len(prs.slides) > 2:
             slide3 = prs.slides[2]
             for shape in slide3.shapes:
@@ -831,20 +822,17 @@ class DocumentGenerator:
                         fill_table_cell(table.cell(1, 0), data.get('condicion_actual', ''))
                         fill_table_cell(table.cell(1, 1), data.get('condicion_propuesta', ''))
 
-        # SLIDE 4: Razones del cambio + Alternativas + Plan de retorno
         if len(prs.slides) > 3:
             slide4 = prs.slides[3]
             for shape in slide4.shapes:
                 if shape.has_text_frame:
                     text = shape.text_frame.text
-                    # Reemplazar razones del cambio
                     if "Razones del cambio" in text or "Eliminación de paradas" in text:
                         for paragraph in shape.text_frame.paragraphs:
                             para_text = paragraph.text
                             if "Eliminación" in para_text or "Adaptación" in para_text or "Reducción" in para_text or "Mejora" in para_text:
                                 for run in paragraph.runs:
                                     run.text = ""
-                        # Insertar nuevas razones
                         if shape.text_frame.paragraphs:
                             first_para = shape.text_frame.paragraphs[0]
                             if first_para.runs:
@@ -852,7 +840,6 @@ class DocumentGenerator:
                             else:
                                 first_para.text = data.get('razones_cambio', '')
 
-                    # Reemplazar alternativas
                     if "Alternativas consideradas" in text or "Mantener sistema actual" in text:
                         for paragraph in shape.text_frame.paragraphs:
                             for run in paragraph.runs:
@@ -864,7 +851,6 @@ class DocumentGenerator:
                             else:
                                 first_para.text = data.get('alternativas_consideradas', '')
 
-                    # Reemplazar plan de retorno
                     if "Plan de retorno" in text or "Reinstalación del sistema actual" in text:
                         for paragraph in shape.text_frame.paragraphs:
                             for run in paragraph.runs:
@@ -876,18 +862,15 @@ class DocumentGenerator:
                             else:
                                 first_para.text = data.get('plan_retorno', '')
 
-        # SLIDE 5: Descripción del Problema
         if len(prs.slides) > 4:
             slide5 = prs.slides[4]
             for shape in slide5.shapes:
                 if shape.has_text_frame:
                     text = shape.text_frame.text
                     if "Descripción del Problema" in text or "Al procesar elementos" in text or "Cuando un elemento" in text:
-                        # Limpiar contenido existente
                         for paragraph in shape.text_frame.paragraphs:
                             for run in paragraph.runs:
                                 run.text = ""
-                        # Insertar nueva descripción
                         if shape.text_frame.paragraphs:
                             first_para = shape.text_frame.paragraphs[0]
                             if first_para.runs:
@@ -895,12 +878,9 @@ class DocumentGenerator:
                             else:
                                 first_para.text = data.get('descripcion_problema', '')
 
-        # SLIDE 6 y 7: Imágenes (Vista general y Planos)
         if images and len(prs.slides) > 5:
-            # Insertar imágenes en slides existentes o agregar nuevos
             for idx, img_info in enumerate(images):
                 if idx < 2 and len(prs.slides) > 5 + idx:
-                    # Usar slides existentes 6 y 7
                     target_slide = prs.slides[5 + idx]
                     try:
                         img_path = img_info["path"] if isinstance(img_info, dict) else img_info
@@ -920,7 +900,6 @@ class DocumentGenerator:
                     except Exception as e:
                         st.warning(f"Error con imagen {idx+1}: {e}")
                 else:
-                    # Agregar slides adicionales para más imágenes
                     blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[-1]
                     new_slide = prs.slides.add_slide(blank_layout)
                     try:
@@ -949,7 +928,6 @@ class DocumentGenerator:
                     except Exception as e:
                         st.warning(f"Error con imagen {idx+1}: {e}")
 
-        # SLIDE 8: Recursos y Plan de implementación + Tiempo
         if len(prs.slides) > 7:
             slide8 = prs.slides[7]
             for shape in slide8.shapes:
@@ -986,7 +964,6 @@ class DocumentGenerator:
                             else:
                                 first_para.text = data.get('tiempo_duracion', '')
 
-        # SLIDE 9: Checklist 360° (Tabla de 16 factores)
         if len(prs.slides) > 8:
             slide9 = prs.slides[8]
             checklist = data.get('checklist_360', [])
@@ -994,22 +971,17 @@ class DocumentGenerator:
                 if shape.has_table:
                     table = shape.table
                     for i, item in enumerate(checklist):
-                        row_idx = i + 1  # +1 para saltar encabezado
+                        row_idx = i + 1
                         if row_idx < len(table.rows):
-                            # Columna N°
                             if len(table.columns) > 0:
                                 fill_table_cell(table.cell(row_idx, 0), str(item.get('numero', i+1)))
-                            # Columna Factor
                             if len(table.columns) > 1:
                                 fill_table_cell(table.cell(row_idx, 1), item.get('factor', ''))
-                            # Columna Aplica
                             if len(table.columns) > 2:
                                 fill_table_cell(table.cell(row_idx, 2), item.get('aplica', 'NO'))
-                            # Columna Descripción
                             if len(table.columns) > 3:
                                 fill_table_cell(table.cell(row_idx, 3), item.get('descripcion', ''))
 
-        # SLIDE 10: Documentos impactados (Tabla de 15 documentos)
         if len(prs.slides) > 9:
             slide10 = prs.slides[9]
             docs_impactados = data.get('documentos_impactados', [])
@@ -1028,15 +1000,10 @@ class DocumentGenerator:
                             if len(table.columns) > 3:
                                 fill_table_cell(table.cell(row_idx, 3), item.get('modificacion', ''))
 
-        # SLIDE 11: Evaluación o Estudio de Riesgos
-        # Esta slide generalmente tiene contenido de referencia, se mantiene
-
-        # SLIDE 12: Riesgos SHES (Tabla)
         if len(prs.slides) > 11:
             slide12 = prs.slides[11]
             riesgos_shes = data.get('riesgos_shes', [])
             riesgos_calidad = data.get('riesgos_calidad', [])
-            # Combinar riesgos de calidad y SHES
             all_risks = riesgos_calidad + riesgos_shes
             for shape in slide12.shapes:
                 if shape.has_table:
@@ -1059,7 +1026,6 @@ class DocumentGenerator:
         return output_buffer
 
     def generate_a3(self, data, images=None, template_bytes=None):
-        """Genera A3 desde template en memoria"""
         if template_bytes is None:
             st.error("❌ Template A3 no cargado. Vaya a Configuración > Templates.")
             return None
@@ -1134,7 +1100,6 @@ class DocumentGenerator:
         return output_buffer
 
     def generate_kaizen(self, data, images=None, template_bytes=None):
-        """Genera Kaizen desde template en memoria"""
         if template_bytes is None:
             st.error("❌ Template Kaizen no cargado. Vaya a Configuración > Templates.")
             return None
@@ -1252,7 +1217,7 @@ def init_session_state():
         "page": "inicio",
         "config": saved_config or {
             "gemini_api_key": "",
-            "gemini_model": "gemini-1.5-pro",
+            "gemini_model": "gemini-1.5-flash", # CORREGIDO: Modelo por defecto válido
             "company_name": "",
             "department": "",
             "default_author": "",
@@ -1313,11 +1278,11 @@ def render_sidebar():
             st.session_state.page = page_key
             st.rerun()
     st.sidebar.markdown("<hr style='border-color: #334155; margin: 1rem 0;'>", unsafe_allow_html=True)
-    model_name = GeminiService.MODELS.get(config.get("gemini_model", "gemini-1.5-pro"), {}).get("name", "3.1 Pro")
+    model_name = GeminiService.MODELS.get(config.get("gemini_model", "gemini-1.5-flash"), {}).get("name", "Gemini 1.5 Flash")
     st.sidebar.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
 <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-<p>v7.0.0 · Agosto 2026</p>
+<p>v7.1.0 · Agosto 2026</p>
 </div>
 """, unsafe_allow_html=True)
     st.sidebar.markdown("""
@@ -1476,7 +1441,7 @@ def render_moc_form():
             st.error("❌ Describa el problema antes de generar.")
             return
         with st.spinner("🧠 La IA está generando los 12 slides del formato oficial MDET basándose en su problema específico..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
             equipo_data = {
                 "produccion": produccion, "specialist_shes": specialist_shes,
                 "mantenimiento": mantenimiento, "revisores": revisores,
@@ -1546,7 +1511,7 @@ def render_a3_form():
             st.error("❌ Describa el problema antes de generar.")
             return
         with st.spinner("🧠 Generando documento A3 con análisis detallado..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
             result = gemini.generate_a3(problem_desc, context)
             if result is None:
                 st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
@@ -1636,7 +1601,7 @@ def render_kaizen_form():
             st.error("❌ Describa la actividad antes de generar.")
             return
         with st.spinner("🧠 Generando documento Kaizen..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
             result = gemini.generate_kaizen(activity_desc, context)
             if result is None:
                 st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
@@ -1693,7 +1658,7 @@ def _spell_check_field(label, value, key_prefix, gemini):
     return text
 
 def _render_moc_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Checklist 360°", "📄 Documentos", "⚠️ Riesgos", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         st.markdown("#### Información del Documento")
@@ -1818,7 +1783,7 @@ def _render_moc_review(data, meta, images, config):
     st.session_state.doc_meta = meta
 
 def _render_a3_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""), key="a3_rev_title")
@@ -1859,7 +1824,7 @@ def _render_a3_review(data, meta, images, config):
     st.session_state.doc_meta = meta
 
 def _render_kaizen_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título (Name):", value=meta.get("titulo", ""), key="kzn_rev_title")
@@ -1908,7 +1873,7 @@ def _render_kaizen_review(data, meta, images, config):
 # =============================================================================
 def _finalize_document(data, meta, images, language, doc_type, output_format="pptx"):
     config = st.session_state.config
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
     with st.spinner(f"📄 Generando documento..."):
         final_data = {**meta, **data}
         if language == "en" and doc_type == "moc":
@@ -2010,7 +1975,7 @@ def render_history():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.0.0"
+            "version": "7.1.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2087,12 +2052,12 @@ def render_settings():
         st.info("💡 Obtenga su API Key gratuita en [Google AI Studio](https://aistudio.google.com/)")
         api_key = st.text_input("API Key:", value=config.get("gemini_api_key", ""), type="password")
         st.markdown("#### Selección de Modelo")
-        current_model = config.get("gemini_model", "gemini-1.5-pro")
+        current_model = config.get("gemini_model", "gemini-1.5-flash")
         col1, col2, col3 = st.columns(3)
         models = [
-            ("gemini-1.5-flash-lite", "⚡ 3.1 Flash-Lite", "Respuestas rápidas", "Económico"),
-            ("gemini-1.5-flash", "🔥 3.5 Flash", "Ayuda completa", "Balance"),
-            ("gemini-1.5-pro", "🧠 3.1 Pro", "Máxima calidad", "Recomendado"),
+            ("gemini-1.5-flash", "⚡ Gemini 1.5 Flash", "Rápido y eficiente", "Recomendado"),
+            ("gemini-1.5-pro", "🧠 Gemini 1.5 Pro", "Máxima calidad y razonamiento", "Avanzado"),
+            ("gemini-1.0-pro", "🛡️ Gemini 1.0 Pro", "Modelo estable y confiable", "Estable"),
         ]
         for i, (model_id, name, desc, badge) in enumerate(models):
             is_selected = current_model == model_id
@@ -2211,7 +2176,7 @@ def render_settings():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.0.0"
+            "version": "7.1.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2250,7 +2215,7 @@ def render_settings():
             if st.button("🗑️ Borrar Configuración", type="secondary", use_container_width=True):
                 st.session_state.config = {
                     "gemini_api_key": "",
-                    "gemini_model": "gemini-1.5-pro",
+                    "gemini_model": "gemini-1.5-flash",
                     "company_name": "",
                     "department": "",
                     "default_author": "",
@@ -2293,7 +2258,7 @@ def main():
     st.markdown("""
 <div class="app-footer">
 <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
-<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.0.0</p>
+<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.1.0</p>
 <p style="font-size: 0.75rem; color: #94a3b8;">
 Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
 Formato oficial MDET de 12 slides con Checklist 360° y análisis integral.<br>
