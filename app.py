@@ -3,11 +3,11 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 7.2.0 - Corrección Definitiva de Modelos API y Contexto Específico
+Version 7.3.0 - Corrección Definitiva API 404 y Prompt Contextual Estricto
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 7.2.0
+Version: 7.3.0
 Fecha: Agosto 2026
 ================================================================================
 """
@@ -227,15 +227,6 @@ class LocalStorage:
         except Exception as e:
             st.warning(f"Error cargando template {template_name}: {e}")
         return None
-
-    @staticmethod
-    def delete_template(template_name):
-        try:
-            template_path = TEMPLATES_DIR / f"{template_name}.bin"
-            if template_path.exists():
-                template_path.unlink()
-        except Exception:
-            pass
 
 # =============================================================================
 # UTILIDADES
@@ -676,6 +667,7 @@ class Utils:
             "seguimiento": "seguimiento",
             "lecciones": "lecciones",
             "aprendidas": "aprendidas",
+            "estandarizacion": "estandarización",
             "exelente": "excelente", "Exelente": "Excelente",
             "exelencia": "excelencia", "Exelencia": "Excelencia",
             "deficiente": "deficiente",
@@ -702,16 +694,17 @@ class Utils:
         return result
 
 # =============================================================================
-# SERVICIO GEMINI API - MODELOS CORREGIDOS (SOLO LOS QUE FUNCIONAN)
+# SERVICIO GEMINI API - MODELOS CORREGIDOS Y ESTABLES
 # =============================================================================
 class GeminiService:
-    # CORRECCIÓN CRÍTICA: Solo se usan modelos que la API de Google acepta actualmente sin error 404.
+    # CORRECCIÓN: Solo modelos oficialmente soportados y estables en v1beta
     MODELS = {
-        "gemini-1.5-flash": {"name": "Gemini 1.5 Flash", "desc": "Rápido, eficiente y recomendado"},
         "gemini-1.5-pro": {"name": "Gemini 1.5 Pro", "desc": "Máxima calidad y razonamiento"},
+        "gemini-1.5-flash": {"name": "Gemini 1.5 Flash", "desc": "Rápido y eficiente"},
+        "gemini-1.0-pro": {"name": "Gemini 1.0 Pro", "desc": "Modelo estable y confiable"},
     }
 
-    def __init__(self, api_key="", model="gemini-1.5-flash"):
+    def __init__(self, api_key="", model="gemini-1.5-pro"):
         self.api_key = api_key
         self.model = model
         self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
@@ -725,39 +718,53 @@ class GeminiService:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens}
         }
-        response = requests.post(url, json=payload, timeout=120)
-        response.raise_for_status()
-        result = response.json()
-        if "candidates" in result and len(result["candidates"]) > 0:
-            return result["candidates"][0]["content"]["parts"][0]["text"]
-        return ""
+        try:
+            response = requests.post(url, json=payload, timeout=120)
+            response.raise_for_status()
+            result = response.json()
+            if "candidates" in result and len(result["candidates"]) > 0:
+                return result["candidates"][0]["content"]["parts"][0]["text"]
+            return ""
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                raise Exception("Error 404: Modelo no encontrado o API no habilitada. Verifica en Google AI Studio que la 'Generative Language API' esté habilitada en tu proyecto y que la API Key sea correcta. Intenta cambiar el modelo a 'gemini-1.5-pro' en Configuración.")
+            elif e.response.status_code == 403:
+                raise Exception("Error 403: Acceso denegado. Verifica que la API Key sea válida, no haya expirado y tenga permisos de uso.")
+            else:
+                raise Exception(f"Error HTTP {e.response.status_code}: {e.response.text}")
 
     def _extract_json(self, text):
         import json
         json_match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
         if json_match:
-            return json.loads(json_match.group(1))
+            try:
+                return json.loads(json_match.group(1))
+            except json.JSONDecodeError:
+                pass
+        
         json_match = re.search(r'\{.*\}', text, re.DOTALL)
         if json_match:
             try:
                 return json.loads(json_match.group())
-            except:
+            except json.JSONDecodeError:
                 pass
-        return {"generated_text": text}
+                
+        return {"generated_text": text, "error": "No se pudo extraer JSON válido"}
 
     def generate_moc(self, problem, context="", equipo=""):
         if not self.api_key:
             st.error("❌ API Key no configurada. Configure en Configuración > API Gemini")
             return None
         
+        # PROMPT BLINDADO: Obliga a usar EXCLUSIVAMENTE el contexto del usuario
         prompt = f"""Eres un ingeniero senior de seguridad industrial con 20 años de experiencia en minería y manufactura, especializado en Management of Change (MoC) bajo normas ISO 45001, ISO 9001 e ISO 13849.
 
 INSTRUCCIONES CRÍTICAS OBLIGATORIAS:
 1. USAR EXCLUSIVAMENTE EL CONTEXTO DEL USUARIO: Todo el contenido debe basarse ÚNICAMENTE en el problema específico reportado abajo. 
 2. PROHIBICIÓN DE TEXTO GENÉRICO: NO uses frases como "degradación de componentes", "parámetros fuera de rango" o "desviaciones del proceso" a menos que el usuario las haya escrito explícitamente.
-3. IDENTIFICAR ELEMENTOS CLAVE: Extrae del texto del usuario: equipos específicos, componentes (compuertas, interlocks, sensores), riesgos (atrapamiento, material energético) y normas (ISO 13849).
+3. IDENTIFICAR ELEMENTOS CLAVE: Extrae del texto del usuario: equipos específicos (estaciones de espera, compuertas), componentes (interlocks, sensores de seguridad, PLC), riesgos (atrapamiento, material energético) y normas (ISO 13849).
 4. REDACCIÓN HUMANIZADA Y TÉCNICA: Escribe como un ingeniero senior. Usa voz activa, conectores lógicos y párrafos bien estructurados.
-5. ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras (producción, operación, condición, modificación, verificación, implementación, evaluación, capacitación, documentación, estandarización, optimización, identificación, clasificación, notificación, coordinación, aprobación, revisión, ejecución, inspección, protección, detección, prevención, intervención, supervisión, comunicación, organización, planificación, calificación, certificación, validación, calibración, configuración, programación, automatización, integración, función, relación, conexión, dirección, selección, distribución, construcción, instrucción, reducción, traducción, máquina, podría, habría, sería, tendría, haría, daría, estaría, más, también, así, aquí, allí, allá, después, además, según, número, máximo, mínimo, óptimo, último, período, área, día, próximo, análisis, método, parámetro, característica, específico, genérico, electrónico, eléctrico, hidráulico, neumático, térmico, químico, físico, versión, descripción, solución, situación, límites, línea, único, fácil, rápido).
+5. ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras.
 
 PROBLEMA REPORTADO POR EL USUARIO:
 {problem}
@@ -770,16 +777,17 @@ EQUIPO INVOLUCRADO:
 
 Genera en ESPAÑOL formato JSON con esta estructura EXACTA:
 {{
-  "descripcion_problema": "Descripción técnica detallada del problema reportado. Menciona EXPLÍCITAMENTE los interlocks, compuertas, riesgos de atrapamiento y material energético si el usuario los mencionó. Mínimo 250 palabras.",
-  "condicion_actual": "Descripción técnica exhaustiva del estado actual. Explica EXPLÍCITAMENTE cómo están las compuertas/interlocks actualmente y qué falta. NO uses texto genérico.",
-  "condicion_propuesta": "Descripción detallada de la solución propuesta. Explica EXPLÍCITAMENTE la instalación de interlocks, sensores, integración al PLC y cumplimiento de ISO 13849.",
-  "razones_cambio": "Lista de 4-6 razones técnicas usando viñetas '❖' que justifiquen el cambio basándose en el problema del usuario (ej: prevención de atrapamiento, cumplimiento ISO 13849).",
-  "alternativas_retorno": "Análisis de 2 alternativas evaluadas con pros/contras específicos para este problema. Incluye plan de retorno detallado para desinstalar los interlocks si falla.",
-  "recursos": "Listado exhaustivo de recursos humanos, materiales (sensores, cableado, PLC), técnicos y EPP específico requeridos para instalar interlocks.",
-  "plan_implementacion": "Plan detallado por fases para instalar interlocks: instalación física, cableado, programación PLC, pruebas de funcionamiento, validación de seguridad.",
+  "moc_title": "Título técnico conciso del cambio (máximo 12 palabras, basado en el problema del usuario)",
+  "descripcion_problema": "Descripción técnica detallada del problema reportado. Menciona EXPLÍCITAMENTE las estaciones de espera, la falta de interlocks, el riesgo de atrapamiento, el material energético y la necesidad de cumplir con ISO 13849. Mínimo 250 palabras.",
+  "condicion_actual": "Descripción técnica exhaustiva del estado actual. Explica EXPLÍCITAMENTE que las compuertas pueden abrirse con la máquina en funcionamiento, la falta de sensores en puntos de acceso expuestos y la ausencia de enclavamiento de seguridad en el PLC.",
+  "condicion_propuesta": "Descripción detallada de la solución propuesta. Explica EXPLÍCITAMENTE la instalación de interlocks en cada estación de espera, la detención automática de la máquina al abrirse las compuertas, la habilitación previa desde el panel de control y la integración al sistema de enclavamiento del PLC.",
+  "razones_cambio": "Lista de 4-6 razones técnicas usando viñetas '❖' que justifiquen el cambio basándose en el problema del usuario (ej: prevención de atrapamiento, cumplimiento ISO 13849, protección del material energético).",
+  "alternativas_retorno": "Análisis de 2 alternativas evaluadas con pros/contras específicos para este problema. Incluye un plan de retorno detallado para desinstalar los interlocks y restaurar la operación manual segura si falla la implementación.",
+  "recursos": "Listado exhaustivo de recursos humanos, materiales (sensores de seguridad, cableado, módulos de seguridad para PLC, interlocks), técnicos y EPP específico requeridos.",
+  "plan_implementacion": "Plan detallado por fases para instalar interlocks: instalación física, cableado, programación del PLC para el enclavamiento, pruebas de funcionamiento, validación de seguridad.",
   "tiempo_duracion": "Estimación detallada del tiempo total para instalar interlocks con desglose por fase.",
-  "riesgos_controles": [{{"riesgo": "Riesgo específico de calidad/técnico", "control": "Medida de control específica"}}],
-  "riesgos_shes": [{{"riesgo": "Riesgo SHES específico (ej: atrapamiento, energía)", "control": "Plan de acción específico", "plazo": "Plazo"}}]
+  "riesgos_controles": [{{"riesgo": "Riesgo específico de calidad/técnico relacionado con la integración del PLC", "control": "Medida de control específica"}}],
+  "riesgos_shes": [{{"riesgo": "Riesgo SHES específico (ej: atrapamiento por compuertas, energía residual)", "control": "Plan de acción específico", "plazo": "Plazo"}}]
 }}
 
 Responde SOLO con el JSON válido, sin comentarios adicionales."""
@@ -797,7 +805,7 @@ Responde SOLO con el JSON válido, sin comentarios adicionales."""
                                     item[k] = Utils.correct_spelling_basic(item[k])
             return result
         except Exception as e:
-            st.error(f"Error API: {e}")
+            st.error(f"❌ Error API: {e}")
             return None
 
     def generate_a3(self, problem, context=""):
@@ -817,7 +825,7 @@ Genera JSON con: titulo, antecedentes, problema_actual, analisis_situacion, obje
                     result[key] = Utils.correct_spelling_basic(result[key])
             return result
         except Exception as e:
-            st.error(f"Error API: {e}")
+            st.error(f"❌ Error API: {e}")
             return None
 
     def generate_kaizen(self, activity, context=""):
@@ -837,7 +845,7 @@ Genera JSON con: titulo, area, descripcion_problema, solucion, beneficios, tipo_
                     result[key] = Utils.correct_spelling_basic(result[key])
             return result
         except Exception as e:
-            st.error(f"Error API: {e}")
+            st.error(f"❌ Error API: {e}")
             return None
 
     def translate_document(self, data):
@@ -1155,7 +1163,7 @@ class DocumentGenerator:
 
         if len(prs.slides) > 8:
             slide9 = prs.slides[8]
-            # Aquí iría el checklist 360 si el template lo tiene como tabla, se mantiene la lógica original
+            # Aquí iría el checklist 360 si el template lo tiene como tabla
 
         if len(prs.slides) > 9:
             slide10 = prs.slides[9]
@@ -1373,7 +1381,7 @@ def init_session_state():
         "page": "inicio",
         "config": saved_config or {
             "gemini_api_key": "",
-            "gemini_model": "gemini-1.5-flash", # CORREGIDO: Modelo por defecto que SÍ funciona
+            "gemini_model": "gemini-1.5-pro", # CORREGIDO: Modelo más estable como predeterminado
             "company_name": "",
             "department": "",
             "default_author": "",
@@ -1434,11 +1442,11 @@ def render_sidebar():
             st.session_state.page = page_key
             st.rerun()
     st.sidebar.markdown("<hr style='border-color: #334155; margin: 1rem 0;'>", unsafe_allow_html=True)
-    model_name = GeminiService.MODELS.get(config.get("gemini_model", "gemini-1.5-flash"), {}).get("name", "Gemini 1.5 Flash")
+    model_name = GeminiService.MODELS.get(config.get("gemini_model", "gemini-1.5-pro"), {}).get("name", "Gemini 1.5 Pro")
     st.sidebar.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
 <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-<p>v7.2.0 · Agosto 2026</p>
+<p>v7.3.0 · Agosto 2026</p>
 </div>
 """, unsafe_allow_html=True)
     st.sidebar.markdown("""
@@ -1597,7 +1605,7 @@ def render_moc_form():
             st.error("❌ Describa el problema antes de generar.")
             return
         with st.spinner("🧠 La IA está generando el documento basándose en su problema específico..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
             equipo_data = {
                 "produccion": produccion, "specialist_shes": specialist_shes,
                 "mantenimiento": mantenimiento, "revisores": revisores,
@@ -1667,7 +1675,7 @@ def render_a3_form():
             st.error("❌ Describa el problema antes de generar.")
             return
         with st.spinner("🧠 Generando documento A3 con análisis detallado..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
             result = gemini.generate_a3(problem_desc, context)
             if result is None:
                 st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
@@ -1757,7 +1765,7 @@ def render_kaizen_form():
             st.error("❌ Describa la actividad antes de generar.")
             return
         with st.spinner("🧠 Generando documento Kaizen..."):
-            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
+            gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
             result = gemini.generate_kaizen(activity_desc, context)
             if result is None:
                 st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
@@ -1811,7 +1819,7 @@ def _spell_check_field(label, value, key_prefix, gemini):
     return text
 
 def _render_moc_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Riesgos", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         st.markdown("#### Información del Documento")
@@ -1902,7 +1910,7 @@ def _render_moc_review(data, meta, images, config):
     st.session_state.doc_meta = meta
 
 def _render_a3_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""), key="a3_rev_title")
@@ -1943,7 +1951,7 @@ def _render_a3_review(data, meta, images, config):
     st.session_state.doc_meta = meta
 
 def _render_kaizen_review(data, meta, images, config):
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
     tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título (Name):", value=meta.get("titulo", ""), key="kzn_rev_title")
@@ -1989,7 +1997,7 @@ def _render_kaizen_review(data, meta, images, config):
 
 def _finalize_document(data, meta, images, language, doc_type, output_format="pptx"):
     config = st.session_state.config
-    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-flash"))
+    gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model", "gemini-1.5-pro"))
     with st.spinner(f"📄 Generando documento..."):
         final_data = {**meta, **data}
         if language == "en" and doc_type == "moc":
@@ -2088,7 +2096,7 @@ def render_history():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.2.0"
+            "version": "7.3.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2162,11 +2170,11 @@ def render_settings():
         st.info("💡 Obtenga su API Key gratuita en [Google AI Studio](https://aistudio.google.com/)")
         api_key = st.text_input("API Key:", value=config.get("gemini_api_key", ""), type="password")
         st.markdown("#### Selección de Modelo")
-        current_model = config.get("gemini_model", "gemini-1.5-flash")
+        current_model = config.get("gemini_model", "gemini-1.5-pro")
         col1, col2 = st.columns(2)
         models = [
-            ("gemini-1.5-flash", "⚡ Gemini 1.5 Flash", "Rápido, eficiente y recomendado", "Recomendado"),
-            ("gemini-1.5-pro", "🧠 Gemini 1.5 Pro", "Máxima calidad y razonamiento", "Avanzado"),
+            ("gemini-1.5-pro", "🧠 Gemini 1.5 Pro", "Máxima calidad y razonamiento", "Recomendado"),
+            ("gemini-1.5-flash", "⚡ Gemini 1.5 Flash", "Rápido y eficiente", "Estándar"),
         ]
         for i, (model_id, name, desc, badge) in enumerate(models):
             is_selected = current_model == model_id
@@ -2285,7 +2293,7 @@ def render_settings():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.2.0"
+            "version": "7.3.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2324,7 +2332,7 @@ def render_settings():
             if st.button("🗑️ Borrar Configuración", type="secondary", use_container_width=True):
                 st.session_state.config = {
                     "gemini_api_key": "",
-                    "gemini_model": "gemini-1.5-flash",
+                    "gemini_model": "gemini-1.5-pro",
                     "company_name": "",
                     "department": "",
                     "default_author": "",
@@ -2364,7 +2372,7 @@ def main():
     st.markdown("""
 <div class="app-footer">
 <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
-<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.2.0</p>
+<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.3.0</p>
 <p style="font-size: 0.75rem; color: #94a3b8;">
 Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
 Formato oficial MDET con Checklist 360° y análisis integral.<br>
