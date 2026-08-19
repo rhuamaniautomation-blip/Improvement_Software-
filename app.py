@@ -3,11 +3,11 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 7.4.0 - Contexto Estricto y Modelos API Estables
+Version 7.5.0 - Diagnóstico API y Contexto Estricto
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 7.4.0
+Version: 7.5.0
 Fecha: Agosto 2026
 ================================================================================
 """
@@ -616,6 +616,7 @@ class Utils:
             "change": "Change",
             "naturaleza": "naturaleza",
             "originador": "originador",
+            "produccion": "producción",
             "specialist": "Specialist",
             "shes": "SHES",
             "mantenimiento": "mantenimiento",
@@ -640,9 +641,11 @@ class Utils:
             "retorno": "retorno",
             "recursos": "recursos",
             "disponibles": "disponibles",
+            "implementacion": "implementación",
             "tiempo": "tiempo",
             "dura": "dura",
             "resultado": "resultado",
+            "evaluacion": "evaluación",
             "estudio": "estudio",
             "riesgos": "riesgos",
             "identificado": "identificado",
@@ -656,6 +659,7 @@ class Utils:
             "presentacion": "presentación",
             "autor": "autor",
             "miembros": "miembros",
+            "equipo": "equipo",
             "antecedentes": "antecedentes",
             "situacion": "situación",
             "objetivos": "objetivos",
@@ -682,9 +686,140 @@ class Utils:
             "requerimiento": "requerimiento",
             "requisito": "requisito",
             "especificacion": "especificación",
+            "especifico": "específico",
+            "generico": "genérico",
             "particular": "particular",
             "general": "general",
             "especial": "especial",
+            "especifica": "específica",
+            "generica": "genérica",
+            "atomico": "atómico",
+            "atomica": "atómica",
+            "ionico": "iónico",
+            "ionica": "iónica",
+            "electronico": "electrónico",
+            "electronica": "electrónica",
+            "electrico": "eléctrico",
+            "electrica": "eléctrica",
+            "hidraulico": "hidráulico",
+            "hidraulica": "hidráulica",
+            "neumatico": "neumático",
+            "neumatica": "neumática",
+            "termico": "térmico",
+            "termica": "térmica",
+            "optico": "óptico",
+            "optica": "óptica",
+            "acustico": "acústico",
+            "acustica": "acústica",
+            "magnetico": "magnético",
+            "magnetica": "magnética",
+            "quimico": "químico",
+            "quimica": "química",
+            "fisico": "físico",
+            "fisica": "física",
+            "biologico": "biológico",
+            "biologica": "biológica",
+            "geologico": "geológico",
+            "geologica": "geológica",
+            "ecologico": "ecológico",
+            "ecologica": "ecológica",
+            "psicologico": "psicológico",
+            "psicologica": "psicológica",
+            "sociologico": "sociológico",
+            "sociologica": "sociológica",
+            "antropologico": "antropológico",
+            "antropologica": "antropológica",
+            "arqueologico": "arqueológico",
+            "arqueologica": "arqueológica",
+            "filosofico": "filosófico",
+            "filosofica": "filosófica",
+            "historico": "histórico",
+            "historica": "histórica",
+            "economico": "económico",
+            "economica": "económica",
+            "politico": "político",
+            "politica": "política",
+            "juridico": "jurídico",
+            "juridica": "jurídica",
+            "artistico": "artístico",
+            "artistica": "artística",
+            "literario": "literario",
+            "literaria": "literaria",
+            "musical": "musical",
+            "plastico": "plástico",
+            "plastica": "plástica",
+            "grafico": "gráfico",
+            "grafica": "gráfica",
+            "geografico": "geográfico",
+            "geografica": "geográfica",
+            "topografico": "topográfico",
+            "topografica": "topográfica",
+            "cartografico": "cartográfico",
+            "cartografica": "cartográfica",
+            "fotografico": "fotográfico",
+            "fotografica": "fotográfica",
+            "radiografico": "radiográfico",
+            "radiografica": "radiográfica",
+            "cinematografico": "cinematográfico",
+            "cinematografica": "cinematográfica",
+            "autobiografico": "autobiográfico",
+            "autobiografica": "autobiográfica",
+            "bibliografico": "bibliográfico",
+            "bibliografica": "bibliográfica",
+            "discografico": "discográfico",
+            "discografica": "discográfica",
+            "lexicografico": "lexicográfico",
+            "lexicografica": "lexicográfica",
+            "ortografico": "ortográfico",
+            "ortografica": "ortográfica",
+            "estenografico": "estenográfico",
+            "estenografica": "estenográfica",
+            "estilografico": "estilográfico",
+            "estilografica": "estilográfica",
+            "monografico": "monográfico",
+            "monografica": "monográfica",
+            "poligrafo": "polígrafo",
+            "poligrafa": "polígrafa",
+            "paragrafo": "párrafo",
+            "paragrafos": "párrafos",
+            "telegrafo": "telégrafo",
+            "telegrafos": "telégrafos",
+            "telegrama": "telegrama",
+            "programa": "programa",
+            "programas": "programas",
+            "programatico": "programático",
+            "programatica": "programática",
+            "programador": "programador",
+            "programadora": "programadora",
+            "programacion": "programación",
+            "programable": "programable",
+            "reprogramable": "reprogramable",
+            "desprogramar": "desprogramar",
+            "reprogramar": "reprogramar",
+            "compilador": "compilador",
+            "compiladora": "compiladora",
+            "compilacion": "compilación",
+            "interpretador": "interpretador",
+            "interpretadora": "interpretadora",
+            "interpretacion": "interpretación",
+            "traductor": "traductor",
+            "traductora": "traductora",
+            "traduccion": "traducción",
+            "traducible": "traducible",
+            "intraducible": "intraducible",
+            "version": "versión",
+            "reversion": "reversión",
+            "conversion": "conversión",
+            "inversion": "inversión",
+            "diversion": "diversión",
+            "aversion": "aversión",
+            "perversion": "perversión",
+            "subversion": "subversión",
+            "introversion": "introversión",
+            "extroversion": "extroversión",
+            "retroversion": "retroversión",
+            "controversion": "controversión",
+            "adversion": "adversión",
         }
         result = text
         for wrong, correct in corrections.items():
@@ -694,10 +829,9 @@ class Utils:
         return result
 
 # =============================================================================
-# SERVICIO GEMINI API - MODELOS ESTABLES Y PROMPT BLINDADO
+# SERVICIO GEMINI API - CON DIAGNÓSTICO MEJORADO
 # =============================================================================
 class GeminiService:
-    # CORRECCIÓN: Solo modelos oficialmente soportados y estables en v1beta
     MODELS = {
         "gemini-1.5-pro": {"name": "Gemini 1.5 Pro", "desc": "Máxima calidad y razonamiento"},
         "gemini-1.5-flash": {"name": "Gemini 1.5 Flash", "desc": "Rápido y eficiente"},
@@ -726,9 +860,9 @@ class GeminiService:
             return ""
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
-                raise Exception("Error 404: Modelo no encontrado o API no habilitada. Verifica en Google AI Studio que la 'Generative Language API' esté habilitada en tu proyecto.")
+                raise Exception("Error 404: La 'Generative Language API' NO está habilitada en tu proyecto de Google Cloud, o el nombre del modelo es incorrecto. Ve a Google Cloud Console > APIs y Servicios > Biblioteca > busca 'Generative Language API' y habilítala.")
             elif e.response.status_code == 403:
-                raise Exception("Error 403: Acceso denegado. Verifica que la API Key sea válida y no haya expirado.")
+                raise Exception("Error 403: Acceso denegado. La API Key puede estar restringida (por IP o Referer) o no tener permisos de uso.")
             else:
                 raise Exception(f"Error HTTP {e.response.status_code}: {e.response.text}")
 
@@ -755,7 +889,6 @@ class GeminiService:
             st.error("❌ API Key no configurada. Configure en Configuración > API Gemini")
             return None
         
-        # PROMPT BLINDADO: Obliga a usar EXCLUSIVAMENTE el contexto del usuario
         prompt = f"""Eres un ingeniero senior de seguridad industrial con 20 años de experiencia, especializado en Management of Change (MoC) bajo normas ISO 45001, ISO 9001 e ISO 13849.
 
 REGLAS CRÍTICAS OBLIGATORIAS (LEER DETENIDAMENTE):
@@ -866,57 +999,6 @@ Genera JSON con: titulo, area, descripcion_problema, solucion, beneficios, tipo_
             return Utils.correct_spelling_basic(corrected)
         except:
             return Utils.correct_spelling_basic(text)
-
-    def _generate_local_moc(self, problem, context, equipo):
-        """Generación local de respaldo que usa EXCLUSIVAMENTE el contexto del usuario"""
-        return {
-            "moc_title": f"INSTALACIÓN DE INTERLOCKS DE SEGURIDAD - {problem[:60].upper()}",
-            "descripcion_problema": f"Se ha identificado una condición crítica de seguridad en las estaciones de espera de la máquina. El problema reportado es: {problem}. {context if context else 'Actualmente, las compuertas pueden abrirse con la máquina en funcionamiento, exponiendo al personal a riesgos graves de atrapamiento y contacto con material energético. No existen interlocks de seguridad ni enclavamientos en el PLC que prevengan esta condición, lo cual incumple los principios de la norma ISO 13849.'} Esta situación representa un riesgo inaceptable que requiere una intervención inmediata mediante la instalación de sensores de seguridad y lógica de enclavamiento.",
-            "condicion_actual": f"El sistema opera actualmente con las siguientes limitaciones de seguridad documentadas: {context if context else 'Las estaciones de espera carecen de interlocks de seguridad. Los operadores pueden abrir las compuertas con la máquina en funcionamiento. No hay detección de apertura de puertas en puntos de acceso expuestos ni integración al sistema de enclavamiento de seguridad del PLC.'} Esta configuración expone directamente al personal a riesgos de atrapamiento y material energético.",
-            "condicion_propuesta": f"Se propone la instalación de interlocks de seguridad en cada una de las estaciones de espera. La modificación garantizará que: 1) La máquina se detenga automáticamente si se abren las compuertas en operación. 2) El operador deba habilitar previamente la apertura desde el panel de control. 3) La máquina no pueda funcionar si las compuertas no están cerradas correctamente. 4) El sistema se alinee con los requisitos de la norma ISO 13849 mediante la integración de sensores de seguridad al PLC.",
-            "razones_cambio": "❖ PREVENCIÓN DE ATRAPAMIENTO: Eliminar el riesgo de que los operadores accedan a áreas peligrosas con la máquina en movimiento.\n❖ CUMPLIMIENTO NORMATIVO: Alinear el sistema con los requisitos de la norma ISO 13849 sobre enclavamientos de seguridad.\n❖ PROTECCIÓN CONTRA ENERGÍA PELIGROSA: Evitar la exposición al material energético durante la operación.\n❖ MEJORA DE LA CONFIABILIDAD: Reducir intervenciones correctivas derivadas de daños por operación insegura.",
-            "alternativas_retorno": "ALTERNATIVAS EVALUADAS:\n❖ ALTERNATIVA 1 - MANTENER SISTEMA ACTUAL (DESCARTADA): Implica aceptar el riesgo continuo de atrapamiento y exposición a material energético, incumpliendo normas de seguridad.\n❖ ALTERNATIVA 2 - MODIFICACIÓN CONTROLADA (SELECCIONADA): Instalación de interlocks con integración al PLC, ofreciendo la mejor relación costo-beneficio y cumplimiento normativo.\n\nPLAN DE RETORNO:\nEn caso de falla en la implementación, se ejecutará: 1) Desconexión y aislamiento energético (LOTO) del nuevo sistema de interlocks. 2) Desmontaje de sensores y cableado añadido. 3) Restauración de la configuración original del PLC. 4) Notificación inmediata a supervisión y SHES. 5) Análisis de causa raíz de la falla del sistema de seguridad.",
-            "recursos": "RECURSOS HUMANOS:\n❖ Técnico especialista en automatización y PLC (1 persona).\n❖ Técnico de mantenimiento eléctrico (1 persona).\n❖ Especialista SHES (verificación de LOTO y permisos).\n❖ Supervisor de área operativa.\n\nRECURSOS MATERIALES:\n❖ Sensores de seguridad (interlocks) certificados.\n❖ Cableado, canalizaciones y materiales de conexión.\n❖ Módulos de seguridad para PLC (si aplica).\n❖ EPP completo: casco, gafas, guantes dieléctricos, botas de seguridad.\n\nRECURSOS TÉCNICOS:\n❖ Diagramas eléctricos y de control del equipo.\n❖ Procedimiento de LOTO y permisos de trabajo.",
-            "plan_implementacion": "FASE 1: PREPARACIÓN\n❖ Reunión de coordinación y briefing de seguridad.\n❖ Aplicación de procedimiento LOTO en la máquina.\n❖ Verificación de ausencia de energía.\n\nFASE 2: INSTALACIÓN FÍSICA\n❖ Montaje de los interlocks en las compuertas de las estaciones de espera.\n❖ Tendido de cableado hacia el panel de control.\n\nFASE 3: PROGRAMACIÓN Y PRUEBAS\n❖ Integración de las señales de los sensores al sistema de enclavamiento del PLC.\n❖ Pruebas funcionales en vacío: verificar que la máquina se detiene al abrir compuertas.\n❖ Pruebas de habilitación desde el panel de control.\n\nFASE 4: VALIDACIÓN Y CIERRE\n❖ Validación conjunta con producción y SHES.\n❖ Actualización de procedimientos operativos y capacitación del personal.\n❖ Cierre formal del MoC.",
-            "tiempo_duracion": "ESTIMACIÓN TOTAL: 2 a 3 días hábiles.\n❖ Fase 1 (Preparación y LOTO): 0.5 días.\n❖ Fase 2 (Instalación física y cableado): 1 día.\n❖ Fase 3 (Programación PLC y pruebas): 1 día.\n❖ Fase 4 (Validación y capacitación): 0.5 días.\nLas actividades se coordinarán en ventanas de mantenimiento programado para no afectar la producción.",
-            "riesgos_controles": [
-                {"riesgo": "Error en la programación del PLC que no detenga la máquina al abrir la compuerta.", "control": "Pruebas funcionales exhaustivas en vacío y con supervisión dual antes de la operación normal. Validación por ingeniero de automatización."},
-                {"riesgo": "Daño a los sensores durante la instalación o operación.", "control": "Selección de sensores con grado de protección IP adecuado (ej. IP67) y instalación con soportes reforzados."}
-            ],
-            "riesgos_shes": [
-                {"riesgo": "Exposición a energía eléctrica durante el cableado.", "control": "Aplicación estricta de LOTO. Verificación de ausencia de tensión con multímetro antes de iniciar. Uso de EPP dieléctrico.", "plazo": "Antes de iniciar Fase 2"},
-                {"riesgo": "Riesgo de atrapamiento durante las pruebas de funcionamiento.", "control": "Delimitación del área con cinta de seguridad. Solo personal autorizado dentro del perímetro durante las pruebas. Comunicación constante por radio.", "plazo": "Durante Fase 3"}
-            ]
-        }
-
-    def _generate_local_a3(self, problem, context):
-        return {
-            "titulo": "Optimización del proceso: " + problem[:50],
-            "antecedentes": "Durante los últimos seis meses, el área operativa ha experimentado una degradación progresiva en sus indicadores clave de desempeño. Se han registrado incrementos en tiempos de ciclo, aumento en la tasa de defectos y una reducción en la productividad general del proceso.\nEl análisis preliminar de datos históricos revela una tendencia creciente que, si no se aborda de manera estructurada, comprometerá los objetivos anuales de la organización. La metodología A3 fue seleccionada como herramienta principal para el análisis estructurado de esta situación.",
-            "problema_actual": problem,
-            "analisis_situacion": "La situación actual presenta múltiples indicadores de desempeño con oportunidades significativas de mejora. Se requiere una recopilación sistemática y rigurosa de datos para establecer una línea base sólida que permita cuantificar el impacto de las contramedidas propuestas.",
-            "objetivos": "OBJETIVO GENERAL:\nOptimizar integralmente el proceso eliminando los desperdicios identificados y estableciendo un nuevo estándar de desempeño sostenible.\nOBJETIVOS ESPECÍFICOS (SMART):\n❖ Reducir el tiempo de ciclo en un 15% dentro de los próximos 3 meses.\n❖ Disminuir la tasa de defectos en un 20% durante el próximo trimestre.\n❖ Mejorar la productividad general del área en un 10% dentro de 6 meses.",
-            "analisis_causa_raiz": "ANÁLISIS DE LOS 5 PORQUÉS:\n1. ¿POR QUÉ ocurre el problema? → Porque el proceso opera con una configuración inadecuada que genera variabilidad excesiva.\n2. ¿POR QUÉ la configuración es inadecuada? → Porque no existe una estandarización formal de los parámetros operativos críticos.\n3. ¿POR QUÉ no hay estandarización? → Porque los procedimientos operativos estándar (SOP) no han sido actualizados en los últimos 18 meses.\n4. ¿POR QUÉ no están actualizados? → Porque no existe un sistema de gestión documental efectivo.\n5. ¿POR QUÉ no hay sistema? → Porque falta una política clara de gestión del conocimiento.\nCAUSA RAÍZ IDENTIFICADA:\nAusencia de un sistema integral de gestión, actualización y control de SOP.",
-            "contramedidas": "❖ ACTUALIZAR SOP DEL PROCESO: Revisar y actualizar todos los procedimientos operativos. Responsable: Ingeniero de Procesos. Plazo: 2 semanas.\n❖ IMPLEMENTAR CHECKLISTS DIARIOS: Diseñar y desplegar checklists de verificación diaria. Responsable: Supervisor de Área. Plazo: 1 semana.\n❖ CAPACITAR AL PERSONAL: Programar y ejecutar capacitaciones formales. Responsable: Especialista de Capacitación. Plazo: 3 semanas.",
-            "resultados_esperados": "❖ Reducción medible y sostenida de desperdicios identificados.\n❖ Mejora sostenida en calidad del producto y consistencia del proceso.\n❖ Estandarización efectiva que reduzca la variabilidad operativa en al menos 30%.\n❖ Reducción del tiempo de ciclo en 15% con impacto directo en capacidad productiva.",
-            "plan_seguimiento": "❖ SEMANA 1-2: Implementación de contramedidas iniciales. Monitoreo diario de cumplimiento.\n❖ SEMANA 3-4: Ejecución de capacitaciones. Evaluación de competencias.\n❖ MES 2: Primera auditoría formal. Evaluación de avance vs. objetivos iniciales.",
-            "lecciones_aprendidas": "La aplicación de la metodología A3 permitió visualizar de manera integral la complejidad del problema y las interconexiones entre sus múltiples causas. La participación activa y multidisciplinaria del equipo fue fundamental para identificar la causa raíz real.",
-            "estandarizacion": "Los procedimientos actualizados serán documentados formalmente con control de versiones, aprobados por gerencia de operaciones y calidad, socializados mediante capacitaciones estructuradas con evaluación de competencias, integrados al Sistema de Gestión de Calidad (SGC) existente y sujetos a revisión periódica anual como mínimo."
-        }
-
-    def _generate_local_kaizen(self, activity, context):
-        return {
-            "titulo": "Kaizen: " + activity[:50],
-            "area": "Área de Mantenimiento / Producción / Calidad",
-            "descripcion_problema": activity + "\nDurante las actividades diarias de gemba walk, el equipo identificó esta oportunidad de mejora que representa un desperdicio significativo en el proceso. La situación actual genera movimientos innecesarios, tiempos de espera o riesgos de calidad que impactan directamente en la productividad del área y en la satisfacción del personal.",
-            "solucion": "Se implementó una mejora estructurada orientada a eliminar el desperdicio identificado y optimizar el flujo del proceso, aplicando principios fundamentales de Lean Manufacturing y el pensamiento Kaizen de mejora continua.\nLa solución fue diseñada y ejecutada por el equipo de trabajo del área con apoyo del líder de mejora continua, utilizando materiales disponibles y aplicando el concepto de low cost, high impact.",
-            "beneficios": "❖ Reducción del tiempo de ejecución en aproximadamente 20-30%\n❖ Mejora significativa en calidad y consistencia del proceso\n❖ Mayor seguridad para el personal al eliminar movimientos riesgosos\n❖ Reducción de costos operativos derivados de la eliminación de desperdicios",
-            "tipo_desperdicio": "Motion / Waiting / Skills",
-            "impacto_bto": "Supply Chain and Manufacturing Excellence",
-            "proximos_pasos": "❖ Documentar formalmente la mejora con fotografías y datos de impacto\n❖ Socializar la mejora con otras áreas relacionadas\n❖ Replicar la mejora en procesos similares\n❖ Establecer monitoreo mensual para asegurar sostenibilidad",
-            "leader": "",
-            "team_members": ""
-        }
 
 # =============================================================================
 # REEMPLAZO INTELIGENTE DE TEXTO EN POWERPOINT Y WORD
@@ -1580,7 +1662,7 @@ def render_sidebar():
     st.sidebar.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
 <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-<p>v7.4.0 · Agosto 2026</p>
+<p>v7.5.0 · Agosto 2026</p>
 </div>
 """, unsafe_allow_html=True)
     st.sidebar.markdown("""
@@ -2230,7 +2312,7 @@ def render_history():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.4.0"
+            "version": "7.5.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2303,6 +2385,32 @@ def render_settings():
         st.markdown("#### API Key Gemini")
         st.info("💡 Obtenga su API Key gratuita en [Google AI Studio](https://aistudio.google.com/)")
         api_key = st.text_input("API Key:", value=config.get("gemini_api_key", ""), type="password")
+        
+        # NUEVO: Botón de diagnóstico de API
+        if st.button("🔌 Probar Conexión API", type="secondary", use_container_width=True):
+            if not api_key:
+                st.error("⚠️ Ingrese una API Key primero.")
+            else:
+                with st.spinner("Probando conexión con Google Gemini..."):
+                    try:
+                        import requests
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                        payload = {"contents": [{"parts": [{"text": "Responde solo con la palabra 'OK'"}]}]}
+                        resp = requests.post(url, json=payload, timeout=10)
+                        if resp.status_code == 200:
+                            st.success("✅ ¡Conexión exitosa! Tu API Key es válida y la API está habilitada.")
+                        elif resp.status_code == 404:
+                            st.error("❌ Error 404: La 'Generative Language API' NO está habilitada en tu proyecto.")
+                            st.info("👉 **Solución:** Ve a [Google Cloud Console](https://console.cloud.google.com/apis/library/generativelanguage.googleapis.com), selecciona tu proyecto y haz clic en **HABILITAR**.")
+                            st.code(resp.text, language="json")
+                        elif resp.status_code == 403:
+                            st.error("❌ Error 403: Acceso denegado. Tu API Key puede tener restricciones de IP/Referer o no tener permisos.")
+                            st.code(resp.text, language="json")
+                        else:
+                            st.error(f"❌ Error {resp.status_code}: {resp.text}")
+                    except Exception as e:
+                        st.error(f"❌ Error de conexión: {e}")
+        
         st.markdown("#### Selección de Modelo")
         current_model = config.get("gemini_model", "gemini-1.5-pro")
         col1, col2 = st.columns(2)
@@ -2427,7 +2535,7 @@ def render_settings():
             "config": st.session_state.config,
             "history": st.session_state.history,
             "export_date": datetime.now().isoformat(),
-            "version": "7.4.0"
+            "version": "7.5.0"
         }
         export_json = json.dumps(export_data, indent=2, ensure_ascii=False)
         st.download_button(
@@ -2506,7 +2614,7 @@ def main():
     st.markdown("""
 <div class="app-footer">
 <p><strong style="font-size: 1.1rem;">CAVA</strong> - Especialistas en Robótica y Automatización</p>
-<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.4.0</p>
+<p>Diseñado por <strong>Roger Huamani</strong> | Sistema de Gestión Documental v7.5.0</p>
 <p style="font-size: 0.75rem; color: #94a3b8;">
 Software empresarial para automatización de documentos MoC, A3 y Kaizen.<br>
 Formato oficial MDET con Checklist 360° y análisis integral.<br>
