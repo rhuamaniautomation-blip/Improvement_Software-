@@ -3,11 +3,11 @@
 """
 ================================================================================
 SISTEMA DE GESTION DOCUMENTAL - MoC | Mejora A3 | Simple Kaizen
-Version 9.0.0 - Ingeniero Senior + Imágenes por Slide + Modelos Actualizados
+Version 10.0.0 - Generación Nativa sin Dependencia de Templates
 ================================================================================
 Diseñado por: CAVA - Especialistas en Robotica y Automatizacion
 Desarrollador: Roger Huamani
-Version: 9.0.0
+Version: 10.0.0
 Fecha: Agosto 2026
 ================================================================================
 """
@@ -16,45 +16,34 @@ import os
 import json
 import re
 import uuid
-import shutil
 import subprocess
 import tempfile
-import base64
-import hashlib
 from datetime import datetime
 from pathlib import Path
-from copy import deepcopy
 from io import BytesIO
 from PIL import Image
-from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
-from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
-from pptx.oxml.ns import qn
 from docx import Document
-from docx.shared import Inches as DocxInches
-from docx.shared import Pt as DocxPt
-from docx.shared import RGBColor as DocxRGBColor
+from docx.shared import Inches, Pt, RGBColor as DocxRGBColor, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-
-SPELLCHECKER_AVAILABLE = False
-try:
-    from spellchecker import SpellChecker
-    SPELLCHECKER_AVAILABLE = True
-except ImportError:
-    pass
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
 
 try:
-    from reportlab.lib.pagesizes import A4, letter
+    from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch, cm
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak, KeepTogether
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
+    from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY, TA_RIGHT
+    from reportlab.pdfgen import canvas
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
 
+# =============================================================================
+# CONFIGURACION INICIAL
+# =============================================================================
 st.set_page_config(
     page_title="Gestión Documental - MoC | A3 | Kaizen",
     page_icon="📋",
@@ -64,12 +53,13 @@ st.set_page_config(
 
 BASE_DIR = Path(__file__).parent if "__file__" in dir() else Path(".")
 DATA_DIR = BASE_DIR / "data"
-TEMPLATES_DIR = BASE_DIR / "templates"
 HISTORY_FILE = DATA_DIR / "history.json"
 CONFIG_FILE = DATA_DIR / "config.json"
 DATA_DIR.mkdir(exist_ok=True)
-TEMPLATES_DIR.mkdir(exist_ok=True)
 
+# =============================================================================
+# CSS PERSONALIZADO
+# =============================================================================
 CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -100,22 +90,12 @@ html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif !impor
 .stButton > button:hover {
     transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
-.stSelectbox > div > div > div {
-    border-radius: 8px !important; border: 1px solid #cbd5e1 !important;
-    font-size: 15px !important;
-}
 .section-header {
     background: #f1f5f9; padding: 1rem 1.5rem;
     border-radius: 10px; margin: 1.5rem 0 1rem 0;
     border-left: 4px solid #1a5f7a;
 }
 .section-header h3 { margin: 0 !important; color: #1e293b !important; font-weight: 600 !important; }
-.field-card {
-    background: white; border: 1px solid #e2e8f0;
-    border-radius: 10px; padding: 1rem; margin: 0.5rem 0;
-}
 .gemini-badge {
     display: inline-block; background: #e0e7ff; color: #4338ca;
     padding: 0.25rem 0.75rem; border-radius: 20px;
@@ -135,10 +115,6 @@ html, body, [class*="css"] { font-family: 'Inter', 'Segoe UI', sans-serif !impor
     padding: 0.25rem 0.75rem; border-radius: 20px;
     font-size: 11px; font-weight: 600; margin-bottom: 0.5rem;
 }
-.slide-image-card {
-    background: #f8fafc; border: 1px solid #e2e8f0;
-    border-radius: 8px; padding: 0.75rem; margin: 0.5rem 0;
-}
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 [data-testid="stSidebar"] { background: #1e293b !important; }
@@ -149,6 +125,9 @@ footer {visibility: hidden;}
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
+# =============================================================================
+# PERSISTENCIA LOCAL
+# =============================================================================
 class LocalStorage:
     @staticmethod
     def save_config(config):
@@ -190,28 +169,9 @@ class LocalStorage:
             st.warning(f"Error cargando historial: {e}")
         return {"documents": []}
 
-    @staticmethod
-    def save_template_bytes(template_name, file_bytes):
-        try:
-            template_path = TEMPLATES_DIR / f"{template_name}.bin"
-            with open(template_path, 'wb') as f:
-                f.write(file_bytes)
-            return True
-        except Exception as e:
-            st.error(f"Error guardando template {template_name}: {e}")
-            return False
-
-    @staticmethod
-    def load_template_bytes(template_name):
-        try:
-            template_path = TEMPLATES_DIR / f"{template_name}.bin"
-            if template_path.exists():
-                with open(template_path, 'rb') as f:
-                    return f.read()
-        except Exception as e:
-            st.warning(f"Error cargando template {template_name}: {e}")
-        return None
-
+# =============================================================================
+# UTILIDADES
+# =============================================================================
 class Utils:
     @staticmethod
     def format_date():
@@ -237,10 +197,6 @@ class Utils:
         return f"{prefix.get(doc_type, 'DOC')}-{now.year}{now.month:02d}{now.day:02d}-{config[key]:04d}"
 
     @staticmethod
-    def sanitize_filename(filename):
-        return re.sub(r'[<>":/\\|?*]', '_', filename)[:50]
-
-    @staticmethod
     def add_to_history(doc_info):
         history = st.session_state.history
         doc_info["id"] = str(uuid.uuid4())
@@ -248,13 +204,6 @@ class Utils:
         history["documents"].insert(0, doc_info)
         st.session_state.history = history
         LocalStorage.save_history(history)
-
-    @staticmethod
-    def get_history(doc_type=None):
-        docs = st.session_state.history.get("documents", [])
-        if doc_type:
-            docs = [d for d in docs if d.get("type") == doc_type]
-        return docs
 
     @staticmethod
     def delete_from_history(doc_id):
@@ -268,8 +217,7 @@ class Utils:
         if not text or not text.strip():
             return text
         corrections = {
-            "tecnico": "técnico", "Tecnico": "Técnico", "TECNICO": "TÉCNICO",
-            "tecnica": "técnica", "Tecnica": "Técnica",
+            "tecnico": "técnico", "Tecnico": "Técnico",
             "tecnologia": "tecnología", "Tecnologia": "Tecnología",
             "produccion": "producción", "Produccion": "Producción",
             "implementacion": "implementación", "Implementacion": "Implementación",
@@ -332,7 +280,6 @@ class Utils:
             "asi": "así", "Asi": "Así",
             "aqui": "aquí", "Aqui": "Aquí",
             "alli": "allí", "Alli": "Allí",
-            "alla": "allá", "Alla": "Allá",
             "despues": "después", "Despues": "Después",
             "ademas": "además", "Ademas": "Además",
             "segun": "según", "Segun": "Según",
@@ -347,8 +294,6 @@ class Utils:
             "manana": "mañana", "Manana": "Mañana",
             "proximo": "próximo", "Proximo": "Próximo",
             "analisis": "análisis", "Analisis": "Análisis",
-            "sintesis": "síntesis", "Sintesis": "Síntesis",
-            "hipotesis": "hipótesis", "Hipotesis": "Hipótesis",
             "metodo": "método", "Metodo": "Método",
             "parametro": "parámetro", "Parametro": "Parámetro",
             "parametros": "parámetros", "Parametros": "Parámetros",
@@ -362,12 +307,10 @@ class Utils:
             "hidraulico": "hidráulico", "Hidraulico": "Hidráulico",
             "neumatico": "neumático", "Neumatico": "Neumático",
             "termico": "térmico", "Termico": "Térmico",
-            "optico": "óptico", "Optico": "Óptico",
             "quimico": "químico", "Quimico": "Químico",
             "fisico": "físico", "Fisico": "Físico",
             "biologico": "biológico", "Biologico": "Biológico",
             "version": "versión", "Version": "Versión",
-            "conversion": "conversión", "Conversion": "Conversión",
             "descripcion": "descripción", "Descripcion": "Descripción",
             "solucion": "solución", "Solucion": "Solución",
             "situacion": "situación", "Situacion": "Situación",
@@ -377,13 +320,10 @@ class Utils:
             "limites": "límites", "Limites": "Límites",
             "limite": "límite", "Limite": "Límite",
             "linea": "línea", "Linea": "Línea",
-            "lineas": "líneas", "Lineas": "Líneas",
             "unico": "único", "Unico": "Único",
-            "unica": "única", "Unica": "Única",
             "facil": "fácil", "Facil": "Fácil",
             "dificil": "difícil", "Dificil": "Difícil",
             "rapido": "rápido", "Rapido": "Rápido",
-            "rapida": "rápida", "Rapida": "Rápida",
             "trabagar": "trabajar",
             "podra": "podrá",
             "esta": "está",
@@ -396,17 +336,16 @@ class Utils:
         return result
 
 # =============================================================================
-# SERVICIO GEMINI API - MODELOS ACTUALIZADOS Y PROMPT DE INGENIERO SENIOR
+# SERVICIO GEMINI API
 # =============================================================================
 class GeminiService:
     MODELS = {
-        "gemini-2.5-flash": {"name": "Gemini 2.5 Flash", "desc": "Rápido, eficiente y recomendado"},
-        "gemini-2.5-pro": {"name": "Gemini 2.5 Pro", "desc": "Máxima calidad y razonamiento"},
+        "gemini-2.5-flash": {"name": "Gemini 2.5 Flash", "desc": "Rápido y recomendado"},
+        "gemini-2.5-pro": {"name": "Gemini 2.5 Pro", "desc": "Máxima calidad"},
     }
     DEPRECATED_MODELS = {
         "gemini-1.5-flash-lite", "gemini-1.5-flash", "gemini-1.5-pro",
-        "gemini-1.0-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite",
-        "gemini-2.0-pro", "gemini-2.5-flash-lite"
+        "gemini-1.0-pro", "gemini-2.0-flash", "gemini-2.0-flash-lite"
     }
     DEFAULT_MODEL = "gemini-2.5-flash"
 
@@ -458,12 +397,10 @@ class GeminiService:
         return {"generated_text": text, "error": "No se pudo extraer JSON válido"}
 
     def generate_moc(self, problem, context="", equipo="", alternativas=""):
-        """Genera MoC con rol de Ingeniero Senior - 14 slides detallados"""
         if not self.api_key:
-            st.error("❌ API Key no configurada. Configure en Configuración > API Gemini")
+            st.error("❌ API Key no configurada")
             return None
-
-        prompt = f"""Actúa como un Ingeniero Senior de Ingeniería, Automatización, Mantenimiento, Seguridad de Procesos y Gestión del Cambio (MoC) en una planta industrial de manufactura. Tienes 20 años de experiencia en minería, manufactura y operaciones industriales.
+        prompt = f"""Actúa como un Ingeniero Senior de Ingeniería, Automatización, Mantenimiento, Seguridad de Procesos y Gestión del Cambio (MoC) en una planta industrial de manufactura. Tienes 20 años de experiencia.
 
 CONTEXTO DEL PROBLEMA IDENTIFICADO:
 {problem}
@@ -475,60 +412,39 @@ EQUIPO INVOLUCRADO:
 {equipo}
 
 ALTERNATIVAS CONSIDERADAS (si existen):
-{alternativas if alternativas else 'No proporcionadas por el usuario.'}
+{alternativas if alternativas else 'No proporcionadas.'}
 
-INSTRUCCIONES CRÍTICAS DE REDACCIÓN:
-1. Redacta SIEMPRE en español técnico y corporativo, con lenguaje profesional de ingeniería senior.
-2. Utiliza enfoque de ingeniería industrial, automatización, calidad, seguridad y confiabilidad.
+INSTRUCCIONES CRÍTICAS:
+1. Redacta SIEMPRE en español técnico y corporativo.
+2. Usa enfoque de ingeniería industrial, automatización, calidad, seguridad y confiabilidad.
 3. NO pidas información adicional. Si falta algún dato, asume la mejor alternativa técnicamente razonable.
 4. Redacta en párrafos bien estructurados de 4-6 oraciones con conectores lógicos.
 5. Evita listas, excepto en "alternativas_consideradas".
 6. Considera riesgos operativos, de calidad, seguridad, productividad, mantenimiento y cumplimiento normativo.
-7. Cuando aplique, considera PLC, HMI, SCADA, sensores, instrumentación, equipos industriales, seguridad de máquinas, ISO 13849, enclavamientos, sistemas de visión, control de procesos, validaciones, calidad y gestión de activos.
-8. Si el cambio es de software, automatización o parámetros, indica que no modifica la integridad mecánica del equipo salvo que el contexto indique lo contrario.
-9. Si el proveedor es extranjero, considera tiempos de coordinación, ingeniería y validación.
-10. ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras.
-11. PROHIBIDO usar frases genéricas como "degradación progresiva de componentes" o "parámetros fuera de rango" a menos que el usuario las haya escrito explícitamente.
-12. TODO el contenido debe basarse EXCLUSIVAMENTE en el problema específico del usuario.
+7. Cuando aplique, considera PLC, HMI, SCADA, sensores, instrumentación, ISO 13849, enclavamientos.
+8. Si el cambio es de software/automatización, indica que no modifica la integridad mecánica.
+9. ORTOGRAFÍA IMPECABLE: Tildes correctas en todas las palabras.
+10. PROHIBIDO usar frases genéricas. TODO el contenido debe basarse EXCLUSIVAMENTE en el problema del usuario.
 
-Genera en ESPAÑOL formato JSON con esta estructura EXACTA (14 campos para 14 slides):
-
+Genera en ESPAÑOL formato JSON con esta estructura EXACTA:
 {{
-  "moc_title": "Título técnico conciso del cambio (máximo 12 palabras)",
-  
-  "condicion_actual": "SLIDE 3 (columna izquierda). Describe detalladamente cómo opera actualmente el sistema o proceso, incluyendo limitaciones, desviaciones, riesgos, ineficiencias y situación existente. Mínimo 200 palabras en párrafos bien estructurados.",
-  
-  "condicion_propuesta": "SLIDE 3 (columna derecha). Describe detalladamente la solución propuesta, indicando cómo funcionará el sistema después del cambio y cuáles serán las mejoras obtenidas. Mínimo 200 palabras.",
-  
-  "justificacion_moc": "SLIDE 4. Explica la oportunidad de mejora, observación u obligación que motiva el cambio y por qué es necesario implementarlo. Mínimo 150 palabras.",
-  
-  "descripcion_problema": "SLIDE 5. Desarrolla técnicamente el problema identificado, incluyendo causas, efectos y consecuencias para la operación. Mínimo 250 palabras.",
-  
-  "razones_cambio": "SLIDE 6. Explica las razones técnicas, operativas, de calidad, productividad, confiabilidad, mantenimiento o seguridad que justifican la modificación. Mínimo 200 palabras.",
-  
-  "alternativas_consideradas": "SLIDE 4 (parte inferior). Genera TRES alternativas en formato de lista con viñetas '❖':
-❖ Alternativa 1: Mantener condición actual. Explica ventajas, desventajas y motivo de descarte.
-❖ Alternativa 2: Solución parcial o administrativa. Explica ventajas, desventajas y motivo de descarte.
-❖ Alternativa 3: Solución seleccionada. Explica por qué se selecciona.",
-  
-  "plan_retorno": "SLIDE 4 (parte inferior). Redacta un único párrafo de aproximadamente tres líneas indicando cómo retornar a la condición original en caso de falla de la implementación.",
-  
-  "recursos": "SLIDE 8 (parte superior). Describe de forma breve los recursos necesarios según apliquen: Ingeniería, Automatización, Mantenimiento, Calidad, Producción, Seguridad, Proveedor, Materiales, Software, Validación. Mínimo 150 palabras.",
-  
-  "plan_implementacion": "SLIDE 8 (parte media). Redacta un párrafo corto y resumido describiendo las principales etapas: evaluación, ingeniería, programación, instalación, pruebas, validación y liberación. Mínimo 150 palabras.",
-  
-  "tiempo_duracion": "SLIDE 8 (parte inferior). Estima razonablemente la duración total del cambio considerando: Ingeniería, Aprobaciones, Compras, Soporte del proveedor, Instalación, Programación, Validación. Indica un rango de tiempo realista.",
-  
-  "riesgos_controles": "SLIDE 12 (parte superior). Identifica riesgos residuales posteriores a la implementación y sus controles para asegurar la sostenibilidad del cambio. Array de 3-5 objetos con estructura: {{'riesgo': 'descripción del riesgo', 'control': 'medida de control específica', 'plazo': 'plazo de implementación'}}",
-  
-  "riesgos_shes": "SLIDE 12 (parte inferior). Genera riesgos SHES posteriores a la implementación. Si el cambio no genera riesgos adicionales de SHES, indícalo y propone controles de monitoreo, validación o mantenimiento. Array de 3-5 objetos con estructura: {{'riesgo': 'descripción del riesgo SHES', 'control': 'plan de acción específico', 'plazo': 'plazo'}}",
-  
-  "impacto_esperado": "SLIDE adicional. Agrega un resumen ejecutivo de uno o dos párrafos indicando el beneficio esperado en: Seguridad, Calidad, Productividad, Confiabilidad, Mantenimiento, Costos, Cumplimiento normativo.",
-  
-  "resumen_ejecutivo": "SLIDE adicional. Redacta un párrafo corto dirigido a los aprobadores de la MoC, explicando por qué el cambio debe ser aprobado y cuáles son los beneficios principales.",
-  
+  "moc_title": "Título técnico conciso (máx. 12 palabras)",
+  "condicion_actual": "SLIDE 3. Describe detalladamente cómo opera actualmente el sistema. Mínimo 200 palabras.",
+  "condicion_propuesta": "SLIDE 3. Describe detalladamente la solución propuesta. Mínimo 200 palabras.",
+  "justificacion_moc": "SLIDE 4. Explica la oportunidad de mejora que motiva el cambio. Mínimo 150 palabras.",
+  "descripcion_problema": "SLIDE 5. Desarrolla técnicamente el problema con causas, efectos y consecuencias. Mínimo 250 palabras.",
+  "razones_cambio": "SLIDE 6. Explica las razones técnicas que justifican la modificación. Mínimo 200 palabras.",
+  "alternativas_consideradas": "SLIDE 4. Genera TRES alternativas con viñetas '❖': Alternativa 1 (mantener actual), Alternativa 2 (solución parcial), Alternativa 3 (seleccionada).",
+  "plan_retorno": "SLIDE 4. Párrafo único de 3 líneas indicando cómo retornar a condición original en caso de falla.",
+  "recursos": "SLIDE 8. Describe recursos necesarios: Ingeniería, Automatización, Mantenimiento, Calidad, Producción, Seguridad, Proveedor, Materiales, Software, Validación. Mínimo 150 palabras.",
+  "plan_implementacion": "SLIDE 8. Párrafo describiendo etapas: evaluación, ingeniería, programación, instalación, pruebas, validación y liberación. Mínimo 150 palabras.",
+  "tiempo_duracion": "SLIDE 8. Estima duración total considerando: Ingeniería, Aprobaciones, Compras, Soporte proveedor, Instalación, Programación, Validación.",
+  "riesgos_controles": [{{"riesgo": "...", "control": "...", "plazo": "..."}}],
+  "riesgos_shes": [{{"riesgo": "...", "control": "...", "plazo": "..."}}],
+  "impacto_esperado": "Resumen ejecutivo de 1-2 párrafos con beneficios en Seguridad, Calidad, Productividad, Confiabilidad, Mantenimiento, Costos, Cumplimiento normativo.",
+  "resumen_ejecutivo": "Párrafo corto dirigido a aprobadores explicando por qué aprobar el cambio.",
   "checklist_360": [
-    {{"numero": 1, "factor": "Interacción o impacto con otras áreas/procesos", "aplica": "SI/NO", "descripcion": "Descripción del impacto o dejar vacío si NO"}},
+    {{"numero": 1, "factor": "Interacción o impacto con otras áreas/procesos", "aplica": "SI/NO", "descripcion": "..."}},
     {{"numero": 2, "factor": "Cambios en los procedimientos operativos, arranque y parada", "aplica": "SI/NO", "descripcion": "..."}},
     {{"numero": 3, "factor": "Parámetros operativos y límites de control", "aplica": "SI/NO", "descripcion": "..."}},
     {{"numero": 4, "factor": "Cambios en interfaces hombre-máquina y gestión de alarmas", "aplica": "SI/NO", "descripcion": "..."}},
@@ -545,9 +461,8 @@ Genera en ESPAÑOL formato JSON con esta estructura EXACTA (14 campos para 14 sl
     {{"numero": 15, "factor": "Cambios en las condiciones para trabajos especiales", "aplica": "SI/NO", "descripcion": "..."}},
     {{"numero": 16, "factor": "Cambios sucesivos que incrementan el riesgo global", "aplica": "SI/NO", "descripcion": "..."}}
   ],
-  
   "documentos_impactados": [
-    {{"numero": 1, "documento": "JSERA - IPERC", "aplica": "SI/NO", "modificacion": "Describir modificación o vacío si NO"}},
+    {{"numero": 1, "documento": "JSERA - IPERC", "aplica": "SI/NO", "modificacion": "..."}},
     {{"numero": 2, "documento": "Procedimiento de Trabajo, Instructivo/PO", "aplica": "SI/NO", "modificacion": "..."}},
     {{"numero": 3, "documento": "Formato/Checklist operativos", "aplica": "SI/NO", "modificacion": "..."}},
     {{"numero": 4, "documento": "Matriz de EPP", "aplica": "SI/NO", "modificacion": "..."}},
@@ -565,13 +480,7 @@ Genera en ESPAÑOL formato JSON con esta estructura EXACTA (14 campos para 14 sl
   ]
 }}
 
-IMPORTANTE:
-- Responde SOLO con JSON válido, sin comentarios ni texto adicional.
-- Todos los textos en ESPAÑOL.
-- Ortografía impecable con todas las tildes correctas.
-- Redacción profesional, técnica y humanizada.
-- Párrafos extensos y bien estructurados.
-- TODO EL CONTENIDO DEBE BASARSE EXCLUSIVAMENTE EN EL PROBLEMA ESPECÍFICO DEL USUARIO."""
+Responde SOLO con JSON válido."""
         try:
             text = self._call_api(prompt, temperature=0.4, max_tokens=16000)
             result = self._extract_json(text)
@@ -652,485 +561,946 @@ TEXTO:
             return Utils.correct_spelling_basic(text)
 
 # =============================================================================
-# REEMPLAZO INTELIGENTE DE TEXTO EN POWERPOINT Y WORD
+# GENERADOR NATIVO DE DOCUMENTOS (SIN TEMPLATES)
 # =============================================================================
-def replace_text_in_shape(shape, old_text, new_text):
-    if not shape.has_text_frame:
-        return False
-    text_frame = shape.text_frame
-    text = text_frame.text
-    if old_text not in text:
-        return False
-    for paragraph in text_frame.paragraphs:
-        paragraph_text = paragraph.text
-        if old_text in paragraph_text:
-            for run in paragraph.runs:
-                if old_text in run.text:
-                    run.text = run.text.replace(old_text, new_text)
-                    return True
-            if paragraph.runs:
-                paragraph.runs[0].text = paragraph_text.replace(old_text, new_text)
-                for run in paragraph.runs[1:]:
-                    run.text = ""
-                return True
-    return False
-
-def replace_all_text_in_presentation(prs, replacements):
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            if shape.has_text_frame:
-                for old_text, new_text in replacements.items():
-                    replace_text_in_shape(shape, old_text, new_text)
-            if shape.has_table:
-                table = shape.table
-                for row in table.rows:
-                    for cell in row.cells:
-                        for old_text, new_text in replacements.items():
-                            if old_text in cell.text:
-                                for paragraph in cell.text_frame.paragraphs:
-                                    for run in paragraph.runs:
-                                        if old_text in run.text:
-                                            run.text = run.text.replace(old_text, new_text)
-                                            break
-                                else:
-                                    if old_text in paragraph.text:
-                                        paragraph.text = paragraph.text.replace(old_text, new_text)
-
-def fill_table_cell(cell, text):
-    if cell.text_frame.paragraphs:
-        first_para = cell.text_frame.paragraphs[0]
-        if first_para.runs:
-            first_run = first_para.runs[0]
-            first_run.text = str(text)
-        else:
-            first_para.text = str(text)
-    else:
-        cell.text = str(text)
-
-# =============================================================================
-# GENERADOR DE DOCUMENTOS
-# =============================================================================
-class DocumentGenerator:
-    def generate_moc(self, data, images_by_slide=None, template_bytes=None):
-        """Genera MoC desde template con imágenes por slide"""
-        if template_bytes is None:
-            st.error("❌ Template MoC no cargado. Vaya a Configuración > Templates.")
-            return None
-        prs = Presentation(BytesIO(template_bytes))
+class NativeDocumentGenerator:
+    """Genera documentos Word nativos sin depender de templates externos"""
+    
+    @staticmethod
+    def _set_cell_shading(cell, color):
+        """Aplica color de fondo a una celda"""
+        shading_elm = OxmlElement('w:shd')
+        shading_elm.set(qn('w:fill'), color)
+        cell._tc.get_or_add_tcPr().append(shading_elm)
+    
+    @staticmethod
+    def _add_header_row(table, row_idx, texts, bg_color="1A5F7A"):
+        """Aplica formato de encabezado a una fila"""
+        for i, text in enumerate(texts):
+            if i < len(table.rows[row_idx].cells):
+                cell = table.rows[row_idx].cells[i]
+                cell.text = text
+                NativeDocumentGenerator._set_cell_shading(cell, bg_color)
+                for paragraph in cell.paragraphs:
+                    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in paragraph.runs:
+                        run.font.bold = True
+                        run.font.color.rgb = DocxRGBColor(0xFF, 0xFF, 0xFF)
+                        run.font.size = Pt(10)
+    
+    @staticmethod
+    def _add_page_header(doc, title, subtitle=""):
+        """Agrega encabezado estándar de página"""
+        # Título principal
+        heading = doc.add_heading(title, level=0)
+        heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in heading.runs:
+            run.font.color.rgb = DocxRGBColor(0x1A, 0x5F, 0x7A)
+            run.font.size = Pt(22)
         
-        # Reemplazos globales
-        replacements = {
-            "MOC:  OPTIMIZACIÓN DEL SISTEMA DE ALIMENTACIÓN DE RETARDOS EN ST08": f"MOC:  {data.get('moc_title', '')}",
-            "MOC: OPTIMIZACIÓN DEL SISTEMA DE ALIMENTACIÓN DE RETARDOS EN ST08": f"MOC:  {data.get('moc_title', '')}",
-            "FECHA 29/05/2026": f"FECHA {data.get('fecha', Utils.format_date_short())}",
-            "FECHA 29/05/2025": f"FECHA {data.get('fecha', Utils.format_date_short())}",
-            "NÚMERO DE LA MOC: 2026-MOC00307017": f"NÚMERO DE LA MOC: {data.get('moc_number', '')}",
-            "NUMERO DE LA MOC: 2026-MOC00307017": f"NÚMERO DE LA MOC: {data.get('moc_number', '')}",
-            "nÚmero DE LA MOC: XXXXXXXXXXXXX": f"NÚMERO DE LA MOC: {data.get('moc_number', '')}",
-            "NATURALEZA DE LA MOC: PERMANENTE": f"NATURALEZA DE LA MOC: {data.get('naturaleza', 'PERMANENTE').upper()}",
-            "NATURALEZA DE LA MOC: PERMANENTE ": f"NATURALEZA DE LA MOC: {data.get('naturaleza', 'PERMANENTE').upper()}",
-            "Naturaleza de la moc: permanente": f"Naturaleza de la moc: {data.get('naturaleza', 'permanente')}",
-            "ORIGINADOR DE LA MOC: DANIEL VICENTE/ ERNESTO RAMIREZ/ ROGER HUAMANI": f"ORIGINADOR DE LA MOC: {data.get('originador', '')}",
-            "ORIGINADOR DE LA MOC: ROGER HUAMANI": f"ORIGINADOR DE LA MOC: {data.get('originador', '')}",
-            "ORIGINADOR DE LA MOC:": f"ORIGINADOR DE LA MOC: {data.get('originador', '')}",
-        }
-        replace_all_text_in_presentation(prs, replacements)
-
-        # SLIDE 2: Equipo
-        if len(prs.slides) > 1:
-            slide2 = prs.slides[1]
-            equipo_replacements = {
-                "Daniel Vicente": data.get('produccion', ''),
-                "Viviana Hillon": data.get('specialist_shes', ''),
-                "Ernesto Ramirez/ Roger Huamani": data.get('mantenimiento', ''),
-                "Ernesto Ramirez": data.get('mantenimiento', ''),
-                "Roger Huamani": data.get('mantenimiento', ''),
-                "Maribel Burgos": data.get('revisor1', ''),
-                "Roberto Lopez": data.get('revisor2', ''),
-                "Victor Florian": data.get('revisor3', ''),
-                "Max Huaman": data.get('revisor4', ''),
-                "Hector Montoya": data.get('aprobador_final', ''),
-                "Gary Davies/ Roberto Lopez": data.get('expertos', ''),
-                "Gary Davies": data.get('experto1', ''),
-            }
-            for shape in slide2.shapes:
-                if shape.has_text_frame:
-                    for old_text, new_text in equipo_replacements.items():
-                        if new_text and old_text in shape.text_frame.text:
-                            replace_text_in_shape(shape, old_text, new_text)
-
-        # SLIDE 3: Tabla Condición Actual / Condición Propuesta
-        if len(prs.slides) > 2:
-            slide3 = prs.slides[2]
-            for shape in slide3.shapes:
-                if shape.has_table:
-                    table = shape.table
-                    if len(table.rows) >= 2 and len(table.columns) >= 2:
-                        fill_table_cell(table.cell(1, 0), data.get('condicion_actual', ''))
-                        fill_table_cell(table.cell(1, 1), data.get('condicion_propuesta', ''))
-
-        # SLIDE 4: Razones + Alternativas + Plan de retorno
-        if len(prs.slides) > 3:
-            slide4 = prs.slides[3]
-            for shape in slide4.shapes:
-                if shape.has_text_frame:
-                    text = shape.text_frame.text
-                    if "Razones del cambio" in text or "Eliminación de paradas" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            para_text = paragraph.text
-                            if "Eliminación" in para_text or "Adaptación" in para_text or "Reducción" in para_text or "Mejora" in para_text:
-                                for run in paragraph.runs:
-                                    run.text = ""
-                        if shape.text_frame.paragraphs:
-                            first_para = shape.text_frame.paragraphs[0]
-                            if first_para.runs:
-                                first_para.runs[0].text = data.get('razones_cambio', '')
-                            else:
-                                first_para.text = data.get('razones_cambio', '')
-                    if "Alternativas consideradas" in text or "Mantener sistema actual" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                run.text = ""
-                        if shape.text_frame.paragraphs:
-                            first_para = shape.text_frame.paragraphs[0]
-                            if first_para.runs:
-                                first_para.runs[0].text = data.get('alternativas_consideradas', '')
-                            else:
-                                first_para.text = data.get('alternativas_consideradas', '')
-                    if "Plan de retorno" in text or "Reinstalación del sistema actual" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                run.text = ""
-                        if shape.text_frame.paragraphs:
-                            first_para = shape.text_frame.paragraphs[0]
-                            if first_para.runs:
-                                first_para.runs[0].text = data.get('plan_retorno', '')
-                            else:
-                                first_para.text = data.get('plan_retorno', '')
-
-        # SLIDE 5: Descripción del Problema
-        if len(prs.slides) > 4:
-            slide5 = prs.slides[4]
-            for shape in slide5.shapes:
-                if shape.has_text_frame:
-                    text = shape.text_frame.text
-                    if "Descripción del Problema" in text or "Al procesar elementos" in text or "Cuando un elemento" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                run.text = ""
-                        if shape.text_frame.paragraphs:
-                            first_para = shape.text_frame.paragraphs[0]
-                            if first_para.runs:
-                                first_para.runs[0].text = data.get('descripcion_problema', '')
-                            else:
-                                first_para.text = data.get('descripcion_problema', '')
-
-        # SLIDE 6 y 7: Imágenes con numeración correlativa y texto explicativo
-        if images_by_slide and len(prs.slides) > 5:
-            # Recopilar todas las imágenes de los slides 6 y 7
-            all_slide_images = []
-            for slide_num in [6, 7]:
-                slide_key = f"slide_{slide_num}"
-                if slide_key in images_by_slide:
-                    for img_info in images_by_slide[slide_key]:
-                        all_slide_images.append((slide_num, img_info))
-            
-            # Insertar imágenes en los slides 6 y 7 existentes
-            for idx, (slide_num, img_info) in enumerate(all_slide_images[:2]):
-                target_slide = prs.slides[5 + idx] if (5 + idx) < len(prs.slides) else None
-                if target_slide:
-                    try:
-                        img_path = img_info["path"]
-                        img = Image.open(img_path)
-                        img_w, img_h = img.size
-                        aspect = img_w / img_h
-                        max_w = Inches(7.5)
-                        max_h = Inches(4.5)
-                        if aspect > (7.5/4.5):
-                            w = max_w
-                            h = w / aspect
-                        else:
-                            h = max_h
-                            w = h * aspect
-                        img_left = (Inches(10) - w) / 2
-                        target_slide.shapes.add_picture(img_path, img_left, Inches(1.5), w, h)
-                        
-                        # Agregar texto explicativo con numeración correlativa
-                        desc = img_info.get("desc", f"Figura {img_info.get('number', idx+1)}")
-                        desc_box = target_slide.shapes.add_textbox(Inches(0.5), Inches(6.5), Inches(9), Inches(0.8))
-                        dtf = desc_box.text_frame
-                        dtf.text = desc
-                        for p in dtf.paragraphs:
-                            p.font.size = Pt(11)
-                            p.font.italic = True
-                            p.alignment = PP_ALIGN.CENTER
-                    except Exception as e:
-                        st.warning(f"Error con imagen {idx+1}: {e}")
-            
-            # Si hay más imágenes, agregar slides adicionales
-            for idx, (slide_num, img_info) in enumerate(all_slide_images[2:]):
-                blank_layout = prs.slide_layouts[6] if len(prs.slide_layouts) > 6 else prs.slide_layouts[-1]
-                new_slide = prs.slides.add_slide(blank_layout)
+        if subtitle:
+            sub = doc.add_paragraph(subtitle)
+            sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in sub.runs:
+                run.font.color.rgb = DocxRGBColor(0x64, 0x74, 0x8B)
+                run.font.size = Pt(11)
+        
+        doc.add_paragraph()
+    
+    @staticmethod
+    def _add_section_title(doc, title, level=1):
+        """Agrega título de sección con formato"""
+        heading = doc.add_heading(title, level=level)
+        for run in heading.runs:
+            run.font.color.rgb = DocxRGBColor(0x1A, 0x5F, 0x7A)
+        return heading
+    
+    @staticmethod
+    def _add_content_paragraph(doc, text, bold=False, italic=False):
+        """Agrega párrafo de contenido"""
+        p = doc.add_paragraph()
+        run = p.add_run(text)
+        run.font.size = Pt(11)
+        run.font.name = 'Calibri'
+        run.bold = bold
+        run.italic = italic
+        p.paragraph_format.space_after = Pt(6)
+        return p
+    
+    @staticmethod
+    def generate_moc_docx(data, images=None):
+        """Genera documento MoC en formato A4 Word nativo"""
+        doc = Document()
+        
+        # Configurar márgenes A4
+        for section in doc.sections:
+            section.page_width = Cm(21)
+            section.page_height = Cm(29.7)
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2.5)
+        
+        # ===== PORTADA =====
+        NativeDocumentGenerator._add_page_header(
+            doc, 
+            "MANAGEMENT OF CHANGE (MoC)",
+            "Gestión del Cambio"
+        )
+        
+        # Tabla de información general
+        table = doc.add_table(rows=5, cols=2)
+        table.style = 'Table Grid'
+        info_fields = [
+            ("Título de la MoC:", data.get('moc_title', '')),
+            ("Número:", data.get('moc_number', '')),
+            ("Fecha:", data.get('fecha', '')),
+            ("Naturaleza:", data.get('naturaleza', '').upper()),
+            ("Originador:", data.get('originador', '')),
+        ]
+        for i, (label, value) in enumerate(info_fields):
+            cell_label = table.rows[i].cells[0]
+            cell_value = table.rows[i].cells[1]
+            cell_label.text = label
+            cell_value.text = value
+            NativeDocumentGenerator._set_cell_shading(cell_label, "E2E8F0")
+            for p in cell_label.paragraphs:
+                for run in p.runs:
+                    run.font.bold = True
+                    run.font.size = Pt(10)
+            for p in cell_value.paragraphs:
+                for run in p.runs:
+                    run.font.size = Pt(10)
+        
+        doc.add_paragraph()
+        
+        # Equipo de revisión
+        NativeDocumentGenerator._add_section_title(doc, "Equipo de Revisión", level=2)
+        equipo_text = f"""
+• Producción: {data.get('produccion', 'N/A')}
+• Specialist SHES: {data.get('specialist_shes', 'N/A')}
+• Mantenimiento: {data.get('mantenimiento', 'N/A')}
+• Revisores: {data.get('revisores', 'N/A')}
+• Experto Aprobador: {data.get('experto_aprobador', 'N/A')}
+"""
+        NativeDocumentGenerator._add_content_paragraph(doc, equipo_text.strip())
+        
+        doc.add_page_break()
+        
+        # ===== CONDICIÓN ACTUAL vs PROPUESTA =====
+        NativeDocumentGenerator._add_section_title(doc, "1. Condición Actual vs Condición Propuesta", level=1)
+        table = doc.add_table(rows=2, cols=2)
+        table.style = 'Table Grid'
+        
+        # Encabezados
+        NativeDocumentGenerator._add_header_row(table, 0, ["CONDICIÓN ACTUAL", "CONDICIÓN PROPUESTA"])
+        
+        # Contenido
+        table.rows[1].cells[0].text = data.get('condicion_actual', '')
+        table.rows[1].cells[1].text = data.get('condicion_propuesta', '')
+        for cell in table.rows[1].cells:
+            for p in cell.paragraphs:
+                for run in p.runs:
+                    run.font.size = Pt(10)
+        
+        doc.add_paragraph()
+        
+        # ===== JUSTIFICACIÓN =====
+        NativeDocumentGenerator._add_section_title(doc, "2. Justificación de la MoC", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('justificacion_moc', ''))
+        
+        # ===== DESCRIPCIÓN DEL PROBLEMA =====
+        NativeDocumentGenerator._add_section_title(doc, "3. Descripción del Problema", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('descripcion_problema', ''))
+        
+        # ===== RAZONES DEL CAMBIO =====
+        NativeDocumentGenerator._add_section_title(doc, "4. Razones del Cambio", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('razones_cambio', ''))
+        
+        # ===== ALTERNATIVAS =====
+        NativeDocumentGenerator._add_section_title(doc, "5. Alternativas Consideradas", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('alternativas_consideradas', ''))
+        
+        # ===== PLAN DE RETORNO =====
+        NativeDocumentGenerator._add_section_title(doc, "6. Plan de Retorno", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('plan_retorno', ''))
+        
+        doc.add_page_break()
+        
+        # ===== RECURSOS =====
+        NativeDocumentGenerator._add_section_title(doc, "7. Recursos", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('recursos', ''))
+        
+        # ===== PLAN DE IMPLEMENTACIÓN =====
+        NativeDocumentGenerator._add_section_title(doc, "8. Plan de Implementación", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('plan_implementacion', ''))
+        
+        # ===== TIEMPO =====
+        NativeDocumentGenerator._add_section_title(doc, "9. Tiempo de Duración del Cambio", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('tiempo_duracion', ''))
+        
+        doc.add_page_break()
+        
+        # ===== CHECKLIST 360° =====
+        NativeDocumentGenerator._add_section_title(doc, "10. Checklist 360° - Análisis Integral del Cambio", level=1)
+        checklist = data.get('checklist_360', [])
+        if checklist:
+            table = doc.add_table(rows=len(checklist)+1, cols=4)
+            table.style = 'Table Grid'
+            NativeDocumentGenerator._add_header_row(table, 0, ["N°", "Factor a Revisar", "Aplica", "Descripción del Impacto"])
+            for i, item in enumerate(checklist):
+                row = table.rows[i+1]
+                row.cells[0].text = str(item.get('numero', i+1))
+                row.cells[1].text = item.get('factor', '')
+                row.cells[2].text = item.get('aplica', 'NO')
+                row.cells[3].text = item.get('descripcion', '')
+                for cell in row.cells:
+                    for p in cell.paragraphs:
+                        for run in p.runs:
+                            run.font.size = Pt(9)
+        
+        doc.add_paragraph()
+        
+        # ===== DOCUMENTOS IMPACTADOS =====
+        NativeDocumentGenerator._add_section_title(doc, "11. Documentos Impactados por el Cambio", level=1)
+        docs_imp = data.get('documentos_impactados', [])
+        if docs_imp:
+            table = doc.add_table(rows=len(docs_imp)+1, cols=4)
+            table.style = 'Table Grid'
+            NativeDocumentGenerator._add_header_row(table, 0, ["N°", "Documento", "Aplica", "Modificación Específica"])
+            for i, item in enumerate(docs_imp):
+                row = table.rows[i+1]
+                row.cells[0].text = str(item.get('numero', i+1))
+                row.cells[1].text = item.get('documento', '')
+                row.cells[2].text = item.get('aplica', 'NO')
+                row.cells[3].text = item.get('modificacion', '')
+                for cell in row.cells:
+                    for p in cell.paragraphs:
+                        for run in p.runs:
+                            run.font.size = Pt(9)
+        
+        doc.add_page_break()
+        
+        # ===== RIESGOS DE CALIDAD =====
+        NativeDocumentGenerator._add_section_title(doc, "12. Riesgos de Calidad y Controles", level=1)
+        riesgos_cal = data.get('riesgos_controles', [])
+        if riesgos_cal:
+            table = doc.add_table(rows=len(riesgos_cal)+1, cols=3)
+            table.style = 'Table Grid'
+            NativeDocumentGenerator._add_header_row(table, 0, ["N°", "Riesgo Identificado", "Control / Plan de Acción"])
+            for i, risk in enumerate(riesgos_cal):
+                row = table.rows[i+1]
+                row.cells[0].text = str(i+1)
+                row.cells[1].text = risk.get('riesgo', '')
+                row.cells[2].text = risk.get('control', '')
+                for cell in row.cells:
+                    for p in cell.paragraphs:
+                        for run in p.runs:
+                            run.font.size = Pt(9)
+        
+        doc.add_paragraph()
+        
+        # ===== RIESGOS SHES =====
+        NativeDocumentGenerator._add_section_title(doc, "13. Riesgos SHES y Medidas de Control", level=1)
+        riesgos_shes = data.get('riesgos_shes', [])
+        if riesgos_shes:
+            table = doc.add_table(rows=len(riesgos_shes)+1, cols=4)
+            table.style = 'Table Grid'
+            NativeDocumentGenerator._add_header_row(table, 0, ["N°", "Riesgo Identificado", "Controles Propuestos", "Plazo"])
+            for i, risk in enumerate(riesgos_shes):
+                row = table.rows[i+1]
+                row.cells[0].text = str(i+1)
+                row.cells[1].text = risk.get('riesgo', '')
+                row.cells[2].text = risk.get('control', '')
+                row.cells[3].text = risk.get('plazo', '')
+                for cell in row.cells:
+                    for p in cell.paragraphs:
+                        for run in p.runs:
+                            run.font.size = Pt(9)
+        
+        doc.add_paragraph()
+        
+        # ===== IMPACTO ESPERADO =====
+        NativeDocumentGenerator._add_section_title(doc, "14. Impacto Esperado del Cambio", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('impacto_esperado', ''))
+        
+        # ===== RESUMEN EJECUTIVO =====
+        NativeDocumentGenerator._add_section_title(doc, "15. Resumen Ejecutivo para Aprobación", level=1)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('resumen_ejecutivo', ''))
+        
+        # ===== IMÁGENES =====
+        if images:
+            doc.add_page_break()
+            NativeDocumentGenerator._add_section_title(doc, "Anexo: Imágenes de Soporte", level=1)
+            for img_info in images:
                 try:
-                    img_path = img_info["path"]
-                    img = Image.open(img_path)
-                    img_w, img_h = img.size
-                    aspect = img_w / img_h
-                    max_w = Inches(8.5)
-                    max_h = Inches(5.5)
-                    if aspect > (8.5/5.5):
-                        w = max_w
-                        h = w / aspect
-                    else:
-                        h = max_h
-                        w = h * aspect
-                    img_left = (Inches(10) - w) / 2
-                    new_slide.shapes.add_picture(img_path, img_left, Inches(1), w, h)
-                    
-                    desc = img_info.get("desc", f"Figura {img_info.get('number', idx+3)}")
-                    desc_box = new_slide.shapes.add_textbox(Inches(0.5), Inches(6.8), Inches(9), Inches(0.8))
-                    dtf = desc_box.text_frame
-                    dtf.text = desc
-                    for p in dtf.paragraphs:
-                        p.font.size = Pt(11)
-                        p.font.italic = True
-                        p.alignment = PP_ALIGN.CENTER
+                    doc.add_picture(img_info['path'], width=Inches(5.5))
+                    last_paragraph = doc.paragraphs[-1]
+                    last_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    caption = doc.add_paragraph(img_info.get('desc', ''))
+                    caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in caption.runs:
+                        run.font.italic = True
+                        run.font.size = Pt(10)
+                    doc.add_paragraph()
                 except Exception as e:
-                    st.warning(f"Error con imagen: {e}")
-
-        # SLIDE 8: Recursos + Plan + Tiempo
-        if len(prs.slides) > 7:
-            slide8 = prs.slides[7]
-            for shape in slide8.shapes:
-                if shape.has_text_frame:
-                    text = shape.text_frame.text
-                    if "Recursos" in text and "Mecánicos" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                run.text = ""
-                        if shape.text_frame.paragraphs:
-                            first_para = shape.text_frame.paragraphs[0]
-                            if first_para.runs:
-                                first_para.runs[0].text = f"Recursos\n{data.get('recursos', '')}"
-                            else:
-                                first_para.text = f"Recursos\n{data.get('recursos', '')}"
-                    if "Plan de Implementación" in text or "Pruebas de deslizamiento" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                run.text = ""
-                        if shape.text_frame.paragraphs:
-                            first_para = shape.text_frame.paragraphs[0]
-                            if first_para.runs:
-                                first_para.runs[0].text = f"Plan de Implementación\n{data.get('plan_implementacion', '')}"
-                            else:
-                                first_para.text = f"Plan de Implementación\n{data.get('plan_implementacion', '')}"
-                    if "tiempo estimado" in text.lower() or "1.5 horas" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                run.text = ""
-                        if shape.text_frame.paragraphs:
-                            first_para = shape.text_frame.paragraphs[0]
-                            if first_para.runs:
-                                first_para.runs[0].text = data.get('tiempo_duracion', '')
-                            else:
-                                first_para.text = data.get('tiempo_duracion', '')
-
-        # SLIDE 9: Checklist 360°
-        if len(prs.slides) > 8:
-            slide9 = prs.slides[8]
-            checklist = data.get('checklist_360', [])
-            for shape in slide9.shapes:
-                if shape.has_table:
-                    table = shape.table
-                    for i, item in enumerate(checklist):
-                        row_idx = i + 1
-                        if row_idx < len(table.rows):
-                            if len(table.columns) > 0:
-                                fill_table_cell(table.cell(row_idx, 0), str(item.get('numero', i+1)))
-                            if len(table.columns) > 1:
-                                fill_table_cell(table.cell(row_idx, 1), item.get('factor', ''))
-                            if len(table.columns) > 2:
-                                fill_table_cell(table.cell(row_idx, 2), item.get('aplica', 'NO'))
-                            if len(table.columns) > 3:
-                                fill_table_cell(table.cell(row_idx, 3), item.get('descripcion', ''))
-
-        # SLIDE 10: Documentos impactados
-        if len(prs.slides) > 9:
-            slide10 = prs.slides[9]
-            docs_impactados = data.get('documentos_impactados', [])
-            for shape in slide10.shapes:
-                if shape.has_table:
-                    table = shape.table
-                    for i, item in enumerate(docs_impactados):
-                        row_idx = i + 1
-                        if row_idx < len(table.rows):
-                            if len(table.columns) > 0:
-                                fill_table_cell(table.cell(row_idx, 0), str(item.get('numero', i+1)))
-                            if len(table.columns) > 1:
-                                fill_table_cell(table.cell(row_idx, 1), item.get('documento', ''))
-                            if len(table.columns) > 2:
-                                fill_table_cell(table.cell(row_idx, 2), item.get('aplica', 'NO'))
-                            if len(table.columns) > 3:
-                                fill_table_cell(table.cell(row_idx, 3), item.get('modificacion', ''))
-
-        # SLIDE 12: Riesgos SHES
-        if len(prs.slides) > 11:
-            slide12 = prs.slides[11]
-            riesgos_shes = data.get('riesgos_shes', [])
-            riesgos_calidad = data.get('riesgos_controles', [])
-            all_risks = riesgos_calidad + riesgos_shes
-            for shape in slide12.shapes:
-                if shape.has_table:
-                    table = shape.table
-                    for i, risk in enumerate(all_risks):
-                        row_idx = i + 1
-                        if row_idx < len(table.rows):
-                            if len(table.columns) > 0:
-                                fill_table_cell(table.cell(row_idx, 0), str(i + 1))
-                            if len(table.columns) > 1:
-                                fill_table_cell(table.cell(row_idx, 1), risk.get('riesgo', ''))
-                            if len(table.columns) > 2:
-                                fill_table_cell(table.cell(row_idx, 2), risk.get('control', ''))
-                            if len(table.columns) > 3:
-                                fill_table_cell(table.cell(row_idx, 3), risk.get('plazo', ''))
-
+                    doc.add_paragraph(f"[Error al cargar imagen: {e}]")
+        
+        # Guardar en buffer
         output_buffer = BytesIO()
-        prs.save(output_buffer)
+        doc.save(output_buffer)
         output_buffer.seek(0)
         return output_buffer
-
-    def generate_a3(self, data, images=None, template_bytes=None):
-        if template_bytes is None:
-            st.error("❌ Template A3 no cargado.")
-            return None
-        doc = Document(BytesIO(template_bytes))
-        replacements = {
-            "Autor:": f"Autor: {data.get('autor', '')}",
-            "Miembros del equipo:": f"Miembros del equipo: {data.get('miembros_equipo', '')}",
-        }
-        for para in doc.paragraphs:
-            for old, new in replacements.items():
-                if old in para.text:
-                    para.text = new
-        doc.add_page_break()
-        heading = doc.add_heading(data.get('titulo', 'Mejora A3'), level=1)
-        sections = [
-            ("ANTECEDENTES", "antecedentes"), ("PROBLEMA ACTUAL", "problema_actual"),
-            ("ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"), ("OBJETIVOS", "objetivos"),
-            ("ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"), ("CONTRAMEDIDAS", "contramedidas"),
-            ("RESULTADOS ESPERADOS", "resultados_esperados"), ("PLAN DE SEGUIMIENTO", "plan_seguimiento"),
-            ("LECCIONES APRENDIDAS", "lecciones_aprendidas"), ("ESTANDARIZACIÓN", "estandarizacion"),
+    
+    @staticmethod
+    def generate_a3_docx(data, images=None):
+        """Genera documento A3 en formato A4 Word nativo"""
+        doc = Document()
+        
+        for section in doc.sections:
+            section.page_width = Cm(21)
+            section.page_height = Cm(29.7)
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2.5)
+        
+        # ===== PORTADA =====
+        NativeDocumentGenerator._add_page_header(
+            doc,
+            "RESOLUCIÓN DE PROBLEMAS A3",
+            "MEJORA CONTINUA"
+        )
+        
+        # Información general
+        table = doc.add_table(rows=4, cols=2)
+        table.style = 'Table Grid'
+        info_fields = [
+            ("Título:", data.get('titulo', '')),
+            ("Área:", data.get('area', '')),
+            ("Autor:", data.get('autor', '')),
+            ("Fecha:", data.get('fecha', '')),
         ]
-        for section_title, key in sections:
-            h = doc.add_heading(section_title, level=2)
+        for i, (label, value) in enumerate(info_fields):
+            cell_label = table.rows[i].cells[0]
+            cell_value = table.rows[i].cells[1]
+            cell_label.text = label
+            cell_value.text = value
+            NativeDocumentGenerator._set_cell_shading(cell_label, "E2E8F0")
+            for p in cell_label.paragraphs:
+                for run in p.runs:
+                    run.font.bold = True
+                    run.font.size = Pt(10)
+            for p in cell_value.paragraphs:
+                for run in p.runs:
+                    run.font.size = Pt(10)
+        
+        doc.add_paragraph()
+        
+        # ===== SECCIONES A3 =====
+        sections = [
+            ("1. ANTECEDENTES", "antecedentes"),
+            ("2. PROBLEMA ACTUAL", "problema_actual"),
+            ("3. ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"),
+            ("4. OBJETIVOS", "objetivos"),
+            ("5. ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"),
+            ("6. CONTRAMEDIDAS", "contramedidas"),
+            ("7. RESULTADOS ESPERADOS", "resultados_esperados"),
+            ("8. PLAN DE SEGUIMIENTO", "plan_seguimiento"),
+            ("9. LECCIONES APRENDIDAS", "lecciones_aprendidas"),
+            ("10. ESTANDARIZACIÓN", "estandarizacion"),
+        ]
+        
+        for title, key in sections:
+            NativeDocumentGenerator._add_section_title(doc, title, level=2)
             content = data.get(key, '')
             if content:
-                doc.add_paragraph(content)
+                NativeDocumentGenerator._add_content_paragraph(doc, content)
+        
+        # ===== IMÁGENES =====
+        if images:
+            doc.add_page_break()
+            NativeDocumentGenerator._add_section_title(doc, "Anexo: Imágenes de Soporte", level=1)
+            for img_info in images:
+                try:
+                    doc.add_picture(img_info['path'], width=Inches(5.5))
+                    last_paragraph = doc.paragraphs[-1]
+                    last_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    caption = doc.add_paragraph(img_info.get('desc', ''))
+                    caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in caption.runs:
+                        run.font.italic = True
+                        run.font.size = Pt(10)
+                    doc.add_paragraph()
+                except Exception as e:
+                    doc.add_paragraph(f"[Error al cargar imagen: {e}]")
+        
+        output_buffer = BytesIO()
+        doc.save(output_buffer)
+        output_buffer.seek(0)
+        return output_buffer
+    
+    @staticmethod
+    def generate_kaizen_docx(data, images=None):
+        """Genera documento Kaizen en formato A4 Word nativo"""
+        doc = Document()
+        
+        for section in doc.sections:
+            section.page_width = Cm(21)
+            section.page_height = Cm(29.7)
+            section.top_margin = Cm(2)
+            section.bottom_margin = Cm(2)
+            section.left_margin = Cm(2.5)
+            section.right_margin = Cm(2.5)
+        
+        # ===== PORTADA =====
+        NativeDocumentGenerator._add_page_header(
+            doc,
+            "SIMPLE KAIZEN",
+            "Registro de Mejora Continua"
+        )
+        
+        # Información general
+        table = doc.add_table(rows=5, cols=2)
+        table.style = 'Table Grid'
+        info_fields = [
+            ("Name (Título):", data.get('titulo', '')),
+            ("Plant / Area:", data.get('area', '')),
+            ("Date:", data.get('fecha', '')),
+            ("Leader:", data.get('leader', '')),
+            ("Team Members:", data.get('team_members', '')),
+        ]
+        for i, (label, value) in enumerate(info_fields):
+            cell_label = table.rows[i].cells[0]
+            cell_value = table.rows[i].cells[1]
+            cell_label.text = label
+            cell_value.text = value
+            NativeDocumentGenerator._set_cell_shading(cell_label, "E2E8F0")
+            for p in cell_label.paragraphs:
+                for run in p.runs:
+                    run.font.bold = True
+                    run.font.size = Pt(10)
+            for p in cell_value.paragraphs:
+                for run in p.runs:
+                    run.font.size = Pt(10)
+        
+        doc.add_paragraph()
+        
+        # ===== OPORTUNIDAD =====
+        NativeDocumentGenerator._add_section_title(doc, "Opportunity (Descripción del Problema)", level=2)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('descripcion_problema', ''))
+        
+        # ===== IMPROVEMENT =====
+        NativeDocumentGenerator._add_section_title(doc, "Improvement (Solución Implementada)", level=2)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('solucion', ''))
+        
+        # ===== BENEFIT =====
+        NativeDocumentGenerator._add_section_title(doc, "Benefit (Beneficios)", level=2)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('beneficios', ''))
+        
+        # ===== CLASIFICACIÓN =====
+        doc.add_page_break()
+        NativeDocumentGenerator._add_section_title(doc, "Clasificación del Kaizen", level=1)
+        
+        # Tabla de 8 Wastes
+        NativeDocumentGenerator._add_section_title(doc, "8 Wastes (Desperdicios)", level=2)
+        wastes = ["Motion", "Skills", "Inventory", "Transportation", 
+                  "Over Production", "Over Processing", "Waiting", "Defects"]
+        selected_waste = data.get('tipo_desperdicio', '').lower()
+        
+        table = doc.add_table(rows=len(wastes)+1, cols=2)
+        table.style = 'Table Grid'
+        NativeDocumentGenerator._add_header_row(table, 0, ["Desperdicio", "Seleccionado"])
+        for i, waste in enumerate(wastes):
+            row = table.rows[i+1]
+            row.cells[0].text = waste
+            is_selected = waste.lower() in selected_waste
+            row.cells[1].text = "✓ X" if is_selected else ""
+            if is_selected:
+                NativeDocumentGenerator._set_cell_shading(row.cells[1], "DCFCE7")
+                for p in row.cells[1].paragraphs:
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in p.runs:
+                        run.font.bold = True
+                        run.font.color.rgb = DocxRGBColor(0x16, 0x65, 0x34)
+        
+        doc.add_paragraph()
+        
+        # Tabla BTO
+        NativeDocumentGenerator._add_section_title(doc, "BTO Impact", level=2)
+        bto_categories = [
+            "Safe and Sustainable",
+            "People & Culture",
+            "Network Optimisation",
+            "Supply Chain and Manufacturing Excellence"
+        ]
+        selected_bto = data.get('impacto_bto', '').lower()
+        
+        table = doc.add_table(rows=len(bto_categories)+1, cols=2)
+        table.style = 'Table Grid'
+        NativeDocumentGenerator._add_header_row(table, 0, ["Categoría BTO", "Seleccionado"])
+        for i, bto in enumerate(bto_categories):
+            row = table.rows[i+1]
+            row.cells[0].text = bto
+            is_selected = bto.lower() in selected_bto
+            row.cells[1].text = "✓ X" if is_selected else ""
+            if is_selected:
+                NativeDocumentGenerator._set_cell_shading(row.cells[1], "DCFCE7")
+                for p in row.cells[1].paragraphs:
+                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in p.runs:
+                        run.font.bold = True
+                        run.font.color.rgb = DocxRGBColor(0x16, 0x65, 0x34)
+        
+        doc.add_paragraph()
+        
+        # ===== PRÓXIMOS PASOS =====
+        NativeDocumentGenerator._add_section_title(doc, "Próximos Pasos", level=2)
+        NativeDocumentGenerator._add_content_paragraph(doc, data.get('proximos_pasos', ''))
+        
+        # ===== IMÁGENES =====
+        if images:
+            doc.add_page_break()
+            NativeDocumentGenerator._add_section_title(doc, "Anexo: Imágenes Antes / Después", level=1)
+            for img_info in images:
+                try:
+                    doc.add_picture(img_info['path'], width=Inches(5.5))
+                    last_paragraph = doc.paragraphs[-1]
+                    last_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    caption = doc.add_paragraph(img_info.get('desc', ''))
+                    caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in caption.runs:
+                        run.font.italic = True
+                        run.font.size = Pt(10)
+                    doc.add_paragraph()
+                except Exception as e:
+                    doc.add_paragraph(f"[Error al cargar imagen: {e}]")
+        
         output_buffer = BytesIO()
         doc.save(output_buffer)
         output_buffer.seek(0)
         return output_buffer
 
-    def generate_kaizen(self, data, images=None, template_bytes=None):
-        if template_bytes is None:
-            st.error("❌ Template Kaizen no cargado.")
+# =============================================================================
+# EXPORTADOR PDF NATIVO
+# =============================================================================
+class NativePDFExporter:
+    """Genera PDFs nativos usando ReportLab"""
+    
+    @staticmethod
+    def generate_moc_pdf(data, images=None):
+        """Genera PDF de MoC nativo"""
+        if not REPORTLAB_AVAILABLE:
             return None
-        prs = Presentation(BytesIO(template_bytes))
-        if len(prs.slides) > 0:
-            slide = prs.slides[0]
-            for shape in slide.shapes:
-                if shape.has_text_frame:
-                    text = shape.text_frame.text
-                    if "Name:" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                if "Name:" in run.text:
-                                    run.text = f"Name: {data.get('titulo', '')}"
-                    if "Plant/Area:" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                if "Plant/Area:" in run.text:
-                                    run.text = f"Plant/Area: {data.get('area', '')}"
-                    if "Date:" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                if "Date:" in run.text:
-                                    run.text = f"Date: {data.get('fecha', '')}"
-                    if "Leader" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                if "Leader" in run.text:
-                                    run.text = f"Leader: {data.get('leader', '')}"
-                    if "Opportunity" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                if "Opportunity" in run.text:
-                                    run.text = f"Opportunity:\n{data.get('descripcion_problema', '')}"
-                    if "Improvement" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                if "Improvement" in run.text:
-                                    run.text = f"Improvement:\n{data.get('solucion', '')}"
-                    if "Benefit" in text:
-                        for paragraph in shape.text_frame.paragraphs:
-                            for run in paragraph.runs:
-                                if "Benefit" in run.text:
-                                    run.text = f"Benefit:\n{data.get('beneficios', '')}"
-        output_buffer = BytesIO()
-        prs.save(output_buffer)
-        output_buffer.seek(0)
-        return output_buffer
-
-class PDFExporter:
+        
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4,
+                                rightMargin=50, leftMargin=50,
+                                topMargin=50, bottomMargin=50)
+        
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle', parent=styles['Heading1'],
+            fontSize=20, textColor=colors.HexColor('#1a5f7a'),
+            spaceAfter=20, alignment=TA_CENTER, fontName='Helvetica-Bold'
+        )
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle', parent=styles['Normal'],
+            fontSize=11, textColor=colors.HexColor('#64748b'),
+            spaceAfter=10, alignment=TA_CENTER
+        )
+        heading_style = ParagraphStyle(
+            'CustomHeading', parent=styles['Heading2'],
+            fontSize=13, textColor=colors.HexColor('#1a5f7a'),
+            spaceAfter=8, spaceBefore=12, fontName='Helvetica-Bold'
+        )
+        body_style = ParagraphStyle(
+            'CustomBody', parent=styles['BodyText'],
+            fontSize=10, leading=13, alignment=TA_JUSTIFY, fontName='Helvetica'
+        )
+        
+        story = []
+        
+        # Portada
+        story.append(Paragraph("MANAGEMENT OF CHANGE (MoC)", title_style))
+        story.append(Paragraph("Gestión del Cambio", subtitle_style))
+        story.append(Spacer(1, 15))
+        
+        # Tabla de información
+        info_data = [
+            ["Título:", data.get('moc_title', '')],
+            ["Número:", data.get('moc_number', '')],
+            ["Fecha:", data.get('fecha', '')],
+            ["Naturaleza:", data.get('naturaleza', '').upper()],
+            ["Originador:", data.get('originador', '')],
+        ]
+        info_table = Table(info_data, colWidths=[120, 350])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#E2E8F0')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 15))
+        
+        # Equipo
+        story.append(Paragraph("Equipo de Revisión", heading_style))
+        equipo_text = f"""
+        Producción: {data.get('produccion', 'N/A')}<br/>
+        Specialist SHES: {data.get('specialist_shes', 'N/A')}<br/>
+        Mantenimiento: {data.get('mantenimiento', 'N/A')}<br/>
+        Revisores: {data.get('revisores', 'N/A')}<br/>
+        Experto Aprobador: {data.get('experto_aprobador', 'N/A')}
+        """
+        story.append(Paragraph(equipo_text, body_style))
+        story.append(Spacer(1, 10))
+        
+        # Secciones
+        sections = [
+            ("1. Condición Actual", "condicion_actual"),
+            ("2. Condición Propuesta", "condicion_propuesta"),
+            ("3. Justificación de la MoC", "justificacion_moc"),
+            ("4. Descripción del Problema", "descripcion_problema"),
+            ("5. Razones del Cambio", "razones_cambio"),
+            ("6. Alternativas Consideradas", "alternativas_consideradas"),
+            ("7. Plan de Retorno", "plan_retorno"),
+            ("8. Recursos", "recursos"),
+            ("9. Plan de Implementación", "plan_implementacion"),
+            ("10. Tiempo de Duración", "tiempo_duracion"),
+            ("14. Impacto Esperado", "impacto_esperado"),
+            ("15. Resumen Ejecutivo", "resumen_ejecutivo"),
+        ]
+        
+        for title, key in sections:
+            story.append(Paragraph(title, heading_style))
+            content = data.get(key, '').replace('\n', '<br/>')
+            story.append(Paragraph(content, body_style))
+            story.append(Spacer(1, 8))
+        
+        # Checklist 360°
+        story.append(Paragraph("11. Checklist 360° - Análisis Integral", heading_style))
+        checklist = data.get('checklist_360', [])
+        if checklist:
+            chk_data = [["N°", "Factor", "Aplica", "Descripción"]]
+            for item in checklist:
+                chk_data.append([
+                    str(item.get('numero', '')),
+                    item.get('factor', ''),
+                    item.get('aplica', 'NO'),
+                    item.get('descripcion', '')
+                ])
+            chk_table = Table(chk_data, colWidths=[25, 180, 40, 225])
+            chk_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a5f7a')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F8FAFC')]),
+            ]))
+            story.append(chk_table)
+            story.append(Spacer(1, 10))
+        
+        # Documentos impactados
+        story.append(Paragraph("12. Documentos Impactados", heading_style))
+        docs_imp = data.get('documentos_impactados', [])
+        if docs_imp:
+            doc_data = [["N°", "Documento", "Aplica", "Modificación"]]
+            for item in docs_imp:
+                doc_data.append([
+                    str(item.get('numero', '')),
+                    item.get('documento', ''),
+                    item.get('aplica', 'NO'),
+                    item.get('modificacion', '')
+                ])
+            doc_table = Table(doc_data, colWidths=[25, 150, 40, 255])
+            doc_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a5f7a')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            story.append(doc_table)
+            story.append(Spacer(1, 10))
+        
+        # Riesgos
+        story.append(Paragraph("13. Riesgos de Calidad y SHES", heading_style))
+        riesgos_cal = data.get('riesgos_controles', [])
+        if riesgos_cal:
+            risk_data = [["N°", "Riesgo", "Control"]]
+            for i, risk in enumerate(riesgos_cal, 1):
+                risk_data.append([str(i), risk.get('riesgo', ''), risk.get('control', '')])
+            risk_table = Table(risk_data, colWidths=[25, 220, 225])
+            risk_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a5f7a')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            story.append(risk_table)
+        
+        riesgos_shes = data.get('riesgos_shes', [])
+        if riesgos_shes:
+            story.append(Spacer(1, 10))
+            shes_data = [["N°", "Riesgo SHES", "Control", "Plazo"]]
+            for i, risk in enumerate(riesgos_shes, 1):
+                shes_data.append([str(i), risk.get('riesgo', ''), risk.get('control', ''), risk.get('plazo', '')])
+            shes_table = Table(shes_data, colWidths=[25, 160, 180, 105])
+            shes_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1a5f7a')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ]))
+            story.append(shes_table)
+        
+        # Imágenes
+        if images:
+            story.append(PageBreak())
+            story.append(Paragraph("Anexo: Imágenes de Soporte", heading_style))
+            for img_info in images:
+                try:
+                    img = RLImage(img_info['path'], width=450)
+                    story.append(img)
+                    story.append(Paragraph(img_info.get('desc', ''), subtitle_style))
+                    story.append(Spacer(1, 10))
+                except Exception as e:
+                    story.append(Paragraph(f"[Error: {e}]", body_style))
+        
+        doc.build(story)
+        buffer.seek(0)
+        return buffer.getvalue()
+    
     @staticmethod
-    def pptx_to_pdf_libreoffice(pptx_bytes, output_filename):
-        try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                tmpdir = Path(tmpdir)
-                input_path = tmpdir / "input.pptx"
-                with open(input_path, 'wb') as f:
-                    f.write(pptx_bytes)
-                result = subprocess.run(
-                    ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', str(tmpdir), str(input_path)],
-                    capture_output=True, text=True, timeout=60
-                )
-                output_path = tmpdir / "input.pdf"
-                if output_path.exists():
-                    with open(output_path, 'rb') as f:
-                        return f.read()
-        except Exception as e:
-            st.warning(f"Conversión LibreOffice falló: {e}")
-        return None
-
+    def generate_a3_pdf(data, images=None):
+        """Genera PDF de A3 nativo"""
+        if not REPORTLAB_AVAILABLE:
+            return None
+        
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4,
+                                rightMargin=50, leftMargin=50,
+                                topMargin=50, bottomMargin=50)
+        
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle', parent=styles['Heading1'],
+            fontSize=20, textColor=colors.HexColor('#1a5f7a'),
+            spaceAfter=20, alignment=TA_CENTER, fontName='Helvetica-Bold'
+        )
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle', parent=styles['Normal'],
+            fontSize=11, textColor=colors.HexColor('#64748b'),
+            spaceAfter=10, alignment=TA_CENTER
+        )
+        heading_style = ParagraphStyle(
+            'CustomHeading', parent=styles['Heading2'],
+            fontSize=13, textColor=colors.HexColor('#1a5f7a'),
+            spaceAfter=8, spaceBefore=12, fontName='Helvetica-Bold'
+        )
+        body_style = ParagraphStyle(
+            'CustomBody', parent=styles['BodyText'],
+            fontSize=10, leading=13, alignment=TA_JUSTIFY, fontName='Helvetica'
+        )
+        
+        story = []
+        story.append(Paragraph("RESOLUCIÓN DE PROBLEMAS A3", title_style))
+        story.append(Paragraph("MEJORA CONTINUA", subtitle_style))
+        story.append(Spacer(1, 15))
+        
+        info_data = [
+            ["Título:", data.get('titulo', '')],
+            ["Área:", data.get('area', '')],
+            ["Autor:", data.get('autor', '')],
+            ["Fecha:", data.get('fecha', '')],
+        ]
+        info_table = Table(info_data, colWidths=[120, 350])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#E2E8F0')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 15))
+        
+        sections = [
+            ("1. ANTECEDENTES", "antecedentes"),
+            ("2. PROBLEMA ACTUAL", "problema_actual"),
+            ("3. ANÁLISIS DE LA SITUACIÓN", "analisis_situacion"),
+            ("4. OBJETIVOS", "objetivos"),
+            ("5. ANÁLISIS DE CAUSA RAÍZ", "analisis_causa_raiz"),
+            ("6. CONTRAMEDIDAS", "contramedidas"),
+            ("7. RESULTADOS ESPERADOS", "resultados_esperados"),
+            ("8. PLAN DE SEGUIMIENTO", "plan_seguimiento"),
+            ("9. LECCIONES APRENDIDAS", "lecciones_aprendidas"),
+            ("10. ESTANDARIZACIÓN", "estandarizacion"),
+        ]
+        
+        for title, key in sections:
+            story.append(Paragraph(title, heading_style))
+            content = data.get(key, '').replace('\n', '<br/>')
+            story.append(Paragraph(content, body_style))
+            story.append(Spacer(1, 8))
+        
+        if images:
+            story.append(PageBreak())
+            story.append(Paragraph("Anexo: Imágenes de Soporte", heading_style))
+            for img_info in images:
+                try:
+                    img = RLImage(img_info['path'], width=450)
+                    story.append(img)
+                    story.append(Paragraph(img_info.get('desc', ''), subtitle_style))
+                    story.append(Spacer(1, 10))
+                except Exception as e:
+                    story.append(Paragraph(f"[Error: {e}]", body_style))
+        
+        doc.build(story)
+        buffer.seek(0)
+        return buffer.getvalue()
+    
     @staticmethod
-    def docx_to_pdf_libreoffice(docx_bytes, output_filename):
-        try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                tmpdir = Path(tmpdir)
-                input_path = tmpdir / "input.docx"
-                with open(input_path, 'wb') as f:
-                    f.write(docx_bytes)
-                result = subprocess.run(
-                    ['libreoffice', '--headless', '--convert-to', 'pdf', '--outdir', str(tmpdir), str(input_path)],
-                    capture_output=True, text=True, timeout=60
-                )
-                output_path = tmpdir / "input.pdf"
-                if output_path.exists():
-                    with open(output_path, 'rb') as f:
-                        return f.read()
-        except Exception as e:
-            st.warning(f"Conversión LibreOffice falló: {e}")
-        return None
+    def generate_kaizen_pdf(data, images=None):
+        """Genera PDF de Kaizen nativo"""
+        if not REPORTLAB_AVAILABLE:
+            return None
+        
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4,
+                                rightMargin=50, leftMargin=50,
+                                topMargin=50, bottomMargin=50)
+        
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle', parent=styles['Heading1'],
+            fontSize=20, textColor=colors.HexColor('#f59e0b'),
+            spaceAfter=20, alignment=TA_CENTER, fontName='Helvetica-Bold'
+        )
+        subtitle_style = ParagraphStyle(
+            'CustomSubtitle', parent=styles['Normal'],
+            fontSize=11, textColor=colors.HexColor('#64748b'),
+            spaceAfter=10, alignment=TA_CENTER
+        )
+        heading_style = ParagraphStyle(
+            'CustomHeading', parent=styles['Heading2'],
+            fontSize=13, textColor=colors.HexColor('#f59e0b'),
+            spaceAfter=8, spaceBefore=12, fontName='Helvetica-Bold'
+        )
+        body_style = ParagraphStyle(
+            'CustomBody', parent=styles['BodyText'],
+            fontSize=10, leading=13, alignment=TA_JUSTIFY, fontName='Helvetica'
+        )
+        
+        story = []
+        story.append(Paragraph("SIMPLE KAIZEN", title_style))
+        story.append(Paragraph("Registro de Mejora Continua", subtitle_style))
+        story.append(Spacer(1, 15))
+        
+        info_data = [
+            ["Name:", data.get('titulo', '')],
+            ["Plant / Area:", data.get('area', '')],
+            ["Date:", data.get('fecha', '')],
+            ["Leader:", data.get('leader', '')],
+            ["Team Members:", data.get('team_members', '')],
+        ]
+        info_table = Table(info_data, colWidths=[120, 350])
+        info_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#FEF3C7')),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ]))
+        story.append(info_table)
+        story.append(Spacer(1, 15))
+        
+        story.append(Paragraph("Opportunity (Problema)", heading_style))
+        story.append(Paragraph(data.get('descripcion_problema', '').replace('\n', '<br/>'), body_style))
+        story.append(Spacer(1, 10))
+        
+        story.append(Paragraph("Improvement (Solución)", heading_style))
+        story.append(Paragraph(data.get('solucion', '').replace('\n', '<br/>'), body_style))
+        story.append(Spacer(1, 10))
+        
+        story.append(Paragraph("Benefit (Beneficios)", heading_style))
+        story.append(Paragraph(data.get('beneficios', '').replace('\n', '<br/>'), body_style))
+        story.append(Spacer(1, 10))
+        
+        story.append(Paragraph("Próximos Pasos", heading_style))
+        story.append(Paragraph(data.get('proximos_pasos', '').replace('\n', '<br/>'), body_style))
+        story.append(Spacer(1, 15))
+        
+        # Clasificación
+        story.append(Paragraph("Clasificación del Kaizen", heading_style))
+        
+        wastes = ["Motion", "Skills", "Inventory", "Transportation",
+                  "Over Production", "Over Processing", "Waiting", "Defects"]
+        selected_waste = data.get('tipo_desperdicio', '').lower()
+        waste_data = [["Desperdicio", "Seleccionado"]]
+        for waste in wastes:
+            is_selected = waste.lower() in selected_waste
+            waste_data.append([waste, "✓ X" if is_selected else ""])
+        waste_table = Table(waste_data, colWidths=[200, 100])
+        waste_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f59e0b')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ]))
+        story.append(waste_table)
+        story.append(Spacer(1, 10))
+        
+        bto_categories = ["Safe and Sustainable", "People & Culture",
+                          "Network Optimisation", "Supply Chain and Manufacturing Excellence"]
+        selected_bto = data.get('impacto_bto', '').lower()
+        bto_data = [["Categoría BTO", "Seleccionado"]]
+        for bto in bto_categories:
+            is_selected = bto.lower() in selected_bto
+            bto_data.append([bto, "✓ X" if is_selected else ""])
+        bto_table = Table(bto_data, colWidths=[250, 100])
+        bto_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f59e0b')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ]))
+        story.append(bto_table)
+        
+        if images:
+            story.append(PageBreak())
+            story.append(Paragraph("Anexo: Imágenes Antes / Después", heading_style))
+            for img_info in images:
+                try:
+                    img = RLImage(img_info['path'], width=450)
+                    story.append(img)
+                    story.append(Paragraph(img_info.get('desc', ''), subtitle_style))
+                    story.append(Spacer(1, 10))
+                except Exception as e:
+                    story.append(Paragraph(f"[Error: {e}]", body_style))
+        
+        doc.build(story)
+        buffer.seek(0)
+        return buffer.getvalue()
 
 # =============================================================================
-# INICIALIZACIÓN CON MIGRACIÓN AUTOMÁTICA
+# SESSION STATE
 # =============================================================================
 def init_session_state():
     saved_config = LocalStorage.load_config()
     saved_history = LocalStorage.load_history()
     
     if saved_config and saved_config.get("gemini_model") in GeminiService.DEPRECATED_MODELS:
-        old_model = saved_config.get("gemini_model")
         saved_config["gemini_model"] = GeminiService.DEFAULT_MODEL
         LocalStorage.save_config(saved_config)
     
@@ -1147,18 +1517,13 @@ def init_session_state():
             "last_a3_number": 0,
             "last_kaizen_number": 0,
             "spell_check": True,
-            "thinking_level": "Estándar",
             "auto_correct": True,
         },
         "history": saved_history or {"documents": []},
         "generated_data": {},
         "doc_meta": {},
-        "doc_images_by_slide": {},  # NUEVO: imágenes por slide
         "doc_images": [],
         "doc_type": None,
-        "template_moc_bytes": LocalStorage.load_template_bytes("moc"),
-        "template_a3_bytes": LocalStorage.load_template_bytes("a3"),
-        "template_kaizen_bytes": LocalStorage.load_template_bytes("kaizen"),
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -1171,83 +1536,7 @@ def init_session_state():
 init_session_state()
 
 # =============================================================================
-# COMPONENTE: CARGA DE IMÁGENES POR SLIDE CON NUMERACIÓN CORRELATIVA
-# =============================================================================
-def render_slide_image_uploader(slide_number, slide_title, images_by_slide):
-    """Renderiza un uploader de imágenes para un slide específico con numeración correlativa"""
-    slide_key = f"slide_{slide_number}"
-    
-    st.markdown(f"**📷 Slide {slide_number}: {slide_title}**")
-    
-    # Calcular el siguiente número correlativo global
-    all_images = []
-    for key, imgs in images_by_slide.items():
-        all_images.extend(imgs)
-    next_number = len(all_images) + 1
-    
-    # Uploader de imágenes
-    uploaded_files = st.file_uploader(
-        f"Cargar imagen(es) para el Slide {slide_number}:",
-        type=["png", "jpg", "jpeg"],
-        accept_multiple_files=True,
-        key=f"uploader_slide_{slide_number}"
-    )
-    
-    if uploaded_files:
-        if slide_key not in images_by_slide:
-            images_by_slide[slide_key] = []
-        
-        for img_file in uploaded_files:
-            # Verificar si ya está cargada
-            already_loaded = any(
-                img.get("filename") == img_file.name 
-                for img in images_by_slide[slide_key]
-            )
-            if not already_loaded:
-                img_path = f"/tmp/temp_moc_slide{slide_number}_{next_number}_{img_file.name}"
-                with open(img_path, "wb") as f:
-                    f.write(img_file.getbuffer())
-                
-                images_by_slide[slide_key].append({
-                    "path": img_path,
-                    "filename": img_file.name,
-                    "number": next_number,
-                    "desc": f"Figura {next_number}. [Ingrese texto explicativo]",
-                    "slide": slide_number
-                })
-                next_number += 1
-        
-        st.success(f"✅ {len(uploaded_files)} imagen(es) cargada(s) para el Slide {slide_number}")
-    
-    # Mostrar imágenes cargadas con texto explicativo editable
-    if slide_key in images_by_slide and images_by_slide[slide_key]:
-        for idx, img_info in enumerate(images_by_slide[slide_key]):
-            st.markdown("---")
-            col1, col2 = st.columns([2, 3])
-            with col1:
-                st.image(img_info["path"], width=200)
-                st.caption(f"**Figura {img_info['number']}**")
-            with col2:
-                new_desc = st.text_area(
-                    f"Texto explicativo (Obligatorio) - Figura {img_info['number']}:",
-                    value=img_info["desc"],
-                    height=80,
-                    key=f"desc_slide_{slide_number}_{idx}",
-                    help="Describa el contenido de la imagen. Este texto aparecerá en el documento."
-                )
-                images_by_slide[slide_key][idx]["desc"] = new_desc
-                
-                if st.button(f"🗑️ Eliminar Figura {img_info['number']}", key=f"del_img_{slide_number}_{idx}"):
-                    images_by_slide[slide_key].pop(idx)
-                    # Re-numerar las imágenes restantes
-                    for i, img in enumerate(images_by_slide[slide_key]):
-                        img["number"] = i + 1
-                        if img["desc"].startswith("Figura "):
-                            img["desc"] = f"Figura {i+1}. [Ingrese texto explicativo]"
-                    st.rerun()
-
-# =============================================================================
-# INTERFAZ DE USUARIO
+# INTERFAZ
 # =============================================================================
 def render_sidebar():
     config = st.session_state.config
@@ -1272,12 +1561,11 @@ def render_sidebar():
         if st.sidebar.button(label, key=f"nav_{page_key}", use_container_width=True):
             st.session_state.page = page_key
             st.rerun()
-    st.sidebar.markdown("<hr style='border-color: #334155; margin: 1rem 0;'>", unsafe_allow_html=True)
     model_name = GeminiService.MODELS.get(config.get("gemini_model", GeminiService.DEFAULT_MODEL), {}).get("name", "Gemini 2.5 Flash")
     st.sidebar.markdown(f"""
 <div style="text-align: center; color: #64748b; font-size: 0.75rem;">
 <p>Modelo IA: <span class="gemini-badge">{model_name}</span></p>
-<p>v9.0.0 · Agosto 2026</p>
+<p>v10.0.0 · Agosto 2026</p>
 </div>
 """, unsafe_allow_html=True)
     st.sidebar.markdown("""
@@ -1285,8 +1573,7 @@ def render_sidebar():
 <div style="text-align: center; padding: 0.5rem;">
 <p style="color: #64748b; font-size: 0.75rem; margin: 0;">
 <strong style="color: #94a3b8;">CAVA</strong><br>
-Especialistas en Robótica<br>
-y Automatización<br><br>
+Especialistas en Robótica<br>y Automatización<br><br>
 Diseñado por<br>
 <strong style="color: #2e8bc0;">Roger Huamani</strong>
 </p>
@@ -1303,21 +1590,15 @@ def render_header():
 
 def render_welcome():
     render_header()
-    templates_ok = all([
-        st.session_state.get("template_moc_bytes"),
-        st.session_state.get("template_a3_bytes"),
-        st.session_state.get("template_kaizen_bytes")
-    ])
-    if not templates_ok:
-        st.warning("⚠️ **Templates no cargados.** Vaya a Configuración > Templates.")
+    st.success("✅ **Versión 10.0.0**: Generación nativa de documentos sin depender de templates externos. Todos los documentos se generan en formato A4 estándar.")
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("""
 <div class="doc-card doc-card-moc">
 <h3 style="color: #1a5f7a; margin-top: 0;">📋 Management of Change</h3>
-<p style="color: #64748b; font-size: 0.9rem;">Formato oficial MDET de 12+ slides con Checklist 360° y análisis integral.</p>
+<p style="color: #64748b; font-size: 0.9rem;">Documento completo con 15 secciones, Checklist 360° y análisis integral.</p>
 <ul style="color: #475569; font-size: 0.85rem; padding-left: 1.2rem;">
-<li>14 slides estandarizados</li><li>Imágenes por slide</li><li>Checklist 360° automático</li><li>Riesgos SHES detallados</li>
+<li>Formato A4 nativo</li><li>Checklist 360° (16 factores)</li><li>15 documentos impactados</li><li>Riesgos SHES detallados</li>
 </ul>
 </div>
 """, unsafe_allow_html=True)
@@ -1328,9 +1609,9 @@ def render_welcome():
         st.markdown("""
 <div class="doc-card doc-card-a3">
 <h3 style="color: #10b981; margin-top: 0;">📊 Mejora A3</h3>
-<p style="color: #64748b; font-size: 0.9rem;">Formato estructurado con análisis 5 Porqués y contramedidas SMART.</p>
+<p style="color: #64748b; font-size: 0.9rem;">Formato A3 con análisis 5 Porqués y contramedidas SMART.</p>
 <ul style="color: #475569; font-size: 0.85rem; padding-left: 1.2rem;">
-<li>Análisis 5 Porqués</li><li>Contramedidas priorizadas</li><li>Plan de seguimiento</li><li>Estandarización</li>
+<li>Formato A4 nativo</li><li>Análisis 5 Porqués</li><li>Contramedidas priorizadas</li><li>Plan de seguimiento</li>
 </ul>
 </div>
 """, unsafe_allow_html=True)
@@ -1341,9 +1622,9 @@ def render_welcome():
         st.markdown("""
 <div class="doc-card doc-card-kaizen">
 <h3 style="color: #f59e0b; margin-top: 0;">⚡ Simple Kaizen</h3>
-<p style="color: #64748b; font-size: 0.9rem;">Registro rápido de mejoras con clasificación de desperdicios Lean.</p>
+<p style="color: #64748b; font-size: 0.9rem;">Registro rápido con clasificación 8 Wastes y BTO.</p>
 <ul style="color: #475569; font-size: 0.85rem; padding-left: 1.2rem;">
-<li>8 Desperdicios (Wastes)</li><li>Impacto BTO</li><li>Beneficios medibles</li><li>Replicabilidad</li>
+<li>Formato A4 nativo</li><li>8 Wastes</li><li>Impacto BTO</li><li>Beneficios medibles</li>
 </ul>
 </div>
 """, unsafe_allow_html=True)
@@ -1377,22 +1658,18 @@ def auto_correct_text_input(label, value, key, height=100, help_text=""):
 def render_moc_form():
     config = st.session_state.config
     st.markdown('<div class="section-header"><h3>📋 Nueva Management of Change (MoC)</h3></div>', unsafe_allow_html=True)
-    st.info("💡 Complete la información y describa el problema con detalle. La IA (como Ingeniero Senior) generará automáticamente los 14 slides del formato oficial MDET con redacción profesional.")
-    if not st.session_state.get("template_moc_bytes"):
-        st.error("❌ **Template MoC no cargado.** Vaya a Configuración > Templates.")
-        if st.button("Ir a Configuración", key="go_config_moc"):
-            st.session_state.page = "configuracion"
-            st.rerun()
-        return
+    st.info("💡 Complete la información y describa el problema. La IA generará automáticamente los 15 campos del formato MDET en formato A4.")
+    
     st.markdown("#### 1. Información General")
     col1, col2 = st.columns(2)
     with col1:
-        moc_title = st.text_input("Título de la MoC:", placeholder="Ej: INSTALACIÓN DE INTERLOCKS DE SEGURIDAD EN ESTACIONES DE ESPERA")
+        moc_title = st.text_input("Título de la MoC:", placeholder="Ej: INSTALACIÓN DE INTERLOCKS DE SEGURIDAD")
         moc_number = st.text_input("Número:", value=Utils.generate_doc_number("moc"), disabled=True)
     with col2:
         naturaleza = st.selectbox("Naturaleza:", ["permanente", "temporal", "emergencia"])
         originador = st.text_input("Originador:", value=config.get("default_author", ""))
         fecha = st.text_input("Fecha:", value=Utils.format_date_short(), disabled=True)
+    
     st.markdown("#### 2. Equipo de Revisión")
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -1400,58 +1677,41 @@ def render_moc_form():
         specialist_shes = st.text_input("Specialist SHES:")
     with col2:
         mantenimiento = st.text_input("Mantenimiento:")
-        revisores = st.text_input("Revisores Enablon:")
+        revisores = st.text_input("Revisores:")
     with col3:
         experto_aprobador = st.text_input("Experto Aprobador:")
-    st.markdown("#### 3. Contexto del Problema Identificado (DETALLADO)")
-    st.warning("⚠️ **IMPORTANTE:** Describa el problema con el mayor detalle posible. La IA actuará como Ingeniero Senior y generará contenido basado EXCLUSIVAMENTE en su contexto.")
+    
+    st.markdown("#### 3. Contexto del Problema (DETALLADO)")
+    st.warning("⚠️ **IMPORTANTE:** Describa el problema con el mayor detalle posible. La IA generará contenido basado EXCLUSIVAMENTE en su contexto.")
     problem_desc = auto_correct_text_input(
         "Contexto del problema identificado:",
         "",
         "moc_problem_desc",
         height=300,
-        help_text="Describa: qué está pasando, desde cuándo, impacto, equipos involucrados, riesgos observados, dimensiones, parámetros técnicos, normas aplicables (ISO 13849, etc.), solución propuesta."
+        help_text="Describa: qué está pasando, equipos involucrados, riesgos, normas aplicables (ISO 13849), solución propuesta."
     )
     st.markdown("#### 4. Contexto Adicional (Opcional)")
-    context = auto_correct_text_input(
-        "Información adicional:",
-        "",
-        "moc_context",
-        height=120,
-        help_text="TAG del equipo, área específica, normativas aplicables, fechas relevantes, datos numéricos, planos de referencia, etc."
-    )
+    context = auto_correct_text_input("Información adicional:", "", "moc_context", height=120)
     st.markdown("#### 5. Alternativas Consideradas (Opcional)")
-    alternativas = auto_correct_text_input(
-        "Alternativas ya evaluadas (si existen):",
-        "",
-        "moc_alternativas",
-        height=100,
-        help_text="Si ya tiene alternativas evaluadas, descríbalas aquí. Si no, la IA generará 3 alternativas automáticamente."
-    )
+    alternativas = auto_correct_text_input("Alternativas ya evaluadas:", "", "moc_alternativas", height=100)
     
-    st.markdown("#### 6. Imágenes de Soporte por Slide")
-    st.info("💡 Cargue imágenes específicas para cada slide. La numeración será correlativa automática y el texto explicativo es obligatorio.")
-    
-    # Inicializar imágenes por slide si no existe
-    if "doc_images_by_slide" not in st.session_state:
-        st.session_state.doc_images_by_slide = {}
-    images_by_slide = st.session_state.doc_images_by_slide
-    
-    # Slides donde se pueden cargar imágenes
-    slide_definitions = [
-        (6, "Vista general del equipo/proceso"),
-        (7, "Planos de referencia / Diagramas"),
-    ]
-    
-    for slide_num, slide_title in slide_definitions:
-        render_slide_image_uploader(slide_num, slide_title, images_by_slide)
+    st.markdown("#### 6. Imágenes de Soporte (Opcional)")
+    uploaded_images = st.file_uploader("Seleccione imágenes:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+    image_paths = []
+    if uploaded_images:
+        for idx, img_file in enumerate(uploaded_images, 1):
+            img_path = f"/tmp/temp_moc_img_{moc_number}_{idx}.png"
+            with open(img_path, "wb") as f:
+                f.write(img_file.getbuffer())
+            image_paths.append({"path": img_path, "desc": f"Figura {idx} - {img_file.name}"})
+        st.success(f"📷 {len(image_paths)} imagen(es) cargada(s)")
     
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🤖 Generar Documento MoC con IA (Ingeniero Senior)", type="primary", use_container_width=True):
+    if st.button("🤖 Generar Documento MoC con IA", type="primary", use_container_width=True):
         if not problem_desc.strip():
             st.error("❌ Describa el problema antes de generar.")
             return
-        with st.spinner("🧠 El Ingeniero Senior IA está generando los 14 slides del formato oficial MDET..."):
+        with st.spinner("🧠 El Ingeniero Senior IA está generando el documento MoC..."):
             gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
             equipo_data = {
                 "produccion": produccion, "specialist_shes": specialist_shes,
@@ -1460,14 +1720,14 @@ def render_moc_form():
             }
             result = gemini.generate_moc(problem_desc, context, json.dumps(equipo_data), alternativas)
             if result is None:
-                st.error("❌ No se pudo generar el documento. Verifique su API Key en Configuración.")
+                st.error("❌ No se pudo generar el documento.")
                 return
             st.session_state.generated_data = result
             st.session_state.doc_meta = {
                 "moc_title": moc_title, "moc_number": moc_number, "naturaleza": naturaleza,
                 "originador": originador, "fecha": fecha, **equipo_data
             }
-            st.session_state.doc_images_by_slide = images_by_slide
+            st.session_state.doc_images = image_paths
             st.session_state.doc_type = "moc"
             st.session_state.page = "revisar"
             st.rerun()
@@ -1475,10 +1735,8 @@ def render_moc_form():
 def render_a3_form():
     config = st.session_state.config
     st.markdown('<div class="section-header"><h3>📊 Nueva Mejora A3</h3></div>', unsafe_allow_html=True)
-    st.info("💡 Describa el problema con detalle y la IA generará el documento A3 completo.")
-    if not st.session_state.get("template_a3_bytes"):
-        st.error("❌ **Template A3 no cargado.**")
-        return
+    st.info("💡 Describa el problema con detalle. La IA generará el documento A3 completo en formato A4.")
+    
     col1, col2 = st.columns(2)
     with col1:
         a3_title = st.text_input("Título:")
@@ -1487,8 +1745,21 @@ def render_a3_form():
         autor = st.text_input("Autor:", value=config.get("default_author", ""))
         doc_number = st.text_input("Número:", value=Utils.generate_doc_number("a3"), disabled=True)
         fecha = st.text_input("Fecha:", value=Utils.format_date(), disabled=True)
+    
     problem_desc = auto_correct_text_input("Describa el problema actual:", "", "a3_problem_desc", height=250)
     context = auto_correct_text_input("Contexto adicional:", "", "a3_context", height=100)
+    
+    st.markdown("#### Imágenes de Soporte (Opcional)")
+    uploaded_images = st.file_uploader("Seleccione imágenes:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
+    image_paths = []
+    if uploaded_images:
+        for idx, img_file in enumerate(uploaded_images, 1):
+            img_path = f"/tmp/temp_a3_img_{doc_number}_{idx}.png"
+            with open(img_path, "wb") as f:
+                f.write(img_file.getbuffer())
+            image_paths.append({"path": img_path, "desc": f"Figura {idx} - {img_file.name}"})
+        st.success(f"📷 {len(image_paths)} imagen(es) cargada(s)")
+    
     if st.button("🤖 Generar Documento A3 con IA", type="primary", use_container_width=True):
         if not problem_desc.strip():
             st.error("❌ Describa el problema antes de generar.")
@@ -1500,6 +1771,7 @@ def render_a3_form():
                 return
             st.session_state.generated_data = result
             st.session_state.doc_meta = {"titulo": a3_title, "area": area, "autor": autor, "doc_number": doc_number, "fecha": fecha}
+            st.session_state.doc_images = image_paths
             st.session_state.doc_type = "a3"
             st.session_state.page = "revisar"
             st.rerun()
@@ -1507,9 +1779,8 @@ def render_a3_form():
 def render_kaizen_form():
     config = st.session_state.config
     st.markdown('<div class="section-header"><h3>⚡ Nuevo Simple Kaizen</h3></div>', unsafe_allow_html=True)
-    if not st.session_state.get("template_kaizen_bytes"):
-        st.error("❌ **Template Kaizen no cargado.**")
-        return
+    st.info("💡 Describa la actividad de mejora realizada con detalle.")
+    
     col1, col2 = st.columns(2)
     with col1:
         kaizen_title = st.text_input("Título (Name):")
@@ -1519,10 +1790,40 @@ def render_kaizen_form():
         doc_number = st.text_input("Número:", value=Utils.generate_doc_number("kaizen"), disabled=True)
         fecha = st.text_input("Date:", value=Utils.format_date(), disabled=True)
         team_members = st.text_input("Team Members:")
+    
     activity_desc = auto_correct_text_input("Describa la mejora realizada:", "", "kzn_activity_desc", height=250)
-    tipo_desp = st.multiselect("Tipo de Desperdicio:", ["Motion", "Skills", "Inventory", "Transportation", "Over Production", "Over Processing", "Waiting", "Defects"])
-    impacto_bto = st.selectbox("Impacto BTO:", ["Safe and Sustainable", "People & Culture", "Network Optimisation", "Supply Chain and Manufacturing Excellence"])
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        tipo_desp = st.multiselect("Tipo de Desperdicio:",
+                                   ["Motion", "Skills", "Inventory", "Transportation",
+                                    "Over Production", "Over Processing", "Waiting", "Defects"])
+    with col2:
+        impacto_bto = st.selectbox("Impacto BTO:",
+                                   ["Safe and Sustainable", "People & Culture",
+                                    "Network Optimisation", "Supply Chain and Manufacturing Excellence"])
+    
     beneficios = auto_correct_text_input("Beneficios:", "", "kzn_beneficios", height=120)
+    
+    st.markdown("#### Imágenes Antes/Después")
+    col1, col2 = st.columns(2)
+    with col1:
+        img_antes = st.file_uploader("Imagen ANTES:", type=["png", "jpg", "jpeg"], key="img_antes")
+    with col2:
+        img_despues = st.file_uploader("Imagen DESPUÉS:", type=["png", "jpg", "jpeg"], key="img_despues")
+    
+    image_paths = []
+    if img_antes:
+        img_path = f"/tmp/temp_kzn_antes_{doc_number}.png"
+        with open(img_path, "wb") as f:
+            f.write(img_antes.getbuffer())
+        image_paths.append({"path": img_path, "desc": "ANTES - Estado inicial"})
+    if img_despues:
+        img_path = f"/tmp/temp_kzn_despues_{doc_number}.png"
+        with open(img_path, "wb") as f:
+            f.write(img_despues.getbuffer())
+        image_paths.append({"path": img_path, "desc": "DESPUÉS - Estado final"})
+    
     if st.button("🤖 Generar Documento Kaizen con IA", type="primary", use_container_width=True):
         if not activity_desc.strip():
             st.error("❌ Describa la actividad antes de generar.")
@@ -1538,7 +1839,11 @@ def render_kaizen_form():
             result["team_members"] = team_members
             result["beneficios"] = beneficios if beneficios else result.get("beneficios", "")
             st.session_state.generated_data = result
-            st.session_state.doc_meta = {"titulo": kaizen_title, "area": area, "leader": leader, "team_members": team_members, "doc_number": doc_number, "fecha": fecha}
+            st.session_state.doc_meta = {
+                "titulo": kaizen_title, "area": area, "leader": leader,
+                "team_members": team_members, "doc_number": doc_number, "fecha": fecha
+            }
+            st.session_state.doc_images = image_paths
             st.session_state.doc_type = "kaizen"
             st.session_state.page = "revisar"
             st.rerun()
@@ -1547,17 +1852,19 @@ def render_review():
     doc_type = st.session_state.doc_type
     data = st.session_state.get("generated_data", {})
     meta = st.session_state.get("doc_meta", {})
-    images_by_slide = st.session_state.get("doc_images_by_slide", {})
+    images = st.session_state.get("doc_images", [])
     config = st.session_state.config
     type_names = {"moc": "MoC", "a3": "Mejora A3", "kaizen": "Simple Kaizen"}
     type_name = type_names.get(doc_type, "Documento")
     st.markdown(f'<div class="section-header"><h3>👁️ Revisar y Editar {type_name}</h3></div>', unsafe_allow_html=True)
+    st.info("💡 Revise cada campo, realice correcciones manuales si es necesario y genere el documento final en DOCX o PDF.")
+    
     if doc_type == "moc":
-        _render_moc_review(data, meta, images_by_slide, config)
+        _render_moc_review(data, meta, images, config)
     elif doc_type == "a3":
-        _render_a3_review(data, meta, config)
+        _render_a3_review(data, meta, images, config)
     elif doc_type == "kaizen":
-        _render_kaizen_review(data, meta, config)
+        _render_kaizen_review(data, meta, images, config)
 
 def _spell_check_field(label, value, key_prefix, gemini):
     col1, col2 = st.columns([6, 1])
@@ -1575,9 +1882,9 @@ def _spell_check_field(label, value, key_prefix, gemini):
         del st.session_state[f"{key_prefix}_corrected"]
     return text
 
-def _render_moc_review(data, meta, images_by_slide, config):
+def _render_moc_review(data, meta, images, config):
     gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
-    tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "📊 Checklist", "📄 Documentos", "⚠️ Riesgos", "⚙️ Generar"])
+    tabs = st.tabs(["📋 General", "📝 Contenido", "📊 Checklist", "📄 Documentos", "⚠️ Riesgos", "📷 Imágenes", "⚙️ Generar"])
     
     with tabs[0]:
         st.markdown("#### Información del Documento")
@@ -1594,60 +1901,25 @@ def _render_moc_review(data, meta, images_by_slide, config):
         meta["experto_aprobador"] = st.text_input("Experto Aprobador:", value=meta.get("experto_aprobador", ""))
     
     with tabs[1]:
-        st.markdown("#### Condición Actual (Slide 3)")
-        data["condicion_actual"] = _spell_check_field("", data.get("condicion_actual", ""), "moc_actual", gemini)
-        st.markdown("#### Condición Propuesta (Slide 3)")
-        data["condicion_propuesta"] = _spell_check_field("", data.get("condicion_propuesta", ""), "moc_prop", gemini)
-        st.markdown("#### Justificación de la MoC (Slide 4)")
-        data["justificacion_moc"] = _spell_check_field("", data.get("justificacion_moc", ""), "moc_just", gemini)
-        st.markdown("#### Descripción del Problema (Slide 5)")
-        data["descripcion_problema"] = _spell_check_field("", data.get("descripcion_problema", ""), "moc_desc", gemini)
-        st.markdown("#### Razones del Cambio (Slide 6)")
-        data["razones_cambio"] = _spell_check_field("", data.get("razones_cambio", ""), "moc_raz", gemini)
-        st.markdown("#### Alternativas Consideradas (Slide 4)")
-        data["alternativas_consideradas"] = _spell_check_field("", data.get("alternativas_consideradas", ""), "moc_alt", gemini)
-        st.markdown("#### Plan de Retorno (Slide 4)")
-        data["plan_retorno"] = _spell_check_field("", data.get("plan_retorno", ""), "moc_ret", gemini)
-        st.markdown("#### Recursos (Slide 8)")
-        data["recursos"] = _spell_check_field("", data.get("recursos", ""), "moc_rec", gemini)
-        st.markdown("#### Plan de Implementación (Slide 8)")
-        data["plan_implementacion"] = _spell_check_field("", data.get("plan_implementacion", ""), "moc_plan", gemini)
-        st.markdown("#### Tiempo de Duración (Slide 8)")
-        data["tiempo_duracion"] = _spell_check_field("", data.get("tiempo_duracion", ""), "moc_tiempo", gemini)
-        st.markdown("#### Impacto Esperado")
-        data["impacto_esperado"] = _spell_check_field("", data.get("impacto_esperado", ""), "moc_impacto", gemini)
-        st.markdown("#### Resumen Ejecutivo para Aprobación")
-        data["resumen_ejecutivo"] = _spell_check_field("", data.get("resumen_ejecutivo", ""), "moc_resumen", gemini)
+        fields = [
+            ("Condición Actual", "condicion_actual"),
+            ("Condición Propuesta", "condicion_propuesta"),
+            ("Justificación de la MoC", "justificacion_moc"),
+            ("Descripción del Problema", "descripcion_problema"),
+            ("Razones del Cambio", "razones_cambio"),
+            ("Alternativas Consideradas", "alternativas_consideradas"),
+            ("Plan de Retorno", "plan_retorno"),
+            ("Recursos", "recursos"),
+            ("Plan de Implementación", "plan_implementacion"),
+            ("Tiempo de Duración", "tiempo_duracion"),
+            ("Impacto Esperado", "impacto_esperado"),
+            ("Resumen Ejecutivo", "resumen_ejecutivo"),
+        ]
+        for label, key in fields:
+            st.markdown(f"#### {label}")
+            data[key] = _spell_check_field("", data.get(key, ""), f"moc_{key}", gemini)
     
     with tabs[2]:
-        st.markdown("#### 📷 Imágenes Cargadas por Slide")
-        st.info("💡 Cada imagen tiene numeración correlativa automática y texto explicativo obligatorio.")
-        
-        if images_by_slide:
-            total_images = sum(len(imgs) for imgs in images_by_slide.values())
-            st.success(f"✅ Total de imágenes cargadas: {total_images}")
-            
-            for slide_key, imgs in images_by_slide.items():
-                slide_num = slide_key.replace("slide_", "")
-                st.markdown(f"### Slide {slide_num}")
-                for idx, img_info in enumerate(imgs):
-                    st.markdown("---")
-                    col1, col2 = st.columns([2, 3])
-                    with col1:
-                        st.image(img_info["path"], width=250)
-                        st.caption(f"**Figura {img_info['number']}**")
-                    with col2:
-                        new_desc = st.text_area(
-                            f"Texto explicativo - Figura {img_info['number']} (Obligatorio):",
-                            value=img_info["desc"],
-                            height=80,
-                            key=f"rev_desc_{slide_key}_{idx}"
-                        )
-                        images_by_slide[slide_key][idx]["desc"] = new_desc
-        else:
-            st.info("No se cargaron imágenes. Puede agregarlas en el formulario de creación.")
-    
-    with tabs[3]:
         st.markdown("#### Checklist 360° - 16 Factores")
         checklist = data.get("checklist_360", [])
         updated_checklist = []
@@ -1665,7 +1937,7 @@ def _render_moc_review(data, meta, images_by_slide, config):
                                       "aplica": aplica, "descripcion": desc if aplica == "SI" else ""})
         data["checklist_360"] = updated_checklist
     
-    with tabs[4]:
+    with tabs[3]:
         st.markdown("#### Documentos Impactados - 15 Documentos")
         docs_imp = data.get("documentos_impactados", [])
         updated_docs = []
@@ -1683,12 +1955,12 @@ def _render_moc_review(data, meta, images_by_slide, config):
                                  "aplica": aplica, "modificacion": modif if aplica == "SI" else ""})
         data["documentos_impactados"] = updated_docs
     
-    with tabs[5]:
+    with tabs[4]:
         st.markdown("#### Riesgos de Calidad")
         risks_cal = data.get("riesgos_controles", [])
         updated_cal = []
         for i, risk in enumerate(risks_cal):
-            st.markdown(f"**Riesgo de Calidad {i+1}**")
+            st.markdown(f"**Riesgo {i+1}**")
             col1, col2, col3 = st.columns([2, 2, 1])
             with col1:
                 r_riesgo = st.text_input(f"Riesgo:", value=risk.get("riesgo", ""), key=f"rcal_r_{i}")
@@ -1714,19 +1986,27 @@ def _render_moc_review(data, meta, images_by_slide, config):
             updated_shes.append({"riesgo": s_riesgo, "control": s_control, "plazo": s_plazo})
         data["riesgos_shes"] = updated_shes
     
+    with tabs[5]:
+        st.markdown("#### Imágenes Cargadas")
+        if images:
+            for idx, img_info in enumerate(images, 1):
+                st.image(img_info["path"], caption=f"Figura {idx}: {img_info['desc']}", width=400)
+        else:
+            st.info("No se cargaron imágenes")
+    
     with tabs[6]:
-        st.markdown("#### Generar Documento Final")
-        st.success("✅ Documento listo para generar (14 slides formato oficial MDET)")
+        st.markdown("#### Generar Documento Final (Formato A4)")
+        st.success("✅ Documento listo para generar en formato A4 estándar")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            if st.button("🇪🇸 PPTX Español", type="primary", use_container_width=True):
-                _finalize_document(data, meta, images_by_slide, "es", "moc", "pptx")
+            if st.button("📄 DOCX Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "moc", "docx")
         with col2:
-            if st.button("🇺🇸 PPTX Inglés", type="primary", use_container_width=True):
-                _finalize_document(data, meta, images_by_slide, "en", "moc", "pptx")
+            if st.button("📄 PDF Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "moc", "pdf")
         with col3:
-            if st.button("📄 PDF Español", type="secondary", use_container_width=True):
-                _finalize_document(data, meta, images_by_slide, "es", "moc", "pdf")
+            if st.button("🇺🇸 DOCX Inglés", type="secondary", use_container_width=True):
+                _finalize_document(data, meta, images, "en", "moc", "docx")
         with col4:
             if st.button("🔄 Regenerar", use_container_width=True):
                 st.session_state.page = "nueva_moc"
@@ -1734,11 +2014,10 @@ def _render_moc_review(data, meta, images_by_slide, config):
     
     st.session_state.generated_data = data
     st.session_state.doc_meta = meta
-    st.session_state.doc_images_by_slide = images_by_slide
 
-def _render_a3_review(data, meta, config):
+def _render_a3_review(data, meta, images, config):
     gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
-    tabs = st.tabs(["📋 General", "📝 Contenido", "⚙️ Generar"])
+    tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""))
         meta["area"] = st.text_input("Área:", value=meta.get("area", ""))
@@ -1755,19 +2034,32 @@ def _render_a3_review(data, meta, config):
             st.markdown(f"**{label}**")
             data[key] = _spell_check_field("", data.get(key, ""), f"a3_{key}", gemini)
     with tabs[2]:
-        col1, col2 = st.columns(2)
+        if images:
+            for idx, img_info in enumerate(images, 1):
+                st.image(img_info["path"], caption=f"Figura {idx}: {img_info['desc']}", width=400)
+        else:
+            st.info("No se cargaron imágenes")
+    with tabs[3]:
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            if st.button("✅ DOCX Español", type="primary", use_container_width=True):
-                _finalize_document(data, meta, {}, "es", "a3", "docx")
+            if st.button("📄 DOCX Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "a3", "docx")
         with col2:
-            if st.button("📄 PDF Español", type="secondary", use_container_width=True):
-                _finalize_document(data, meta, {}, "es", "a3", "pdf")
+            if st.button("📄 PDF Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "a3", "pdf")
+        with col3:
+            if st.button("🇺🇸 DOCX Inglés", type="secondary", use_container_width=True):
+                _finalize_document(data, meta, images, "en", "a3", "docx")
+        with col4:
+            if st.button("🔄 Regenerar", use_container_width=True):
+                st.session_state.page = "nueva_a3"
+                st.rerun()
     st.session_state.generated_data = data
     st.session_state.doc_meta = meta
 
-def _render_kaizen_review(data, meta, config):
+def _render_kaizen_review(data, meta, images, config):
     gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
-    tabs = st.tabs(["📋 General", "📝 Contenido", "⚙️ Generar"])
+    tabs = st.tabs(["📋 General", "📝 Contenido", "📷 Imágenes", "⚙️ Generar"])
     with tabs[0]:
         meta["titulo"] = st.text_input("Título:", value=meta.get("titulo", ""))
         meta["area"] = st.text_input("Plant/Area:", value=meta.get("area", ""))
@@ -1780,50 +2072,88 @@ def _render_kaizen_review(data, meta, config):
         data["solucion"] = _spell_check_field("", data.get("solucion", ""), "kzn_sol", gemini)
         st.markdown("**Beneficios**")
         data["beneficios"] = _spell_check_field("", data.get("beneficios", ""), "kzn_ben", gemini)
+        st.markdown("**Tipo de Desperdicio**")
+        data["tipo_desperdicio"] = st.text_input("", value=data.get("tipo_desperdicio", ""), key="kzn_desp")
+        st.markdown("**Impacto BTO**")
+        data["impacto_bto"] = st.text_input("", value=data.get("impacto_bto", ""), key="kzn_bto")
+        st.markdown("**Próximos Pasos**")
+        data["proximos_pasos"] = _spell_check_field("", data.get("proximos_pasos", ""), "kzn_next", gemini)
     with tabs[2]:
-        col1, col2 = st.columns(2)
+        if images:
+            for idx, img_info in enumerate(images, 1):
+                st.image(img_info["path"], caption=f"{img_info['desc']}", width=400)
+        else:
+            st.info("No se cargaron imágenes")
+    with tabs[3]:
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            if st.button("✅ PPTX Español", type="primary", use_container_width=True):
-                _finalize_document(data, meta, {}, "es", "kaizen", "pptx")
+            if st.button("📄 DOCX Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "kaizen", "docx")
         with col2:
-            if st.button("📄 PDF Español", type="secondary", use_container_width=True):
-                _finalize_document(data, meta, {}, "es", "kaizen", "pdf")
+            if st.button("📄 PDF Español", type="primary", use_container_width=True):
+                _finalize_document(data, meta, images, "es", "kaizen", "pdf")
+        with col3:
+            if st.button("🇺🇸 DOCX Inglés", type="secondary", use_container_width=True):
+                _finalize_document(data, meta, images, "en", "kaizen", "docx")
+        with col4:
+            if st.button("🔄 Regenerar", use_container_width=True):
+                st.session_state.page = "nuevo_kaizen"
+                st.rerun()
     st.session_state.generated_data = data
     st.session_state.doc_meta = meta
 
-def _finalize_document(data, meta, images_by_slide, language, doc_type, output_format="pptx"):
+def _finalize_document(data, meta, images, language, doc_type, output_format):
     config = st.session_state.config
     gemini = GeminiService(config.get("gemini_api_key", ""), config.get("gemini_model"))
-    with st.spinner(f"📄 Generando documento..."):
+    
+    with st.spinner(f"📄 Generando documento en formato A4..."):
         final_data = {**meta, **data}
-        if language == "en" and doc_type == "moc":
+        if language == "en":
+            st.info("🌐 Traduciendo documento al inglés...")
             final_data = gemini.translate_document(final_data)
-        generator = DocumentGenerator()
-        pdf_exporter = PDFExporter()
+        
+        generator = NativeDocumentGenerator()
+        pdf_exporter = NativePDFExporter()
+        
+        buffer = None
+        ext = output_format
+        mime = ""
         
         if doc_type == "moc":
-            buffer = generator.generate_moc(final_data, images_by_slide, st.session_state.get("template_moc_bytes"))
-            ext = "pptx"
-            mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            
-            if output_format == "pdf" and buffer:
-                pdf_bytes = pdf_exporter.pptx_to_pdf_libreoffice(buffer.getvalue(), "moc.pdf")
+            if output_format == "docx":
+                buffer = generator.generate_moc_docx(final_data, images)
+                mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            else:
+                pdf_bytes = pdf_exporter.generate_moc_pdf(final_data, images)
                 if pdf_bytes:
                     buffer = BytesIO(pdf_bytes)
-                    ext = "pdf"
                     mime = "application/pdf"
         elif doc_type == "a3":
-            buffer = generator.generate_a3(final_data, None, st.session_state.get("template_a3_bytes"))
-            ext = "docx"
-            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        else:
-            buffer = generator.generate_kaizen(final_data, None, st.session_state.get("template_kaizen_bytes"))
-            ext = "pptx"
-            mime = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            if output_format == "docx":
+                buffer = generator.generate_a3_docx(final_data, images)
+                mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            else:
+                pdf_bytes = pdf_exporter.generate_a3_pdf(final_data, images)
+                if pdf_bytes:
+                    buffer = BytesIO(pdf_bytes)
+                    mime = "application/pdf"
+        else:  # kaizen
+            if output_format == "docx":
+                buffer = generator.generate_kaizen_docx(final_data, images)
+                mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            else:
+                pdf_bytes = pdf_exporter.generate_kaizen_pdf(final_data, images)
+                if pdf_bytes:
+                    buffer = BytesIO(pdf_bytes)
+                    mime = "application/pdf"
         
         if buffer is None:
+            st.error("❌ No se pudo generar el documento.")
             return
-        filename = f"{meta.get('moc_number', meta.get('doc_number', 'DOC'))}_{language}.{ext}"
+        
+        lang_suffix = "en" if language == "en" else "es"
+        filename = f"{meta.get('moc_number', meta.get('doc_number', 'DOC'))}_{lang_suffix}.{ext}"
+        
         doc_info = {
             "type": doc_type,
             "title": meta.get("moc_title", meta.get("titulo", "Sin título")),
@@ -1843,36 +2173,73 @@ def _finalize_document(data, meta, images_by_slide, language, doc_type, output_f
         )
 
 def render_history():
-    st.markdown('<div class="section-header"><h3>📁 Historial</h3></div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h3>📁 Historial de Documentos</h3></div>', unsafe_allow_html=True)
     docs = st.session_state.history.get("documents", [])
+    
+    export_data = {
+        "config": st.session_state.config,
+        "history": st.session_state.history,
+        "export_date": datetime.now().isoformat(),
+        "version": "10.0.0"
+    }
+    st.download_button(
+        label="📥 Exportar backup (JSON)",
+        data=json.dumps(export_data, indent=2, ensure_ascii=False),
+        file_name=f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+        mime="application/json",
+        use_container_width=True
+    )
+    
+    st.markdown("#### Restaurar desde archivo")
+    restore_file = st.file_uploader("Seleccione archivo de backup:", type=["json"], key="restore_file")
+    if restore_file:
+        try:
+            restore_data = json.loads(restore_file.read())
+            if "config" in restore_data:
+                st.session_state.config = restore_data["config"]
+                LocalStorage.save_config(restore_data["config"])
+            if "history" in restore_data:
+                st.session_state.history = restore_data["history"]
+                LocalStorage.save_history(restore_data["history"])
+            st.success("✅ Restauración completada.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
+    
     if not docs:
         st.info("📭 No hay documentos generados aún.")
         return
+    
     for doc in docs:
         type_emoji = {"moc": "📋", "a3": "📊", "kaizen": "⚡"}.get(doc.get("type"), "📄")
+        lang_flag = "🇪🇸" if doc.get("language") == "es" else "🇺🇸"
         st.markdown(f"""
 <div class="history-item">
 <h4 style="margin: 0;">{type_emoji} {doc.get('title', 'Sin título')}</h4>
 <p style="margin: 0.25rem 0; color: #64748b; font-size: 0.9rem;">
-{doc.get('number', '')} · {doc.get('timestamp', '')[:10]}
+{doc.get('number', '')} · {lang_flag} · {doc.get('format', '').upper()} · {doc.get('timestamp', '')[:10]}
 </p>
 </div>
 """, unsafe_allow_html=True)
+        if st.button("🗑️ Eliminar", key=f"del_{doc.get('id', 'x')}"):
+            Utils.delete_from_history(doc.get('id'))
+            st.rerun()
 
 def render_settings():
     st.markdown('<div class="section-header"><h3>⚙️ Configuración</h3></div>', unsafe_allow_html=True)
     config = st.session_state.config
-    tabs = st.tabs(["🔑 API Gemini", "📄 Templates", "💾 Backup"])
+    tabs = st.tabs(["🔑 API Gemini", "🏢 Empresa", "💾 Backup"])
     
     with tabs[0]:
         st.markdown("#### API Key Gemini")
+        st.info("💡 Obtenga su API Key en [Google AI Studio](https://aistudio.google.com/)")
         api_key = st.text_input("API Key:", value=config.get("gemini_api_key", ""), type="password")
         
-        if st.button("🔌 Probar Conexión API", type="secondary", use_container_width=True):
+        if st.button("🔌 Probar Conexión API", use_container_width=True):
             if not api_key:
                 st.error("⚠️ Ingrese una API Key primero.")
             else:
-                with st.spinner("Probando conexión..."):
+                with st.spinner("Probando..."):
                     try:
                         import requests
                         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
@@ -1906,48 +2273,48 @@ def render_settings():
             st.success("✅ API Key guardada")
     
     with tabs[1]:
-        st.markdown("#### Carga de Templates Oficiales")
-        moc_ok = st.session_state.get("template_moc_bytes") is not None
-        a3_ok = st.session_state.get("template_a3_bytes") is not None
-        kzn_ok = st.session_state.get("template_kaizen_bytes") is not None
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown(f"**Template MoC**: {'✅' if moc_ok else '❌'}")
-            moc_file = st.file_uploader("Subir MoC (.pptx)", type=["pptx"], key="upload_moc")
-        with col2:
-            st.markdown(f"**Template A3**: {'✅' if a3_ok else '❌'}")
-            a3_file = st.file_uploader("Subir A3 (.docx)", type=["docx"], key="upload_a3")
-        with col3:
-            st.markdown(f"**Template Kaizen**: {'✅' if kzn_ok else '❌'}")
-            kzn_file = st.file_uploader("Subir Kaizen (.pptx)", type=["pptx"], key="upload_kzn")
-        
-        if st.button("💾 Guardar Templates", type="primary", use_container_width=True):
-            if moc_file:
-                st.session_state.template_moc_bytes = moc_file.getvalue()
-                LocalStorage.save_template_bytes("moc", moc_file.getvalue())
-            if a3_file:
-                st.session_state.template_a3_bytes = a3_file.getvalue()
-                LocalStorage.save_template_bytes("a3", a3_file.getvalue())
-            if kzn_file:
-                st.session_state.template_kaizen_bytes = kzn_file.getvalue()
-                LocalStorage.save_template_bytes("kaizen", kzn_file.getvalue())
-            st.success("✅ Templates guardados")
-            st.rerun()
+        st.markdown("#### Datos de la Empresa")
+        company = st.text_input("Empresa:", value=config.get("company_name", ""))
+        dept = st.text_input("Departamento:", value=config.get("department", ""))
+        author = st.text_input("Autor por defecto:", value=config.get("default_author", ""))
+        area = st.text_input("Área por defecto:", value=config.get("default_area", ""))
+        if st.button("💾 Guardar Datos", type="primary", use_container_width=True):
+            config["company_name"] = company
+            config["department"] = dept
+            config["default_author"] = author
+            config["default_area"] = area
+            st.session_state.config = config
+            LocalStorage.save_config(config)
+            st.success("✅ Datos guardados")
     
     with tabs[2]:
-        export_data = {
-            "config": st.session_state.config,
-            "history": st.session_state.history,
-            "export_date": datetime.now().isoformat(),
-            "version": "9.0.0"
-        }
-        st.download_button(
-            label="📥 Exportar backup (JSON)",
-            data=json.dumps(export_data, indent=2, ensure_ascii=False),
-            file_name=f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-            mime="application/json",
-            use_container_width=True
-        )
+        st.markdown("#### 🗑️ Zona de Peligro")
+        st.warning("⚠️ Las siguientes acciones son irreversibles.")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ Borrar Historial", use_container_width=True):
+                st.session_state.history = {"documents": []}
+                LocalStorage.save_history({"documents": []})
+                st.success("✅ Historial borrado")
+                st.rerun()
+        with col2:
+            if st.button("🗑️ Borrar Configuración", use_container_width=True):
+                st.session_state.config = {
+                    "gemini_api_key": "",
+                    "gemini_model": GeminiService.DEFAULT_MODEL,
+                    "company_name": "",
+                    "department": "",
+                    "default_author": "",
+                    "default_area": "",
+                    "last_moc_number": 0,
+                    "last_a3_number": 0,
+                    "last_kaizen_number": 0,
+                    "spell_check": True,
+                    "auto_correct": True,
+                }
+                LocalStorage.save_config(st.session_state.config)
+                st.success("✅ Configuración restaurada")
+                st.rerun()
 
 def main():
     render_sidebar()
@@ -1971,7 +2338,11 @@ def main():
     st.markdown("""
 <div class="app-footer">
 <p><strong>CAVA</strong> - Especialistas en Robótica y Automatización</p>
-<p>Diseñado por <strong>Roger Huamani</strong> | v9.0.0</p>
+<p>Diseñado por <strong>Roger Huamani</strong> | v10.0.0</p>
+<p style="font-size: 0.75rem; color: #94a3b8;">
+Generación nativa de documentos en formato A4 sin templates externos.<br>
+Soporte para español e inglés. Exportación a DOCX y PDF.
+</p>
 </div>
 """, unsafe_allow_html=True)
 
